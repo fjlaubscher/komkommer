@@ -1104,10 +1104,19 @@ void AnimClass::Middle(void)
 
         int radius = 3;
         int rawdamage = 200;
+        WarheadType warhead = WARHEAD_FIRE;
         if (GameToPlay == GAME_NORMAL) {
             radius = 4;
             rawdamage = 1000;
             Fade_Palette_To(WhitePalette, 30, NULL);
+        } else {
+            /*
+            **	Komkommer: stronger nuke in skirmish/multiplayer. Use an armor-piercing
+            **	warhead and higher damage so structures take meaningful damage.
+            */
+            radius = 4;
+            rawdamage = 900;
+            warhead = WARHEAD_AP;
         }
         for (int x = -radius; x <= radius; x++) {
             for (int y = -radius; y <= radius; y++) {
@@ -1130,7 +1139,7 @@ void AnimClass::Middle(void)
                     continue;
 
                 int damage = rawdamage / ((ABS(radius) / 2) + 1);
-                Explosion_Damage(Cell_Coord(tcell), damage, building, WARHEAD_FIRE);
+                Explosion_Damage(Cell_Coord(tcell), damage, building, warhead);
                 new SmudgeClass(Random_Pick(SMUDGE_SCORCH1, SMUDGE_SCORCH6), Cell_Coord(tcell));
             }
         }

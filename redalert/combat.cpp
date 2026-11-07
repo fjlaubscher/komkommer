@@ -429,7 +429,7 @@ void Wide_Area_Damage(COORDINATE coord, LEPTON radius, int rawdamage, TechnoClas
                 Distance(XY_Coord(x + cell_radius, y + cell_radius), XY_Coord(cell_radius, cell_radius));
             int damage = rawdamage * Inverse(fixed(cell_radius, dist_from_center));
             Explosion_Damage(Cell_Coord(tcell), damage, source, warhead);
-            if (warhead == WARHEAD_FIRE && damage > 100) {
+            if ((warhead == WARHEAD_FIRE || warhead == WARHEAD_NUKE) && damage > 100) {
                 new SmudgeClass(Random_Pick(SMUDGE_SCORCH1, SMUDGE_SCORCH6), Cell_Coord(tcell));
             }
         }

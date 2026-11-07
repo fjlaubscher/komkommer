@@ -1282,6 +1282,7 @@ void AnimClass::Do_Atom_Damage(HousesType ownerhouse, CELL cell)
 
     int radius;
     int rawdamage;
+    WarheadType warhead = WARHEAD_FIRE;
     if (Session.Type == GAME_NORMAL) {
         radius = 4;
         rawdamage = Rule.AtomDamage;
@@ -1289,11 +1290,16 @@ void AnimClass::Do_Atom_Damage(HousesType ownerhouse, CELL cell)
         WhitePalette.Set(FADE_PALETTE_SLOW, Call_Back); //TO_FIX. ST 5/8/2019
 #endif
     } else {
-        radius = 3;
-        rawdamage = Rule.AtomDamage / 5;
+        /*
+        **	Komkommer: stronger nuke in skirmish/multiplayer. The original MP
+        **	damage (1/5th) was too weak to threaten structures.
+        */
+        radius = 4;
+        rawdamage = (Rule.AtomDamage * 3) / 4;
+        warhead = WARHEAD_NUKE;
     }
 
-    Wide_Area_Damage(Cell_Coord(cell), radius * CELL_LEPTON_W, rawdamage, building, WARHEAD_FIRE);
+    Wide_Area_Damage(Cell_Coord(cell), radius * CELL_LEPTON_W, rawdamage, building, warhead);
     Shake_The_Screen(3);
     if (Session.Type == GAME_NORMAL) {
 #ifndef REMASTER_BUILD
