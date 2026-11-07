@@ -3,7 +3,7 @@ name: windows
 on:
   push:
     tags:
-      - '*'
+      - 'v*'
 
 jobs:
   remaster_msvc:

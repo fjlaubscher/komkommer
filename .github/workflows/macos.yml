@@ -3,7 +3,7 @@ name: macos
 on:
   push:
     tags:
-      - '*'
+      - 'v*'
 
 jobs:
   vanilla-macos:

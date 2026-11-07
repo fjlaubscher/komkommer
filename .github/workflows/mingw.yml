@@ -3,7 +3,7 @@ name: mingw-w64
 on:
   push:
     tags:
-      - '*'
+      - 'v*'
 
 jobs:
   vanilla_win_gcc:
