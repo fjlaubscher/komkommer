@@ -102,6 +102,30 @@
 */
 #include "sidebarglyphx.h"
 
+static bool Can_Rally(StructType type)
+{
+    switch (type) {
+    case STRUCT_BARRACKS:
+    case STRUCT_HAND:
+    case STRUCT_WEAP:
+    case STRUCT_AIRSTRIP:
+    case STRUCT_REPAIR:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static void Send_To_Rally(BuildingClass const* building, TechnoClass* unit)
+{
+    if (building == NULL || unit == NULL || building->Rally < 0) {
+        return;
+    }
+    unit->Assign_Mission(MISSION_MOVE);
+    unit->Assign_Destination(::As_Target(building->Rally));
+    unit->Commence();
+}
+
 enum SAMState
 {
     SAM_NONE = -1,   // Used for non SAM site buildings.
@@ -687,7 +711,44 @@ void BuildingClass::Draw_It(int x, int y, WindowNumberType window)
         }
     }
 
+    /*
+    **	The rally point marker is rendered for us by the map: setting a cell's
+    **	IsFlagged bit causes an ANIM_FLAG (FLAGFLY.SHP) on it in vanilla, and
+    **	the same cell state makes the remastered host export a FLAGFLY draw
+    **	via the dynamic map pipe. Refresh_Rally is responsible for moving that
+    **	flag from the old cell to the new one when the rally changes, and
+    **	Limbo clears it when this building is destroyed.
+    */
+
     TechnoClass::Draw_It(x, y, window);
+}
+
+/***********************************************************************************************
+ * BuildingClass::Set_Unselected_By_Player -- Object was unselected by a player.               *
+ *                                                                                             *
+ *    When a building with a rally point is deselected, the whole map needs to be redrawn so   *
+ *    that the rally point line disappears from cells between the building and its rally       *
+ *    point. The base class only redraws the building's own cells, which would leave the       *
+ *    rest of the line smeared across the map until those cells happened to redraw.            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   Added for rally point rendering.                                                          *
+ *=============================================================================================*/
+void BuildingClass::Refresh_Rally(void)
+{
+    if (LastRally >= 0 && LastRally < MAP_CELL_TOTAL && Map.In_Radar(LastRally)
+        && Map[LastRally].IsFlagged && Map[LastRally].Owner == Owner()) {
+        Map[LastRally].Flag_Remove();
+    }
+    LastRally = -1;
+
+    if (Rally >= 0 && Rally < MAP_CELL_TOTAL && Map.In_Radar(Rally) && !Map[Rally].IsFlagged) {
+        if (Map[Rally].Flag_Place(Owner())) {
+            LastRally = Rally;
+        }
+    } else {
+        LastRally = Rally;
+    }
 }
 
 /***********************************************************************************************
@@ -1847,6 +1908,8 @@ BuildingClass::BuildingClass(StructType type, HousesType house)
     , TechnoClass(house)
 {
     PlacementDelay = 0;
+    Rally = -1;
+    LastRally = -1;
     LastStrength = 0;
     ActLike = House->ActLike;
     BState = BSTATE_NONE;
@@ -2104,6 +2167,10 @@ void BuildingClass::Active_Click_With(ActionType action, CELL cell)
         Player_Assign_Mission(MISSION_ATTACK, ::As_Target(cell));
     }
 
+    if (action == ACTION_RALLY) {
+        OutList.Add(EventClass(EventClass::RALLY, As_Target(), ::As_Target(cell)));
+    }
+
     if (action == ACTION_MOVE && *this == STRUCT_CONST) {
         OutList.Add(EventClass(EventClass::ARCHIVE, As_Target(), ::As_Target(cell)));
         OutList.Add(EventClass(EventClass::SELL, As_Target()));
@@ -2316,7 +2383,7 @@ int BuildingClass::Exit_Object(TechnoClass* base)
                 if (base->Unlimbo(start, dir)) {
 
                     base->Assign_Mission(MISSION_MOVE);
-                    base->Assign_Destination(::As_Target(cell));
+                    base->Assign_Destination(::As_Target(Rally >= 0 ? Rally : cell));
 
                     /*
                     **	Establish radio contact so unload coordination can occur. This
@@ -2748,6 +2815,15 @@ bool BuildingClass::Limbo(void)
             Update_Specials();
         }
 #endif
+
+        /*
+        **	Drop any rally-point flag we planted on a cell so it does not linger
+        **	once the building that set it is gone. Refresh_Rally handles the
+        **	"is this still ours?" check so we don't accidentally wipe a flag
+        **	a foreign player put on the same cell.
+        */
+        Rally = -1;
+        Refresh_Rally();
     }
     return (TechnoClass::Limbo());
 }
@@ -3192,6 +3268,10 @@ ActionType BuildingClass::What_Action(CELL cell) const
     */
     if (action == ACTION_ATTACK && *this == STRUCT_SAM) {
         action = ACTION_NONE;
+    }
+
+    if (Can_Rally(*this) && Is_Owned_By_Player() && (action == ACTION_NONE || action == ACTION_MOVE)) {
+        action = ACTION_RALLY;
     }
 
     return (action);
@@ -4633,7 +4713,11 @@ int BuildingClass::Mission_Repair(void)
                     Begin_Mode(BSTATE_ACTIVE);
                     IsReadyToCommence = false;
                 } else {
-                    if (!House->IsHuman) {
+                    TechnoClass* radio = Contact_With_Whom();
+                    if (radio != NULL && radio->Health_Ratio() >= 0x0100 && Rally >= 0
+                        && radio->Mission != MISSION_MOVE) {
+                        Send_To_Rally(this, radio);
+                    } else if (!House->IsHuman) {
                         Transmit_Message(RADIO_RUN_AWAY);
                     }
                 }
@@ -5150,6 +5234,9 @@ int BuildingClass::Mission_Unload(void)
                 if (unit) {
                     unit->Assign_Mission(MISSION_MOVE);
                     unit->Force_Track(DriveClass::OUT_OF_WEAPON_FACTORY, Adjacent_Cell(Center_Coord(), FACING_SW));
+                    if (Rally >= 0) {
+                        unit->Assign_Destination(::As_Target(Rally));
+                    }
                     unit->Set_Speed(128);
                     Status = LEAVE;
                 } else {

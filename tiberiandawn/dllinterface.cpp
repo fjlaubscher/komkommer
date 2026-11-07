@@ -2416,6 +2416,9 @@ void DLLExportClass::Convert_Action_Type(ActionType type,
     case ACTION_TOGGLE_PRIMARY:
         dll_type = DAT_TOGGLE_PRIMARY;
         break;
+    case ACTION_RALLY:
+        dll_type = DAT_MOVE;
+        break;
     case ACTION_NO_DEPLOY:
         dll_type = DAT_CANT_DEPLOY;
         break;
@@ -7694,7 +7697,7 @@ void DLLExportClass::Decode_Pointers(void)
         Sidebar_Glyphx_Decode_Pointers(&MultiplayerSidebars[i]);
 
         if (PlacementType[i]) {
-            StructType type = (StructType) reinterpret_cast<unsigned int>(PlacementType[i]);
+            StructType type = (StructType) reinterpret_cast<uintptr_t>(PlacementType[i]);
             PlacementType[i] = NULL;
             if (type >= STRUCT_FIRST && type < STRUCT_COUNT) {
 

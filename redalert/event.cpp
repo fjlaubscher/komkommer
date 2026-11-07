@@ -92,6 +92,7 @@ unsigned char EventClass::EventLength[EventClass::LAST_EVENT] = {
     0,                                         //	PROPOSE_DRAW
     0,                                         //	RETRACT_DRAW
 #endif
+    size_of(EventClass, Data.NavCom), // RALLY
 };
 
 const char* EventClass::EventNames[EventClass::LAST_EVENT] = {
@@ -103,6 +104,7 @@ const char* EventClass::EventNames[EventClass::LAST_EVENT] = {
 #ifdef FIXIT_VERSION_3 //	Stalemate games.
     "PROPOSE_DRAW", "RETRACT_DRAW",
 #endif
+    "RALLY",
 };
 
 /***********************************************************************************************
@@ -481,6 +483,23 @@ void EventClass::Execute(void)
             techno->ArchiveTarget = Data.NavCom.Where.As_TARGET();
         }
         break;
+
+    case RALLY: {
+        BuildingClass* building = Data.NavCom.Whom.As_Building();
+        if (building && building->IsActive) {
+            building->Rally = ::As_Cell(Data.NavCom.Where.As_TARGET());
+            /*
+            **	Move the on-map rally-point flag from the previous cell to
+            **	the new one. Refresh_Rally leaves the cell's flag untouched
+            **	if it belongs to another player, so two overlapping rally
+            **	points (e.g. allied bases close together) don't fight each
+            **	other.
+            */
+            building->Refresh_Rally();
+            Map.Flag_To_Redraw(true);
+        }
+        break;
+    }
 
     /*
     **	Make or break alliance.

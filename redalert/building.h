@@ -207,6 +207,17 @@ public:
     */
     CDTimerClass<FrameTimerClass> PlacementDelay;
 
+    /*
+    **	Cell produced units head toward. -1 means the player has not set one.
+    */
+    CELL Rally;
+
+    /*
+    **	Cell we last placed a rally-point flag on. -1 means none. Tracked so
+    **	we can clear it when the rally changes or the building is destroyed.
+    */
+    CELL LastRally;
+
     /*---------------------------------------------------------------------
     **	Constructors, Destructors, and overloaded operators.
     */
@@ -244,6 +255,16 @@ public:
     **	Member function prototypes.
     */
     static void Init(void);
+
+    /*
+    **	Refreshes the on-map rally-point flag for this building. Drops the
+    **	flag from any previously-flagged cell (if it was ours) and places a
+    **	new flag on the current Rally cell. The cell-level IsFlagged/Owner
+    **	state is what causes both vanilla (ANIM_FLAG) and the remastered
+    **	host (FLAGFLY.SHP via IsFlag) to draw the marker for us, so we never
+    **	have to do any per-frame drawing here.
+    */
+    void Refresh_Rally(void);
 
     TARGET Target_Scan(void);
     BuildingTypeClass::AnimControlType const* Fetch_Anim_Control(void)
