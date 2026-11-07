@@ -1,7 +1,6 @@
 name: mingw-w64
 
 on:
-  pull_request:
   push:
 
 jobs:
