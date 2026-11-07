@@ -2,20 +2,10 @@ name: linux
 
 on:
   push:
+    tags:
+      - '*'
 
 jobs:
-  create_dev_release:
-    runs-on: ubuntu-22.04
-    steps:
-    - name: Create Development release
-      if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/vanilla' }}
-      uses: "marvinpinto/action-automatic-releases@latest"
-      with:
-        repo_token: "${{ secrets.GITHUB_TOKEN }}"
-        automatic_release_tag: "latest"
-        prerelease: true
-        title: "Development Build"
-        
   vanilla-linux:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -76,25 +66,6 @@ jobs:
         7z a artifact/komkommer-${{ matrix.preset }}-linux-${{ matrix.compiler.cc }}-${{ matrix.os }}-x86_64-${{ steps.gitinfo.outputs.sha_short }}.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix
         7z a artifact/komkommer-${{ matrix.preset }}-linux-${{ matrix.compiler.cc }}-${{ matrix.os }}-x86_64-${{ steps.gitinfo.outputs.sha_short }}-debug.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix.dbg
     
-    - name: Upload artifact
-      if: ${{ matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: komkommer-${{ matrix.preset }}-linux-${{ matrix.compiler.cc }}-${{ matrix.os }}-x86_64
-        path: artifact
-        
-    - name: Upload development release
-      if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/vanilla' && matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
-      uses: softprops/action-gh-release@v2
-      with:
-        name: Development Build
-        tag_name: "latest"
-        prerelease: true
-        files: |
-          artifact/*
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
     - name: Upload tagged release
       if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
       uses: softprops/action-gh-release@v2

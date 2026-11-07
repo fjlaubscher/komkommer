@@ -2,6 +2,8 @@ name: windows
 
 on:
   push:
+    tags:
+      - '*'
 
 jobs:
   remaster_msvc:
@@ -46,24 +48,6 @@ jobs:
         7z a artifact/vanilla-ra-remaster-mod-msvc-${{ steps.gitinfo.outputs.sha_short }}.zip ./build/remaster/komkommer_RA
         7z a artifact/vanilla-td-remaster-mod-msvc-${{ steps.gitinfo.outputs.sha_short }}.zip ./build/remaster/komkommer_TD
         
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: komkommer-remaster-msvc
-        path: artifact
-
-    - name: Upload development release
-      if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/vanilla' }}
-      uses: softprops/action-gh-release@v2
-      with:
-        name: Development Build
-        tag_name: "latest"
-        prerelease: true
-        files: |
-          artifact/*
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
     - name: Upload tagged release
       if: ${{ startsWith(github.ref, 'refs/tags/') }}
       uses: softprops/action-gh-release@v2
@@ -135,25 +119,6 @@ jobs:
         7z a artifact/komkommer-${{ matrix.preset }}-win-msvc-${{ matrix.arch.lin }}-${{ steps.gitinfo.outputs.sha_short }}.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix.exe
         7z a artifact/komkommer-${{ matrix.preset }}-win-msvc-${{ matrix.arch.lin }}-${{ steps.gitinfo.outputs.sha_short }}-debug.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix.pdb
     
-    - name: Upload artifact
-      if: ${{ matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: komkommer-${{ matrix.preset }}-win-msvc-${{ matrix.arch.lin }}
-        path: artifact
-        
-    - name: Upload development release
-      if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/vanilla' && matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
-      uses: softprops/action-gh-release@v2
-      with:
-        name: Development Build
-        tag_name: "latest"
-        prerelease: true
-        files: |
-          artifact/*
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
     - name: Upload tagged release
       if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
       uses: softprops/action-gh-release@v2

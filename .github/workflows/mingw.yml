@@ -2,6 +2,8 @@ name: mingw-w64
 
 on:
   push:
+    tags:
+      - '*'
 
 jobs:
   vanilla_win_gcc:
@@ -62,25 +64,6 @@ jobs:
         7z a artifact/komkommer-${{ matrix.preset }}-win-gcc-${{ matrix.arch.lin }}-${{ steps.gitinfo.outputs.sha_short }}.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix.exe
         7z a artifact/komkommer-${{ matrix.preset }}-win-gcc-${{ matrix.arch.lin }}-${{ steps.gitinfo.outputs.sha_short }}-debug.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix.dbg
     
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      if: ${{ matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
-      with:
-        name: komkommer-${{ matrix.preset }}-win-gcc-${{ matrix.arch.lin }}
-        path: artifact
-        
-    - name: Upload development release
-      if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/vanilla' && matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
-      uses: softprops/action-gh-release@v2
-      with:
-        name: Development Build
-        tag_name: "latest"
-        prerelease: true
-        files: |
-          artifact/*
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
     - name: Upload tagged release
       if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
       uses: softprops/action-gh-release@v2

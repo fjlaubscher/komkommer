@@ -2,6 +2,8 @@ name: macos
 
 on:
   push:
+    tags:
+      - '*'
 
 jobs:
   vanilla-macos:
@@ -87,25 +89,6 @@ jobs:
         7z a artifact/komkommer-${{ matrix.preset }}-macos-clang-universal2--${{ steps.gitinfo.outputs.sha_short }}.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix
         7z a artifact/komkommer-${{ matrix.preset }}-macos-clang-universal2--${{ steps.gitinfo.outputs.sha_short }}-debug.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix.dSYM
     
-    - name: Upload artifact
-      if: ${{ matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: komkommer-${{ matrix.preset }}-macos-clang-universal2
-        path: artifact
-        
-    - name: Upload development release
-      if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/vanilla' && matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
-      uses: softprops/action-gh-release@v2
-      with:
-        name: Development Build
-        tag_name: "latest"
-        prerelease: true
-        files: |
-          artifact/*
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
     - name: Upload tagged release
       if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
       uses: softprops/action-gh-release@v2
