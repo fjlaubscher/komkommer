@@ -4109,8 +4109,15 @@ int BuildingTypeClass::Legal_Placement(CELL pos) const
         CELL cell = pos + *offset++;
         if (!Map.In_Radar(cell))
             return (false);
-        if (!Map[cell].Is_Generally_Clear()) {
-            return (false);
+        /*
+        **	Komkommer: rally flags use IsFlagged but should not block structure
+        **	placement. Keep all other generally-clear checks.
+        */
+        {
+            CellClass const& c = Map[cell];
+            if (c.Flag.Composite || c.Cell_Occupier()) {
+                return (false);
+            }
         }
     }
     return (true);

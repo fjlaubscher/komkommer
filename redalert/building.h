@@ -265,6 +265,8 @@ public:
     **	have to do any per-frame drawing here.
     */
     void Refresh_Rally(void);
+    virtual void Set_Selected_By_Player(HouseClass* player = NULL);
+    virtual void Set_Unselected_By_Player(HouseClass* player = NULL);
 
     TARGET Target_Scan(void);
     BuildingTypeClass::AnimControlType const* Fetch_Anim_Control(void)

@@ -628,13 +628,30 @@ void BuildingClass::Refresh_Rally(void)
     }
     LastRally = -1;
 
-    if (Rally >= 0 && Rally < MAP_CELL_TOTAL && Map.In_Radar(Rally) && !Map[Rally].IsFlagged) {
+    /*
+    **	Komkommer: show the rally flag only while the structure is selected, and
+    **	never block structure placement with it.
+    */
+    if (Rally >= 0 && Rally < MAP_CELL_TOTAL && Map.In_Radar(Rally) && !Map[Rally].IsFlagged
+        && Is_Selected_By_Player(PlayerPtr)) {
         if (Map[Rally].Flag_Place(Owner())) {
             LastRally = Rally;
         }
-    } else {
+    } else if (Rally >= 0 && Rally < MAP_CELL_TOTAL) {
         LastRally = Rally;
     }
+}
+
+void BuildingClass::Set_Selected_By_Player(HouseClass* player)
+{
+    TechnoClass::Set_Selected_By_Player(player);
+    Refresh_Rally();
+}
+
+void BuildingClass::Set_Unselected_By_Player(HouseClass* player)
+{
+    TechnoClass::Set_Unselected_By_Player(player);
+    Refresh_Rally();
 }
 
 /***********************************************************************************************

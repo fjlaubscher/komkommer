@@ -471,11 +471,11 @@ bool CellClass::Is_Clear_To_Build(SpeedType loco) const
     /*
     **	Prevents a building from being placed over a flag object.
     */
-#ifdef FIXIT_FLAG_CHECK
-    if (IsFlagged) {
-        return (false);
-    }
-#endif
+    /*
+    **	Komkommer: rally flags set IsFlagged for rendering but should not block
+    **	structure placement.
+    */
+    (void)IsFlagged;
 
     /*
     **	Walls are always considered to block the terrain for general passability
