@@ -76,7 +76,7 @@ static AircraftTypeClass const AttackPlane(AIRCRAFT_A10, // What kind of aircraf
                                            true,         // Is there a crew inside?
                                            3,            // Number of shots it has (default).
                                            60,           // The strength of this unit.
-                                           0,            // The range that it reveals terrain around itself.
+                                           3,            // The range that it reveals terrain around itself.
                                            800,          // Credit cost to construct.
                                            0,            // The scenario this becomes available.
                                            10,
@@ -117,7 +117,7 @@ static AircraftTypeClass const TransportHeli(AIRCRAFT_TRANSPORT, // What kind of
                                              true,               // Is there a crew inside?
                                              0,                  // Number of shots it has (default).
                                              90,                 // The strength of this unit.
-                                             0,                  // The range that it reveals terrain around itself.
+                                             3,                  // The range that it reveals terrain around itself.
                                              1500,               // Credit cost to construct.
                                              98,                 // The scenario this becomes available.
                                              10,
@@ -158,7 +158,7 @@ static AircraftTypeClass const AttackHeli(AIRCRAFT_HELICOPTER, // What kind of a
                                           true,                // Is there a crew inside?
                                           15,                  // Number of shots it has (default).
                                           125,                 // The strength of this unit.
-                                          0,                   // The range that it reveals terrain around itself.
+                                          3,                   // The range that it reveals terrain around itself.
                                           1200,                // Credit cost to construct.
                                           10,                  // The scenario this becomes available.
                                           10,
@@ -199,7 +199,7 @@ static AircraftTypeClass const OrcaHeli(AIRCRAFT_ORCA,   // What kind of aircraf
                                         true,            // Is there a crew inside?
                                         6,               // Number of shots it has (default).
                                         125,             // The strength of this unit.
-                                        0,               // The range that it reveals terrain around itself.
+                                        3,               // The range that it reveals terrain around itself.
                                         1200,            // Credit cost to construct.
                                         10,              // The scenario this becomes available.
                                         10,
@@ -240,7 +240,7 @@ static AircraftTypeClass const CargoPlane(AIRCRAFT_CARGO, // What kind of aircra
                                           true,           // Is there a crew inside?
                                           0,              // Number of shots it has (default).
                                           25,             // The strength of this unit.
-                                          0,              // The range that it reveals terrain around itself.
+                                          3,              // The range that it reveals terrain around itself.
                                           800,            // Credit cost to construct.
                                           0,              // The scenario this becomes available.
                                           10,

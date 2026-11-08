@@ -845,7 +845,7 @@ void AircraftClass::AI(void)
                     Map.Place_Down(Coord_Cell(Coord), this);
                     // if (IsOwnedByPlayer) {				// Changed for multiple player mapping. ST - 3/6/2019 1:31PM
                     if (House->IsHuman) {
-                        Map.Sight_From(House, Coord_Cell(Coord), 1, false);
+                        Map.Sight_From(House, Coord_Cell(Coord), Class->SightRange, false);
                     }
                 } else {
                     Transmit_Message(RADIO_UNTETHER);
@@ -1578,7 +1578,7 @@ BulletClass* AircraftClass::Fire_At(TARGET target, int which)
         */
         HouseClass* player = HouseClass::As_Pointer(Owner());
         if (player != nullptr && player->IsHuman) {
-            Map.Sight_From(player, Coord_Cell(Center_Coord()), 1, false);
+            Map.Sight_From(player, Coord_Cell(Center_Coord()), Class->SightRange, false);
         }
 
         /*

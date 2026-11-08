@@ -274,6 +274,20 @@ AircraftTypeClass::AircraftTypeClass(AircraftType airtype,
     **	Forced aircraft overrides from the default.
     */
     Speed = SPEED_WINGED;
+
+    /*
+    **	Aircraft should discover the map like other units. Provide a sensible
+    **	default sight range (INI rules can still override this value).
+    */
+    switch (Type) {
+    case AIRCRAFT_U2:
+        SightRange = 3;
+        break;
+
+    default:
+        SightRange = 3;
+        break;
+    }
 }
 
 /***********************************************************************************************

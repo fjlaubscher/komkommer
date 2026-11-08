@@ -1635,7 +1635,7 @@ BulletClass* AircraftClass::Fire_At(TARGET target, int which)
         */
         HouseClass* player = HouseClass::As_Pointer(Owner());
         if (player != nullptr && player->IsHuman) {
-            Map.Sight_From(Coord_Cell(Center_Coord()), 1, player, false);
+            Map.Sight_From(Coord_Cell(Center_Coord()), Techno_Type_Class()->SightRange, player, false);
         }
 
         /*
@@ -4477,11 +4477,9 @@ LayerType AircraftClass::In_Which_Layer(void) const
 }
 
 /***********************************************************************************************
- * AircraftClass::Look -- Aircraft will look if they are on the ground always.                 *
+ * AircraftClass::Look -- Reveal terrain around the aircraft.                                  *
  *                                                                                             *
- *    Aircraft perform a look operation according to their sight range. If the aircraft is     *
- *    on the ground, then it will look a distance of one cell regardless of what its           *
- *    specified sight range is.                                                                *
+ *    Aircraft reveal terrain according to their sight range, just like other units.           *
  *                                                                                             *
  * INPUT:   incremental -- Is this an incremental look?                                        *
  *                                                                                             *
@@ -4498,10 +4496,6 @@ void AircraftClass::Look(bool incremental)
     assert(!IsInLimbo);
 
     int sight_range = Techno_Type_Class()->SightRange;
-    if (Height == 0) {
-        sight_range = 1;
-    }
-
     if (sight_range) {
         Map.Sight_From(Coord_Cell(Coord), sight_range, House, incremental);
     }
