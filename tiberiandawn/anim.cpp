@@ -1112,10 +1112,11 @@ void AnimClass::Middle(void)
         } else {
             /*
             **	Komkommer: stronger nuke in skirmish/multiplayer. Use an armor-piercing
-            **	warhead and higher damage so structures take meaningful damage.
+            **	warhead and higher damage so structures take meaningful damage, but keep
+            **	the blast radius tighter than the initial buff for balance.
             */
-            radius = 4;
-            rawdamage = 900;
+            radius = 3;
+            rawdamage = 720;
             warhead = WARHEAD_AP;
         }
         for (int x = -radius; x <= radius; x++) {
@@ -1229,7 +1230,33 @@ void AnimClass::Middle(void)
             if (!building)
                 building = (BuildingClass*)backup;
         }
-        Explosion_Damage(Center_Coord(), 600, building, WARHEAD_PB);
+
+        /*
+        **	Komkommer: buff the Ion Cannon to compete with the stronger nuke.
+        **	Apply particle-beam damage over a focused area instead of a single point.
+        */
+        int radius = 2;
+        int rawdamage = 700;
+        WarheadType warhead = WARHEAD_PB;
+        for (int x = -radius; x <= radius; x++) {
+            for (int y = -radius; y <= radius; y++) {
+                int xpos = Cell_X(cell) + x;
+                int ypos = Cell_Y(cell) + y;
+
+                if ((unsigned)xpos > MAP_CELL_W) {
+                    continue;
+                }
+                if ((unsigned)ypos > MAP_CELL_H) {
+                    continue;
+                }
+                CELL tcell = XY_Cell(xpos, ypos);
+                if (!Map.In_Radar(tcell))
+                    continue;
+
+                int damage = rawdamage / ((ABS(radius) / 2) + 1);
+                Explosion_Damage(Cell_Coord(tcell), damage, building, warhead);
+            }
+        }
     } break;
 
     case ANIM_NAPALM1:
