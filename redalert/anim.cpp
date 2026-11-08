@@ -1292,9 +1292,10 @@ void AnimClass::Do_Atom_Damage(HousesType ownerhouse, CELL cell)
     } else {
         /*
         **	Komkommer: stronger nuke in skirmish/multiplayer. The original MP
-        **	damage (1/5th) was too weak to threaten structures.
+        **	damage (1/5th) was too weak to threaten structures, but keep the
+        **	blast radius tighter than the initial buff for balance.
         */
-        radius = 4;
+        radius = 3;
         rawdamage = (Rule.AtomDamage * 3) / 4;
         warhead = WARHEAD_NUKE;
     }
