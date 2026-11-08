@@ -2979,7 +2979,10 @@ bool HouseClass::Place_Special_Blast(SpecialWeaponType id, CELL cell)
             int x = Keyboard->MouseQX - Map.TacPixelX;
             int y = Keyboard->MouseQY - Map.TacPixelY;
             TechnoClass* tech = Map[cell].Cell_Techno(x, y);
-            if (tech && Is_Ally(tech)) {
+            if (tech) {
+                /*
+                **	Komkommer: chronosphere may target any eligible unit, not just friendly/allied ones.
+                */
                 if (tech->What_Am_I() == RTTI_UNIT || tech->What_Am_I() == RTTI_INFANTRY ||
 #ifdef FIXIT_CARRIER //	checked - ajw 9/28/98
                     (tech->What_Am_I() == RTTI_VESSEL

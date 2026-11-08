@@ -5961,29 +5961,36 @@ void DLLExportClass::Cell_Class_Draw_It(CNCDynamicMapStruct* dynamic_map,
 
     if (cell_ptr->IsFlagged) {
 
-        const void* image_data = MFCD::Retrieve("FLAGFLY.SHP");
-        if (image_data != NULL) {
+        /*
+        **	Komkommer: only export player flags to their local owner in remaster
+        **	so opponent rally points are not revealed.
+        */
+        if (PlayerPtr == NULL || cell_ptr->Owner == HOUSE_NONE
+            || cell_ptr->Owner == PlayerPtr->Class->House) {
+            const void* image_data = MFCD::Retrieve("FLAGFLY.SHP");
+            if (image_data != NULL) {
 
-            CNCDynamicMapEntryStruct& flag_entry = dynamic_map->Entries[entry_index++];
+                CNCDynamicMapEntryStruct& flag_entry = dynamic_map->Entries[entry_index++];
 
-            strncpy(flag_entry.AssetName, "FLAGFLY", CNC_OBJECT_ASSET_NAME_LENGTH);
-            flag_entry.AssetName[CNC_OBJECT_ASSET_NAME_LENGTH - 1] = 0;
-            flag_entry.Type = -1;
-            flag_entry.Owner = cell_ptr->Owner;
-            flag_entry.DrawFlags = SHAPE_CENTER | SHAPE_GHOST | SHAPE_FADING;
-            flag_entry.PositionX = xpixel + (ICON_PIXEL_W / 2);
-            flag_entry.PositionY = ypixel + (ICON_PIXEL_H / 2);
-            flag_entry.Width = Get_Build_Frame_Width(image_data);
-            flag_entry.Height = Get_Build_Frame_Height(image_data);
-            flag_entry.CellX = Cell_X(cell);
-            flag_entry.CellY = Cell_Y(cell);
-            flag_entry.ShapeIndex = Frame % 14;
-            flag_entry.IsSmudge = false;
-            flag_entry.IsOverlay = false;
-            flag_entry.IsResource = false;
-            flag_entry.IsSellable = false;
-            flag_entry.IsTheaterShape = false;
-            flag_entry.IsFlag = true;
+                strncpy(flag_entry.AssetName, "FLAGFLY", CNC_OBJECT_ASSET_NAME_LENGTH);
+                flag_entry.AssetName[CNC_OBJECT_ASSET_NAME_LENGTH - 1] = 0;
+                flag_entry.Type = -1;
+                flag_entry.Owner = cell_ptr->Owner;
+                flag_entry.DrawFlags = SHAPE_CENTER | SHAPE_GHOST | SHAPE_FADING;
+                flag_entry.PositionX = xpixel + (ICON_PIXEL_W / 2);
+                flag_entry.PositionY = ypixel + (ICON_PIXEL_H / 2);
+                flag_entry.Width = Get_Build_Frame_Width(image_data);
+                flag_entry.Height = Get_Build_Frame_Height(image_data);
+                flag_entry.CellX = Cell_X(cell);
+                flag_entry.CellY = Cell_Y(cell);
+                flag_entry.ShapeIndex = Frame % 14;
+                flag_entry.IsSmudge = false;
+                flag_entry.IsOverlay = false;
+                flag_entry.IsResource = false;
+                flag_entry.IsSellable = false;
+                flag_entry.IsTheaterShape = false;
+                flag_entry.IsFlag = true;
+            }
         }
     }
 }

@@ -496,6 +496,10 @@ void EventClass::Execute(void)
             **	other.
             */
             building->Refresh_Rally();
+            building->Mark(MARK_CHANGE);
+            if (building->Rally >= 0 && building->Rally < MAP_CELL_TOTAL) {
+                Map[building->Rally].Redraw_Objects();
+            }
             Map.Flag_To_Redraw(true);
         }
         break;

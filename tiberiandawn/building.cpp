@@ -811,9 +811,23 @@ void BuildingClass::Refresh_Rally(void)
     **	Komkommer: show the rally flag only while the structure is selected, and
     **	never block structure placement with it.
     */
-    if (Rally >= 0 && Rally < MAP_CELL_TOTAL && Map.In_Radar(Rally) && !Map[Rally].IsFlagged
-        && Is_Selected_By_Player(PlayerPtr)) {
-        if (Map[Rally].Flag_Place(Owner())) {
+    bool show = (Rally >= 0 && Rally < MAP_CELL_TOTAL && Map.In_Radar(Rally)
+                 && (Is_Selected_By_Player(PlayerPtr) || (IsOwnedByPlayer && IsSelected)));
+    if (show) {
+        if (Map[Rally].IsFlagged) {
+            /*
+            **	A flag is already present. Only claim it if it belongs to this owner.
+            */
+            if (Map[Rally].Owner == Owner()) {
+                LastRally = Rally;
+            }
+        } else if (Map[Rally].Flag_Place(Owner())) {
+            LastRally = Rally;
+        } else {
+            /*
+            **	Placement can fail if the cell is blocked; keep tracking the rally
+            **	point so it can appear when refreshed.
+            */
             LastRally = Rally;
         }
     } else if (Rally >= 0 && Rally < MAP_CELL_TOTAL) {
@@ -2357,10 +2371,29 @@ int BuildingClass::Exit_Object(TechnoClass* base)
     switch (base->What_Am_I()) {
         CELL cell;
 
-    case RTTI_AIRCRAFT:
-        if (!In_Radio_Contact()) {
-            AircraftClass* air = (AircraftClass*)base;
+    case RTTI_AIRCRAFT: {
+        AircraftClass* air = (AircraftClass*)base;
+        bool helipad_occupied = In_Radio_Contact();
 
+        if (!helipad_occupied) {
+            /*
+            **	Komkommer: radio contact can become stale; never spawn a helicopter
+            **	on a helipad that already has a landed aircraft on it.
+            */
+            CELL dockcell = Coord_Cell(Docking_Coord());
+            if (Map.In_Radar(dockcell)) {
+                for (int i = 0; i < Aircraft.Count(); i++) {
+                    AircraftClass* other = Aircraft.Ptr(i);
+                    if (other != NULL && other != air && other->IsActive && !other->IsInLimbo
+                        && other->Altitude == 0 && Coord_Cell(other->Center_Coord()) == dockcell) {
+                        helipad_occupied = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!helipad_occupied) {
             air->Altitude = 0;
             ScenarioInit++;
             if (air->Unlimbo(Docking_Coord(), air->Pose_Dir())) {
@@ -2371,8 +2404,6 @@ int BuildingClass::Exit_Object(TechnoClass* base)
             }
             ScenarioInit--;
         } else {
-            AircraftClass* air = (AircraftClass*)base;
-
             if (Cell_X(Coord_Cell(Center_Coord())) - Map.MapCellX < Map.MapCellWidth / 2) {
                 cell = XY_Cell(Map.MapCellX - 1, Random_Pick(0, Map.MapCellHeight - 1) + Map.MapCellY);
             } else {
@@ -2388,6 +2419,7 @@ int BuildingClass::Exit_Object(TechnoClass* base)
             ScenarioInit--;
         }
         break;
+    }
 
     case RTTI_INFANTRY:
     case RTTI_UNIT:
