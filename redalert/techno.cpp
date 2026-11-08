@@ -6748,14 +6748,14 @@ bool TechnoClass::Evaluate_Object(ThreatType method,
     int TechnoTypeClass::Get_Ownable(void) const
     {
         /*
-        **	Skirmish/MP: split commandos by side (Tanya=Allies, Volkov=Soviets).
+        **	Skirmish/MP: split commandos by side (Tanya=Allies, Saboteur=Soviets).
         **	Keep single-player behavior unchanged.
         */
         if (Session.Type != GAME_NORMAL && RTTI == RTTI_INFANTRYTYPE) {
             if (ID == INFANTRY_TANYA) {
                 return (HOUSEF_ALLIES);
             }
-            if (ID == INFANTRY_VOLKOV) {
+            if (ID == INFANTRY_SABOTEUR) {
                 return (HOUSEF_SOVIET);
             }
         }

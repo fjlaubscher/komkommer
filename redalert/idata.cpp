@@ -706,9 +706,9 @@ static InfantryTypeClass const General(INFANTRY_GENERAL, // Infantry type number
                                        0  // pointer to override remap table
 );
 
-static InfantryTypeClass const Volkov(INFANTRY_VOLKOV, // Soviet commando (skirmish/MP)
-                                      TXT_GENERAL,     // Reuse General/Volkov name text as placeholder.
-                                      "GNRL",          // Placeholder art key (swap to confirmed Volkov asset name).
+static InfantryTypeClass const Saboteur(INFANTRY_SABOTEUR, // Custom Soviet commando "Saboteur" (skirmish/MP)
+                                      TXT_GENERAL,     // Base name text (overridden per mode as needed).
+                                      "GNRL",          // Reuse Counterstrike GNRL/Volkov body animations; cameo is handled separately.
                                       0x0035,          //	Vertical offset.
                                       0x0010,          // Primary weapon offset along turret centerline.
                                       false,           // Is this a female type?
@@ -1186,7 +1186,7 @@ void InfantryTypeClass::Init_Heap(void)
     new InfantryTypeClass(Einstein);
     new InfantryTypeClass(Delphi);
     new InfantryTypeClass(DrChan);
-    new InfantryTypeClass(Volkov);
+    new InfantryTypeClass(Saboteur);
 #ifdef FIXIT_CSII //	checked - ajw 9/28/98
     new InfantryTypeClass(ShockTrooper);
     new InfantryTypeClass(Mechanic);
@@ -1402,61 +1402,121 @@ void InfantryTypeClass::One_Time(void)
 
         /*
         **	The small build image icon sized shapes are always generic.
+        **	For the custom Saboteur, prefer a mod icon (SBTRICON/SABICON), then the
+        **	campaign GNRL icon, then fall back so skirmish never renders an empty sidebar cameo.
         */
+        char const* cameo_name = NULL;
         char buffer[_MAX_FNAME];
-        sprintf(buffer, "%.4sICON", uclass->Graphic_Name());
-        _makepath(fullname, NULL, NULL, buffer, ".SHP");
-
-#ifndef NDEBUG
-        RawFileClass ifile(fullname);
-        if (ifile.Is_Available()) {
-            ((void const*&)uclass->CameoData) = Load_Alloc_Data(ifile);
+        if (index == INFANTRY_SABOTEUR) {
+            static char const* const _saboteur_cameos[] = {"SBTRICON", "SABICON", "GNRLICON"};
+            for (int i = 0; i < 2; i++) {
+                _makepath(fullname, NULL, NULL, _saboteur_cameos[i], ".SHP");
+                CCFileClass cfile(fullname);
+                if (cfile.Is_Available()) {
+                    ((void const*&)uclass->CameoData) = Load_Alloc_Data(cfile);
+                    cameo_name = _saboteur_cameos[i];
+                    break;
+                }
+                if (((void const*&)uclass->CameoData) == NULL) {
+                    ((void const*&)uclass->CameoData) = MFCD::Retrieve(fullname);
+                    if (uclass->CameoData != NULL) {
+                        cameo_name = _saboteur_cameos[i];
+                        break;
+                    }
+                }
+            }
+            if (cameo_name == NULL) {
+                sprintf(buffer, "%.4sICON", uclass->Graphic_Name());
+                _makepath(fullname, NULL, NULL, buffer, ".SHP");
+            }
         } else {
-            ((void const*&)uclass->CameoData) = MFCD::Retrieve(fullname);
+            sprintf(buffer, "%.4sICON", uclass->Graphic_Name());
+            _makepath(fullname, NULL, NULL, buffer, ".SHP");
         }
+
+        if (cameo_name == NULL) {
+#ifndef NDEBUG
+            RawFileClass ifile(fullname);
+            if (ifile.Is_Available()) {
+                ((void const*&)uclass->CameoData) = Load_Alloc_Data(ifile);
+            } else {
+                ((void const*&)uclass->CameoData) = MFCD::Retrieve(fullname);
+            }
 #else
-        ((void const*&)uclass->CameoData) = MFCD::Retrieve(fullname);
+            CCFileClass cfile(fullname);
+            if (cfile.Is_Available()) {
+                ((void const*&)uclass->CameoData) = Load_Alloc_Data(cfile);
+            } else {
+                ((void const*&)uclass->CameoData) = MFCD::Retrieve(fullname);
+            }
 #endif
+        }
     }
 
     /*
-    **	Skirmish/MP: ensure Volkov mirrors Tanya as a Soviet commando. Keep SP unchanged.
+    **	Ensure the custom Soviet commando has a sidebar cameo. Prefer SBTRICON/SABICON/GNRL if loaded;
+    **	fall back to Tanya's icon so the sidebar never renders empty.
+    */
+    {
+        InfantryTypeClass& tanya = As_Reference(INFANTRY_TANYA);
+        InfantryTypeClass& saboteur = As_Reference(INFANTRY_SABOTEUR);
+        if (saboteur.CameoData == NULL && tanya.CameoData != NULL) {
+            saboteur.CameoData = tanya.CameoData;
+        }
+    }
+
+    /*
+    **	Skirmish/MP: custom Soviet "Saboteur" commando, reusing Counterstrike GNRL/Volkov
+    **	body animations and silenced Sniper weapon/sound (burst fix from SCU35EA/SCU47EA),
+    **	while keeping Tanya-equivalent commando capabilities. Keep SP unchanged.
     */
     if (Session.Type != GAME_NORMAL) {
         InfantryTypeClass& tanya = As_Reference(INFANTRY_TANYA);
-        InfantryTypeClass& volkov = As_Reference(INFANTRY_VOLKOV);
+        InfantryTypeClass& saboteur = As_Reference(INFANTRY_SABOTEUR);
         tanya.Ownable = HOUSEF_ALLIES;
         tanya.IsDoubleOwned = false;
-        volkov.Ownable = HOUSEF_SOVIET;
-        volkov.IsDoubleOwned = false;
-        volkov.IsLeader = tanya.IsLeader;
-        volkov.IsCloakable = tanya.IsCloakable;
-        volkov.IsBomber = true;
-        volkov.IsCapture = true;
-        volkov.IsFraidyCat = false;
-        volkov.IsCivilian = false;
-        volkov.IsDog = false;
-        volkov.Pip = PIP_COMMANDO;
-        volkov.FullName = TXT_SABOTEUR;
-        if (volkov.CameoData == NULL && tanya.CameoData != NULL) {
-            volkov.CameoData = tanya.CameoData;
+        saboteur.Ownable = HOUSEF_SOVIET;
+        saboteur.IsDoubleOwned = false;
+        saboteur.IsLeader = tanya.IsLeader;
+        saboteur.IsCloakable = tanya.IsCloakable;
+        saboteur.IsBomber = true;
+        saboteur.IsCapture = true;
+        saboteur.IsFraidyCat = false;
+        saboteur.IsCivilian = false;
+        saboteur.IsDog = false;
+        saboteur.Pip = PIP_COMMANDO;
+        saboteur.FullName = TXT_SABOTEUR; // Placeholder display name (no dedicated TXT_VOLKOV); change to preferred TXT_* if desired.
+        if (saboteur.CameoData == NULL && tanya.CameoData != NULL) {
+            saboteur.CameoData = tanya.CameoData;
         }
-        volkov.MaxStrength = tanya.MaxStrength;
-        volkov.MaxSpeed = tanya.MaxSpeed;
-        volkov.Speed = tanya.Speed;
-        volkov.Cost = tanya.Cost;
-        volkov.ROT = tanya.ROT;
-        volkov.MaxAmmo = tanya.MaxAmmo;
-        volkov.SightRange = tanya.SightRange;
-        volkov.Risk = tanya.Risk;
-        volkov.Reward = tanya.Reward;
-        volkov.Points = tanya.Points;
-        volkov.Level = tanya.Level;
-        volkov.Prerequisite = tanya.Prerequisite;
-        volkov.PrimaryWeapon = tanya.PrimaryWeapon;
-        volkov.SecondaryWeapon = tanya.SecondaryWeapon;
-        volkov.Armor = tanya.Armor;
-        volkov.ThreatRange = tanya.ThreatRange;
+        saboteur.MaxStrength = tanya.MaxStrength;
+        saboteur.MaxSpeed = tanya.MaxSpeed;
+        saboteur.Speed = tanya.Speed;
+        saboteur.Cost = tanya.Cost;
+        saboteur.ROT = tanya.ROT;
+        saboteur.MaxAmmo = tanya.MaxAmmo;
+        saboteur.SightRange = tanya.SightRange;
+        saboteur.Risk = tanya.Risk;
+        saboteur.Reward = tanya.Reward;
+        saboteur.Points = tanya.Points;
+        saboteur.Level = tanya.Level;
+        saboteur.Prerequisite = tanya.Prerequisite;
+        saboteur.PrimaryWeapon = tanya.PrimaryWeapon;
+        saboteur.SecondaryWeapon = tanya.SecondaryWeapon;
+        saboteur.Armor = tanya.Armor;
+        saboteur.ThreatRange = tanya.ThreatRange;
+
+        /*
+        **	Reuse the Counterstrike silenced Sniper weapon (SCU35EA/SCU47EA behavior):
+        **	match its report/sound and apply the same burst fix.
+        */
+        WeaponTypeClass* sniper = WeaponTypeClass::As_Pointer(Weapon_From_Name("Sniper"));
+        if (sniper != NULL) {
+            sniper->Burst = 2;
+            sniper->Sound = VOC_SILENCER;
+            saboteur.PrimaryWeapon = sniper;
+        }
+        saboteur.SecondaryWeapon = NULL;
     }
 }
 
@@ -1533,13 +1593,15 @@ bool InfantryTypeClass::Read_INI(CCINIClass& ini)
             IsLeader = false;
 
         /*
-        **	Skirmish/MP: make Volkov a Tanya-equivalent Soviet commando. Keep SP unchanged.
+        **	Skirmish/MP: make Volkov a Soviet commando using Counterstrike campaign behavior
+        **	where possible (silenced Sniper weapon/sound, burst fix from SCU35EA/SCU47EA),
+        **	while keeping Tanya-equivalent commando capabilities. Keep SP unchanged.
         */
         if (Session.Type != GAME_NORMAL) {
             if (Type == INFANTRY_TANYA) {
                 Ownable = HOUSEF_ALLIES;
                 IsDoubleOwned = false;
-            } else if (Type == INFANTRY_VOLKOV) {
+            } else if (Type == INFANTRY_SABOTEUR) {
                 InfantryTypeClass const& tanya = As_Reference(INFANTRY_TANYA);
                 Ownable = HOUSEF_SOVIET;
                 IsDoubleOwned = false;
@@ -1551,7 +1613,7 @@ bool InfantryTypeClass::Read_INI(CCINIClass& ini)
                 IsCivilian = false;
                 IsDog = false;
                 Pip = PIP_COMMANDO;
-                FullName = TXT_SABOTEUR;
+                FullName = TXT_SABOTEUR; // Placeholder display name (no dedicated TXT_VOLKOV); change to preferred TXT_* if desired.
                 MaxStrength = tanya.MaxStrength;
                 MaxSpeed = tanya.MaxSpeed;
                 Speed = tanya.Speed;
@@ -1568,6 +1630,41 @@ bool InfantryTypeClass::Read_INI(CCINIClass& ini)
                 SecondaryWeapon = tanya.SecondaryWeapon;
                 Armor = tanya.Armor;
                 ThreatRange = tanya.ThreatRange;
+
+                /*
+                **	Match Counterstrike Volkov's silenced Sniper weapon and burst behavior.
+                */
+                WeaponTypeClass* sniper = WeaponTypeClass::As_Pointer(Weapon_From_Name("Sniper"));
+                if (sniper != NULL) {
+                    sniper->Burst = 2;
+                    sniper->Sound = VOC_SILENCER;
+                    PrimaryWeapon = sniper;
+                }
+                SecondaryWeapon = NULL;
+
+                /*
+                **	Optional custom sidebar icon override (mod asset, e.g. SBTRICON.SHP).
+                **	Check [SABOTEUR] first to avoid the [GNRL] name collision with INFANTRY_GENERAL.
+                */
+                {
+                    char cameo_override[_MAX_FNAME] = {0};
+                    if (!ini.Get_String("SABOTEUR", "Cameo", cameo_override, cameo_override, sizeof(cameo_override))
+                        || cameo_override[0] == '\0') {
+                        ini.Get_String(Name(), "Cameo", cameo_override, cameo_override, sizeof(cameo_override));
+                    }
+                    if (cameo_override[0] != '\0') {
+                        char cameofile[_MAX_FNAME + _MAX_EXT];
+                        _makepath(cameofile, NULL, NULL, cameo_override, ".SHP");
+                        CCFileClass cfile(cameofile);
+                        if (cfile.Is_Available()) {
+                            CameoData = Load_Alloc_Data(cfile);
+                        } else {
+                            void const* ptr = MFCD::Retrieve(cameofile);
+                            if (ptr != NULL)
+                                CameoData = ptr;
+                        }
+                    }
+                }
             }
         }
         return (true);

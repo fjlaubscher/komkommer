@@ -63,16 +63,16 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - **Vanilla/previous behavior (bug):** RA `UnitClass` repair mission could target the wrong building (refinery instead of the repair bay) in the affected path.
 - **Komkommer:** Repair mission targets the **repair bay/docking bay** correctly.
 
-### Soviet commando: Volkov (skirmish/multiplayer)
+### Soviet commando: Saboteur (skirmish/multiplayer)
 - **Vanilla RA:** Tanya is the commando; commando behavior is tied to Tanya-specific handling in several places.
 - **Komkommer (non-singleplayer / skirmish & multiplayer):** Commandos are split by side:
   - **Allies:** Tanya
-  - **Soviets:** **Volkov** (Soviet commando)
-- Volkov is set up as a **Tanya-equivalent** in non-singleplayer modes (matched stats, weapons, C4/capture/commando behavior as implemented by the mod).
+  - **Soviets:** **Saboteur** (custom Soviet commando, `INFANTRY_SABOTEUR` type slot)
+- The Saboteur is a custom Soviet commando that **reuses Counterstrike GNRL/Volkov body animations and silenced Sniper weapon behavior** where possible (silenced **Sniper** weapon/report sound, plus the SCU35EA/SCU47EA Sniper burst fix), while keeping Tanya-equivalent commando capabilities (stats/C4/capture/side/build behavior as implemented by the mod).
 - **Build limit:** Commandos are limited to **one per house** in skirmish/multiplayer (`Can_Build` rejects building another if that commando type already exists for the house).
-- Tanya/Volkov/commando hooks were generalized (AI limits, retaliation, etc.) while keeping **single-player Tanya/hero behavior intact**.
-- **Voice/feedback:** Tanya keeps her original voice/personality SFX. Volkov uses existing **generic infantry voice lines** (default responses) instead of Tanya’s lines; Tanya-only personality SFX (laugh/shake and Tanya-specific death vocal handling) are not applied to Volkov.
-- **Name/cameo:** Volkov uses a **“Saboteur”** display label in skirmish/multiplayer (placeholder where a dedicated Volkov string/asset is not available). If Volkov’s own sidebar cameo data is unavailable, the mod falls back to Tanya’s cameo data so a sidebar icon is shown.
+- Tanya/commando hooks were generalized (AI limits, retaliation, etc.) while keeping **single-player Tanya/hero behavior intact**.
+- **Voice/feedback:** Tanya keeps her original voice/personality SFX. The Saboteur uses existing **generic infantry voice lines** (default responses) instead of Tanya’s lines; Tanya-only personality SFX (laugh/shake and Tanya-specific death vocal handling) are not applied.
+- **Name/cameo:** Uses GNRL body animations with custom-cameo plumbing: tries `SBTRICON`/`SABICON`, then `GNRLICON`, then falls back to Tanya’s cameo so the sidebar never renders empty. Supports an optional `[SABOTEUR] Cameo=` (or `[GNRL]`) INI override loaded via `CCFileClass`/mix. Display name is currently `TXT_SABOTEUR` (“Saboteur”; no custom/DLL-injected string slot, so change `FullName` in `redalert/idata.cpp` to any preferred existing `TXT_*`).
 - Human-controlled commandos can **auto-fire** (commando auto-fire restriction was adjusted so commandos auto-fire normally, including for human players).
 
 ### Superweapon (skirmish/multiplayer balance)

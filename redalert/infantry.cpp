@@ -2475,7 +2475,7 @@ TARGET InfantryClass::Greatest_Threat(ThreatType threat) const
         }
     }
 
-    /* Commandos (Tanya/Volkov) auto-fire normally, including for human players. */
+    /* Commandos (Tanya/Saboteur) auto-fire normally, including for human players. */
 
     if (Class->PrimaryWeapon != NULL) {
         threat = threat | Class->PrimaryWeapon->Allowed_Threats();
@@ -2622,7 +2622,7 @@ void InfantryClass::Response_Select(void)
             size = ARRAY_SIZE(_tanya_response);
             break;
 
-        case INFANTRY_VOLKOV:
+        case INFANTRY_SABOTEUR:
             response = _default_response;
             size = ARRAY_SIZE(_default_response);
             break;
@@ -2763,7 +2763,7 @@ void InfantryClass::Response_Move(void)
             size = ARRAY_SIZE(_tanya_response);
             break;
 
-        case INFANTRY_VOLKOV:
+        case INFANTRY_SABOTEUR:
             response = _default_response;
             size = ARRAY_SIZE(_default_response);
             break;
@@ -2898,7 +2898,7 @@ void InfantryClass::Response_Attack(void)
             size = ARRAY_SIZE(_tanya_response);
             break;
 
-        case INFANTRY_VOLKOV:
+        case INFANTRY_SABOTEUR:
             response = _default_response;
             size = ARRAY_SIZE(_default_response);
             break;
