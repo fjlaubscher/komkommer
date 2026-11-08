@@ -919,6 +919,16 @@ bool HouseClass::Can_Build(ObjectTypeClass const* type, HousesType house) const
     }
 
     /*
+    **	Komkommer: limit commandos to one per house in skirmish/multiplayer.
+    */
+    if (Session.Type != GAME_NORMAL && type->What_Am_I() == RTTI_INFANTRYTYPE) {
+        InfantryType itype = ((InfantryTypeClass const*)type)->Type;
+        if (Is_Commando_Type(itype) && IQuantity[itype] > 0) {
+            return (false);
+        }
+    }
+
+    /*
     **	See if the prerequisite requirements have been met.
     */
     return ((pre & flags) == pre && ((TechnoTypeClass const*)type)->Level <= (unsigned)level);

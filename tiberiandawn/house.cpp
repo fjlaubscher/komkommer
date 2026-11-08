@@ -598,6 +598,14 @@ bool HouseClass::Can_Build(TechnoTypeClass const* type, HousesType house) const
         flags |= STRUCTF_HELIPAD;
 
     /*
+    **	Komkommer: limit the commando to one per house.
+    */
+    if (type->What_Am_I() == RTTI_INFANTRYTYPE && ((InfantryTypeClass const*)type)->Type == INFANTRY_RAMBO
+        && IQuantity[INFANTRY_RAMBO] > 0) {
+        return (false);
+    }
+
+    /*
     **	Multiplayer game uses a different legality check for building.
     */
     if (GameToPlay != GAME_NORMAL || (Special.IsJurassic && AreThingiesEnabled)) {
@@ -649,6 +657,14 @@ bool HouseClass::Can_Build(TechnoTypeClass const* type, HousesType house) const
     */
     if (house == HOUSE_BAD && type->What_Am_I() == RTTI_UNITTYPE && ((UnitTypeClass const*)type)->Type == UNIT_APC) {
 
+        return (false);
+    }
+
+    /*
+    **	Komkommer: limit the commando to one per house.
+    */
+    if (type->What_Am_I() == RTTI_INFANTRYTYPE && ((InfantryTypeClass const*)type)->Type == INFANTRY_RAMBO
+        && IQuantity[INFANTRY_RAMBO] > 0) {
         return (false);
     }
 

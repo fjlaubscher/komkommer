@@ -1437,6 +1437,10 @@ void InfantryTypeClass::One_Time(void)
         volkov.IsCivilian = false;
         volkov.IsDog = false;
         volkov.Pip = PIP_COMMANDO;
+        volkov.FullName = TXT_SABOTEUR;
+        if (volkov.CameoData == NULL && tanya.CameoData != NULL) {
+            volkov.CameoData = tanya.CameoData;
+        }
         volkov.MaxStrength = tanya.MaxStrength;
         volkov.MaxSpeed = tanya.MaxSpeed;
         volkov.Speed = tanya.Speed;
@@ -1449,8 +1453,8 @@ void InfantryTypeClass::One_Time(void)
         volkov.Points = tanya.Points;
         volkov.Level = tanya.Level;
         volkov.Prerequisite = tanya.Prerequisite;
-        volkov.Primary = tanya.Primary;
-        volkov.Secondary = tanya.Secondary;
+        volkov.PrimaryWeapon = tanya.PrimaryWeapon;
+        volkov.SecondaryWeapon = tanya.SecondaryWeapon;
         volkov.Armor = tanya.Armor;
         volkov.ThreatRange = tanya.ThreatRange;
     }
@@ -1547,6 +1551,7 @@ bool InfantryTypeClass::Read_INI(CCINIClass& ini)
                 IsCivilian = false;
                 IsDog = false;
                 Pip = PIP_COMMANDO;
+                FullName = TXT_SABOTEUR;
                 MaxStrength = tanya.MaxStrength;
                 MaxSpeed = tanya.MaxSpeed;
                 Speed = tanya.Speed;
@@ -1559,8 +1564,8 @@ bool InfantryTypeClass::Read_INI(CCINIClass& ini)
                 Points = tanya.Points;
                 Level = tanya.Level;
                 Prerequisite = tanya.Prerequisite;
-                Primary = tanya.Primary;
-                Secondary = tanya.Secondary;
+                PrimaryWeapon = tanya.PrimaryWeapon;
+                SecondaryWeapon = tanya.SecondaryWeapon;
                 Armor = tanya.Armor;
                 ThreatRange = tanya.ThreatRange;
             }
