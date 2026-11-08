@@ -6479,7 +6479,10 @@ int HouseClass::AI_Infantry(void)
                         break;
 
                     case INFANTRY_TANYA:
-                        typetrack[count].Value = 1 - max(IQuantity[index], 0);
+                    case INFANTRY_VOLKOV:
+                        if (Session.Type != GAME_NORMAL || index == INFANTRY_TANYA) {
+                            typetrack[count].Value = 1 - max(IQuantity[index], 0);
+                        }
                         break;
 
                     default:

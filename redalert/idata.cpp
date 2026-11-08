@@ -706,6 +706,25 @@ static InfantryTypeClass const General(INFANTRY_GENERAL, // Infantry type number
                                        0  // pointer to override remap table
 );
 
+static InfantryTypeClass const Volkov(INFANTRY_VOLKOV, // Soviet commando (skirmish/MP)
+                                      TXT_GENERAL,     // Reuse General/Volkov name text as placeholder.
+                                      "GNRL",          // Placeholder art key (swap to confirmed Volkov asset name).
+                                      0x0035,          //	Vertical offset.
+                                      0x0010,          // Primary weapon offset along turret centerline.
+                                      false,           // Is this a female type?
+                                      true,            // Has crawling animation frames?
+                                      false,           // Is this a civilian?
+                                      false,           // Does this unit use the override remap table?
+                                      false,           // Always use the given name for the infantry?
+                                      false,           // Theater specific graphic image?
+                                      PIP_COMMANDO,    // Transport pip shape/color to use.
+                                      E7DoControls,
+                                      E7DoControls,
+                                      2, // Frame of projectile launch.
+                                      2, // Frame of projectile launch while prone.
+                                      0  // pointer to override remap table
+);
+
 // Civilians
 static InfantryTypeClass const C1(INFANTRY_C1,  // Infantry type number.
                                   TXT_C1,       // Translate name number for infantry type.
@@ -1167,6 +1186,7 @@ void InfantryTypeClass::Init_Heap(void)
     new InfantryTypeClass(Einstein);
     new InfantryTypeClass(Delphi);
     new InfantryTypeClass(DrChan);
+    new InfantryTypeClass(Volkov);
 #ifdef FIXIT_CSII //	checked - ajw 9/28/98
     new InfantryTypeClass(ShockTrooper);
     new InfantryTypeClass(Mechanic);
@@ -1398,6 +1418,42 @@ void InfantryTypeClass::One_Time(void)
         ((void const*&)uclass->CameoData) = MFCD::Retrieve(fullname);
 #endif
     }
+
+    /*
+    **	Skirmish/MP: ensure Volkov mirrors Tanya as a Soviet commando. Keep SP unchanged.
+    */
+    if (Session.Type != GAME_NORMAL) {
+        InfantryTypeClass& tanya = As_Reference(INFANTRY_TANYA);
+        InfantryTypeClass& volkov = As_Reference(INFANTRY_VOLKOV);
+        tanya.Ownable = HOUSEF_ALLIES;
+        tanya.IsDoubleOwned = false;
+        volkov.Ownable = HOUSEF_SOVIET;
+        volkov.IsDoubleOwned = false;
+        volkov.IsLeader = tanya.IsLeader;
+        volkov.IsCloakable = tanya.IsCloakable;
+        volkov.IsBomber = true;
+        volkov.IsCapture = true;
+        volkov.IsFraidyCat = false;
+        volkov.IsCivilian = false;
+        volkov.IsDog = false;
+        volkov.Pip = PIP_COMMANDO;
+        volkov.MaxStrength = tanya.MaxStrength;
+        volkov.MaxSpeed = tanya.MaxSpeed;
+        volkov.Speed = tanya.Speed;
+        volkov.Cost = tanya.Cost;
+        volkov.ROT = tanya.ROT;
+        volkov.MaxAmmo = tanya.MaxAmmo;
+        volkov.SightRange = tanya.SightRange;
+        volkov.Risk = tanya.Risk;
+        volkov.Reward = tanya.Reward;
+        volkov.Points = tanya.Points;
+        volkov.Level = tanya.Level;
+        volkov.Prerequisite = tanya.Prerequisite;
+        volkov.Primary = tanya.Primary;
+        volkov.Secondary = tanya.Secondary;
+        volkov.Armor = tanya.Armor;
+        volkov.ThreatRange = tanya.ThreatRange;
+    }
 }
 
 /***********************************************************************************************
@@ -1471,6 +1527,44 @@ bool InfantryTypeClass::Read_INI(CCINIClass& ini)
             IsCapture = true;
         if (IsDog)
             IsLeader = false;
+
+        /*
+        **	Skirmish/MP: make Volkov a Tanya-equivalent Soviet commando. Keep SP unchanged.
+        */
+        if (Session.Type != GAME_NORMAL) {
+            if (Type == INFANTRY_TANYA) {
+                Ownable = HOUSEF_ALLIES;
+                IsDoubleOwned = false;
+            } else if (Type == INFANTRY_VOLKOV) {
+                InfantryTypeClass const& tanya = As_Reference(INFANTRY_TANYA);
+                Ownable = HOUSEF_SOVIET;
+                IsDoubleOwned = false;
+                IsLeader = tanya.IsLeader;
+                IsCloakable = tanya.IsCloakable;
+                IsBomber = true;
+                IsCapture = true;
+                IsFraidyCat = false;
+                IsCivilian = false;
+                IsDog = false;
+                Pip = PIP_COMMANDO;
+                MaxStrength = tanya.MaxStrength;
+                MaxSpeed = tanya.MaxSpeed;
+                Speed = tanya.Speed;
+                Cost = tanya.Cost;
+                ROT = tanya.ROT;
+                MaxAmmo = tanya.MaxAmmo;
+                SightRange = tanya.SightRange;
+                Risk = tanya.Risk;
+                Reward = tanya.Reward;
+                Points = tanya.Points;
+                Level = tanya.Level;
+                Prerequisite = tanya.Prerequisite;
+                Primary = tanya.Primary;
+                Secondary = tanya.Secondary;
+                Armor = tanya.Armor;
+                ThreatRange = tanya.ThreatRange;
+            }
+        }
         return (true);
     }
     return (false);

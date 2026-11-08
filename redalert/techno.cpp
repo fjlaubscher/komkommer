@@ -5638,10 +5638,14 @@ bool TechnoClass::Evaluate_Object(ThreatType method,
         /*
         **	If a human house is not allowed to retaliate automatically, then don't
         */
-        if (House->IsHuman && !Rule.IsSmartDefense
-            && (What_Am_I() != RTTI_INFANTRY || *((InfantryClass*)this) != INFANTRY_TANYA
-                || source->What_Am_I() != RTTI_INFANTRY))
-            return (false);
+        if (House->IsHuman && !Rule.IsSmartDefense) {
+            bool commando = What_Am_I() == RTTI_INFANTRY
+                && ((Session.Type == GAME_NORMAL && *((InfantryClass*)this) == INFANTRY_TANYA)
+                    || (Session.Type != GAME_NORMAL && Is_Commando_Type(((InfantryClass*)this)->Class->Type)));
+            if (!commando || source->What_Am_I() != RTTI_INFANTRY) {
+                return (false);
+            }
+        }
 
         /*
         **	If this object is part of a team that prevents retaliation then don't allow retaliation.
@@ -6743,6 +6747,19 @@ bool TechnoClass::Evaluate_Object(ThreatType method,
      *=============================================================================================*/
     int TechnoTypeClass::Get_Ownable(void) const
     {
+        /*
+        **	Skirmish/MP: split commandos by side (Tanya=Allies, Volkov=Soviets).
+        **	Keep single-player behavior unchanged.
+        */
+        if (Session.Type != GAME_NORMAL && RTTI == RTTI_INFANTRYTYPE) {
+            if (ID == INFANTRY_TANYA) {
+                return (HOUSEF_ALLIES);
+            }
+            if (ID == INFANTRY_VOLKOV) {
+                return (HOUSEF_SOVIET);
+            }
+        }
+
         if (IsDoubleOwned && Session.Type != GAME_NORMAL) {
             return (Ownable | HOUSEF_SOVIET | HOUSEF_ALLIES);
         }

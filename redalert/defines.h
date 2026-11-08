@@ -1565,6 +1565,7 @@ typedef enum InfantryType : char
     INFANTRY_EINSTEIN, // Einstein
     INFANTRY_DELPHI,   // Agent "Delphi"
     INFANTRY_CHAN,     // Dr. Chan
+    INFANTRY_VOLKOV,   // Soviet commando (skirmish/MP)
 
 #ifdef FIXIT_CSII   //	checked - ajw 9/28/98                                                                           \
                     // CounterStrike II only!
@@ -1581,6 +1582,11 @@ typedef enum InfantryType : char
 } InfantryType;
 
 #define INFANTRYF_DOG (1L << INFANTRY_DOG)
+
+inline bool Is_Commando_Type(InfantryType t)
+{
+    return (t == INFANTRY_TANYA || t == INFANTRY_VOLKOV);
+}
 
 // PG inline InfantryType operator++(InfantryType &, int);
 

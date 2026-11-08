@@ -353,7 +353,7 @@ ResultType InfantryClass::Take_Damage(int& damage, int distance, WarheadType war
         return (res);
 
     if (res == RESULT_DESTROYED) {
-        if (*this == INFANTRY_TANYA) {
+        if (*this == INFANTRY_TANYA && Session.Type == GAME_NORMAL) {
             IsTanyaDead = true;
         }
         Death_Announcement(source);
@@ -367,7 +367,7 @@ ResultType InfantryClass::Take_Damage(int& damage, int distance, WarheadType war
         VocType altsound;
         sound = Sim_Random_Pick(VOC_SCREAM1, VOC_SCREAM11);
         altsound = VOC_YELL1;
-        if (*this == INFANTRY_TANYA) {
+        if (Is_Commando_Type(Class->Type) && (Session.Type != GAME_NORMAL || *this == INFANTRY_TANYA)) {
             sound = altsound = VOC_TANYA_DIE;
         }
         if (Class->IsDog) {
@@ -972,7 +972,7 @@ void InfantryClass::Per_Cell_Process(PCPType why)
             /*
             **	Special voice play.
             */
-            if (*this == INFANTRY_TANYA) {
+            if (Is_Commando_Type(Class->Type) && (Session.Type != GAME_NORMAL || *this == INFANTRY_TANYA)) {
                 Sound_Effect(VOC_TANYA_LAUGH, Coord);
             }
 
@@ -1945,7 +1945,9 @@ bool InfantryClass::Random_Animate(void)
             Mark(MARK_CHANGE_REDRAW);
             PrimaryFacing.Set(Facing_Dir(Random_Pick(FACING_N, FACING_NW)));
             Mark(MARK_CHANGE_REDRAW);
-            if (!Is_Selected_By_Player() && IsOwnedByPlayer && *this == INFANTRY_TANYA && Sim_Random_Pick(0, 2) == 0) {
+            if (!Is_Selected_By_Player() && IsOwnedByPlayer
+                && Is_Commando_Type(Class->Type) && (Session.Type != GAME_NORMAL || *this == INFANTRY_TANYA)
+                && Sim_Random_Pick(0, 2) == 0) {
                 Sound_Effect(VOC_TANYA_SHAKE, Coord);
             }
             break;
@@ -2474,13 +2476,7 @@ TARGET InfantryClass::Greatest_Threat(ThreatType threat) const
         }
     }
 
-    /*
-    **	Special hack to make Tanya not auto-fire if controlled by a
-    **	human player.
-    */
-    if (*this == INFANTRY_TANYA && House->IsHuman) {
-        return (TARGET_NONE);
-    }
+    /* Commandos (Tanya/Volkov) auto-fire normally, including for human players. */
 
     if (Class->PrimaryWeapon != NULL) {
         threat = threat | Class->PrimaryWeapon->Allowed_Threats();
@@ -2623,6 +2619,7 @@ void InfantryClass::Response_Select(void)
             break;
 #endif
         case INFANTRY_TANYA:
+        case INFANTRY_VOLKOV:
             response = _tanya_response;
             size = ARRAY_SIZE(_tanya_response);
             break;
@@ -2759,6 +2756,7 @@ void InfantryClass::Response_Move(void)
 
 #endif
         case INFANTRY_TANYA:
+        case INFANTRY_VOLKOV:
             response = _tanya_response;
             size = ARRAY_SIZE(_tanya_response);
             break;
@@ -2889,6 +2887,7 @@ void InfantryClass::Response_Attack(void)
             break;
 #endif
         case INFANTRY_TANYA:
+        case INFANTRY_VOLKOV:
             response = _tanya_response;
             size = ARRAY_SIZE(_tanya_response);
             break;
