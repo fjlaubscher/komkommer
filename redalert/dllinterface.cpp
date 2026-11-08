@@ -4555,7 +4555,14 @@ bool DLLExportClass::Get_Sidebar_State(uint64 player_id, unsigned char* buffer_i
                     sidebar_entry.PowerProvided = 0;
                     sidebar_entry.BuildTime = tech->Time_To_Build(
                         PlayerPtr->Class->House); // sidebar_entry.BuildTime = tech->Time_To_Build() / 60;
-                    strncpy(sidebar_entry.AssetName, tech->IniName, CNC_OBJECT_ASSET_NAME_LENGTH);
+                    if (Map.Column[c].Buildables[b].BuildableType == RTTI_INFANTRYTYPE
+                        && Map.Column[c].Buildables[b].BuildableID == INFANTRY_SABOTEUR) {
+                        // Use Tanya's cameo asset as a reliable fallback; custom SBTRICON HD art
+                        // is not packaged in a remaster-HD texture format this mod currently ships.
+                        strncpy(sidebar_entry.AssetName, "E7ICON", CNC_OBJECT_ASSET_NAME_LENGTH);
+                    } else {
+                        strncpy(sidebar_entry.AssetName, tech->IniName, CNC_OBJECT_ASSET_NAME_LENGTH);
+                    }
                 } else {
                     sidebar_entry.Cost = 0;
                     sidebar_entry.AssetName[0] = 0;
@@ -4717,7 +4724,14 @@ bool DLLExportClass::Get_Sidebar_State(uint64 player_id, unsigned char* buffer_i
                         sidebar_entry.PowerProvided = 0;
                         sidebar_entry.BuildTime = tech->Time_To_Build(
                             PlayerPtr->Class->House); // sidebar_entry.BuildTime = tech->Time_To_Build() / 60;
-                        strncpy(sidebar_entry.AssetName, tech->IniName, CNC_OBJECT_ASSET_NAME_LENGTH);
+                        if (context_sidebar->Column[c].Buildables[b].BuildableType == RTTI_INFANTRYTYPE
+                            && context_sidebar->Column[c].Buildables[b].BuildableID == INFANTRY_SABOTEUR) {
+                            // Use Tanya's cameo asset as a reliable fallback; custom SBTRICON HD art
+                            // is not packaged in a remaster-HD texture format this mod currently ships.
+                            strncpy(sidebar_entry.AssetName, "E7ICON", CNC_OBJECT_ASSET_NAME_LENGTH);
+                        } else {
+                            strncpy(sidebar_entry.AssetName, tech->IniName, CNC_OBJECT_ASSET_NAME_LENGTH);
+                        }
                     } else {
                         sidebar_entry.Cost = 0;
                         sidebar_entry.AssetName[0] = 0;

@@ -707,7 +707,7 @@ static InfantryTypeClass const General(INFANTRY_GENERAL, // Infantry type number
 );
 
 static InfantryTypeClass const Saboteur(INFANTRY_SABOTEUR, // Custom Soviet commando "Saboteur" (skirmish/MP)
-                                      TXT_GENERAL,     // Base name text (overridden per mode as needed).
+                                      TXT_SABOTEUR,    // Base name text.
                                       "GNRL",          // Reuse Counterstrike GNRL/Volkov body animations; cameo is handled separately.
                                       0x0035,          //	Vertical offset.
                                       0x0010,          // Primary weapon offset along turret centerline.
@@ -715,7 +715,7 @@ static InfantryTypeClass const Saboteur(INFANTRY_SABOTEUR, // Custom Soviet comm
                                       true,            // Has crawling animation frames?
                                       false,           // Is this a civilian?
                                       false,           // Does this unit use the override remap table?
-                                      false,           // Always use the given name for the infantry?
+                                      true,            // Always use the given name for the infantry?
                                       false,           // Theater specific graphic image?
                                       PIP_COMMANDO,    // Transport pip shape/color to use.
                                       E7DoControls,
@@ -1409,7 +1409,7 @@ void InfantryTypeClass::One_Time(void)
         char buffer[_MAX_FNAME];
         if (index == INFANTRY_SABOTEUR) {
             static char const* const _saboteur_cameos[] = {"SBTRICON", "SABICON", "GNRLICON"};
-            for (int i = 0; i < 2; i++) {
+            for (int i = 0; i < (int)ARRAY_SIZE(_saboteur_cameos); i++) {
                 _makepath(fullname, NULL, NULL, _saboteur_cameos[i], ".SHP");
                 CCFileClass cfile(fullname);
                 if (cfile.Is_Available()) {
@@ -1538,6 +1538,9 @@ void InfantryTypeClass::One_Time(void)
  *=============================================================================================*/
 int InfantryTypeClass::Full_Name(void) const
 {
+    if (Type == INFANTRY_SABOTEUR) {
+        return (TXT_SABOTEUR);
+    }
     if (Debug_Map || !IsNominal || Rule.IsNamed || Type == INFANTRY_C10 || Type == INFANTRY_DELPHI
         || Type == INFANTRY_EINSTEIN) {
         return (TechnoTypeClass::Full_Name());

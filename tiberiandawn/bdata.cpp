@@ -353,8 +353,8 @@ static BuildingTypeClass const ClassGTower(STRUCT_GTOWER,
                                            100,
                                            25, // RISK/RWRD:	Risk/reward rating values.
                                            HOUSEF_MULTI1 | HOUSEF_MULTI2 | HOUSEF_MULTI3 | HOUSEF_MULTI4 | HOUSEF_MULTI5
-                                               | HOUSEF_MULTI6 | HOUSEF_JP
-                                               | HOUSEF_GOOD, // OWNABLE:		Ownable by house (bit field).
+                                               | HOUSEF_MULTI6 | HOUSEF_JP | HOUSEF_GOOD
+                                               | HOUSEF_BAD, // OWNABLE:		Ownable by house (bit field).
                                            WEAPON_CHAIN_GUN,
                                            WEAPON_NONE,
                                            //	WEAPON_M60MG,WEAPON_NONE,

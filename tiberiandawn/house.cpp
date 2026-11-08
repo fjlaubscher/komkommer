@@ -6226,17 +6226,21 @@ int HouseClass::AI_Building(void)
 
         /*
         **	Always build up some base defense. (TobiasKarnat)
+        **	Komkommer: Nod prefers its Turret, GDI prefers the Guard Tower, but both
+        **	sides can fall back to the other if available.
         */
         current = BQuantity[STRUCT_TURRET] + BQuantity[STRUCT_GTOWER];
         if (current < Round_Up(Rule.DefenseRatio * fixed(CurBuildings)) && current < (unsigned)Rule.DefenseLimit) {
-            b = &BuildingTypeClass::As_Reference(STRUCT_GTOWER);
+            StructType first = (ActLike == HOUSE_BAD) ? STRUCT_TURRET : STRUCT_GTOWER;
+            StructType second = (ActLike == HOUSE_BAD) ? STRUCT_GTOWER : STRUCT_TURRET;
+            b = &BuildingTypeClass::As_Reference(first);
             if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
                 choiceptr = BuildChoice.Alloc();
                 if (choiceptr != NULL) {
                     *choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
                 }
             } else {
-                b = &BuildingTypeClass::As_Reference(STRUCT_TURRET);
+                b = &BuildingTypeClass::As_Reference(second);
                 if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
                     choiceptr = BuildChoice.Alloc();
                     if (choiceptr != NULL) {
@@ -6268,12 +6272,12 @@ int HouseClass::AI_Building(void)
             }
         }
 
-        // Build repair if GDI for Mammoth tanks (TobiasKarnat)
+        // Build a repair bay when a vehicle production facility exists.
+        // Komkommer: Nod can use the repair bay too (Airstrip is Nod's vehicle factory).
         if (BQuantity[STRUCT_REPAIR] == 0) {
             b = &BuildingTypeClass::As_Reference(STRUCT_REPAIR);
-            /* giulianob: only build repair bay if it have a weapons factory.  */
-            if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && ActLike == HOUSE_GOOD
-                && BQuantity[STRUCT_WEAP] > 0) {
+            int vehicle_factories = BQuantity[STRUCT_WEAP] + BQuantity[STRUCT_AIRSTRIP];
+            if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome) && vehicle_factories > 0) {
                 choiceptr = BuildChoice.Alloc();
                 if (choiceptr != NULL) {
                     *choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
