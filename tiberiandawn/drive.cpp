@@ -517,12 +517,23 @@ void DriveClass::Assign_Destination(TARGET target)
     }
 
     /*
-    **	If the player clicked on a friendly repair facility and the repair
-    **	facility is currently not involved with some other unit (radio or unloading).
+    **	If the player clicked on a friendly repair facility, queue for it when busy
+    **	so multiple vehicles can be serviced one at a time.
     */
     if (b && *b == STRUCT_REPAIR) {
-        if (b->In_Radio_Contact() && (b->Contact_With_Whom() != this)) {
+        if (b->Is_Dock_Queueable() && b->Dock_Accepts(As_Target()) && b->Contact_With_Whom() != this
+            && b->In_Radio_Contact() && b->Contact_With_Whom() != NULL) {
+            b->Dock_Add(As_Target());
             ArchiveTarget = target;
+        } else if (b->In_Radio_Contact() && (b->Contact_With_Whom() != this)) {
+            ArchiveTarget = target;
+        } else if (Contact_With_Whom() == b) {
+            CELL cell = Coord_Cell(b->Center_Coord()) + (MAP_CELL_W - 1);
+            if (Ground[Map[cell].Land_Type()].Cost[Class->Speed] && Transmit_Message(RADIO_DOCKING, b) == RADIO_ROGER) {
+                FootClass::Assign_Destination(target);
+                Path[0] = FACING_NONE;
+                return;
+            }
         } else {
 
             /*
@@ -544,7 +555,7 @@ void DriveClass::Assign_Destination(TARGET target)
                     }
 
                     /*
-                    **	Failure to establish a docking relationship with the refinery.
+                    **	Failure to establish a docking relationship with the repair facility.
                     **	Bail & await further instructions.
                     */
                     Transmit_Message(RADIO_OVER_OUT);

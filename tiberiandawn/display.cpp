@@ -794,33 +794,37 @@ bool DisplayClass::Passes_Proximity_Check(ObjectTypeClass const* object)
     }
 
     /*
-    **	Scan through all cells that the building foundation would cover. If any adjacent
-    **	cells to these are of friendly persuasion, then consider the proximity check to
-    **	have been a success.
+    **	Scan through all cells that the building foundation would cover. Like RA,
+    **	allow placement adjacent to friendly structures or with a one-cell gap
+    **	between the foundation and a friendly building.
     */
     ptr = CursorSize;
     while (*ptr != REFRESH_EOL) {
         CELL cell = ZoneCell + ZoneOffset + *ptr++;
 
+        if (!In_Radar(cell))
+            return (false);
+
         for (FacingType facing = FACING_N; facing < FACING_COUNT; facing++) {
             CELL newcell = Adjacent_Cell(cell, facing);
 
-            if (!In_Radar(cell))
-                return (false);
-
-            TechnoClass* base = (*this)[newcell].Cell_Techno();
-
-            /*
-            **	The special cell ownership flag allows building adjacent
-            **	to friendly walls and bibs even though there is no official
-            **	building located there.
-            */
             if ((*this)[newcell].Owner == PendingHouse) {
                 return (true);
             }
 
+            TechnoClass* base = (*this)[newcell].Cell_Techno();
             if (base && base->What_Am_I() == RTTI_BUILDING && base->House->Class->House == PendingHouse) {
                 return (true);
+            }
+
+            for (FacingType facing2 = FACING_N; facing2 < FACING_COUNT; facing2++) {
+                CELL gapcell = Adjacent_Cell(newcell, facing2);
+                if (In_Radar(gapcell)) {
+                    TechnoClass* gapbase = (*this)[gapcell].Cell_Techno();
+                    if (gapbase && gapbase->What_Am_I() == RTTI_BUILDING && gapbase->House->Class->House == PendingHouse) {
+                        return (true);
+                    }
+                }
             }
         }
     }
@@ -881,33 +885,37 @@ bool DisplayClass::Passes_Proximity_Check(ObjectTypeClass const* object,
     }
 
     /*
-    **	Scan through all cells that the building foundation would cover. If any adjacent
-    **	cells to these are of friendly persuasion, then consider the proximity check to
-    **	have been a success.
+    **	Scan through all cells that the building foundation would cover. Like RA,
+    **	allow placement adjacent to friendly structures or with a one-cell gap
+    **	between the foundation and a friendly building.
     */
     ptr = list;
     while (*ptr != REFRESH_EOL) {
         CELL cell = trycell + *ptr++;
 
+        if (!In_Radar(cell))
+            return (false);
+
         for (FacingType facing = FACING_N; facing < FACING_COUNT; facing++) {
             CELL newcell = Adjacent_Cell(cell, facing);
 
-            if (!In_Radar(cell))
-                return (false);
-
-            TechnoClass* base = (*this)[newcell].Cell_Techno();
-
-            /*
-            **	The special cell ownership flag allows building adjacent
-            **	to friendly walls and bibs even though there is no official
-            **	building located there.
-            */
             if ((*this)[newcell].Owner == house) {
                 return (true);
             }
 
+            TechnoClass* base = (*this)[newcell].Cell_Techno();
             if (base && base->What_Am_I() == RTTI_BUILDING && base->House->Class->House == house) {
                 return (true);
+            }
+
+            for (FacingType facing2 = FACING_N; facing2 < FACING_COUNT; facing2++) {
+                CELL gapcell = Adjacent_Cell(newcell, facing2);
+                if (In_Radar(gapcell)) {
+                    TechnoClass* gapbase = (*this)[gapcell].Cell_Techno();
+                    if (gapbase && gapbase->What_Am_I() == RTTI_BUILDING && gapbase->House->Class->House == house) {
+                        return (true);
+                    }
+                }
             }
         }
     }

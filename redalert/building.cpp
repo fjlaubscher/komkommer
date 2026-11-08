@@ -202,8 +202,9 @@ RadioMessageType BuildingClass::Receive_Message(RadioClass* from, RadioMessageTy
         TechnoClass::Receive_Message(from, message, param);
         if (!House->Is_Ally(from))
             return (RADIO_STATIC);
-        if (Mission == MISSION_CONSTRUCTION || Mission == MISSION_DECONSTRUCTION || BState == BSTATE_CONSTRUCTION
-            || (!ScenarioInit && Class->Type != STRUCT_REFINERY && In_Radio_Contact()))
+        if (Mission == MISSION_CONSTRUCTION || Mission == MISSION_DECONSTRUCTION || BState == BSTATE_CONSTRUCTION)
+            return (RADIO_NEGATIVE);
+        if (!ScenarioInit && Class->Type != STRUCT_REFINERY && !Is_Dock_Queueable() && In_Radio_Contact())
             return (RADIO_NEGATIVE);
         switch (Class->Type) {
         case STRUCT_AIRSTRIP:
@@ -214,23 +215,44 @@ RadioMessageType BuildingClass::Receive_Message(RadioClass* from, RadioMessageTy
 
         case STRUCT_HELIPAD:
             if (from->What_Am_I() == RTTI_AIRCRAFT && !((AircraftClass const*)from)->Class->IsFixedWing) {
-                return (RADIO_ROGER);
-            }
-            break;
-
-        case STRUCT_REPAIR:
-            if (from->What_Am_I() == RTTI_UNIT || (from->What_Am_I() == RTTI_AIRCRAFT)) {
-                if (Transmit_Message(RADIO_ON_DEPOT, from) != RADIO_ROGER) {
+                if (ScenarioInit) {
+                    return (RADIO_ROGER);
+                }
+                if (Contact_With_Whom() == NULL || Contact_With_Whom() == from || Dock_Accepts(from->As_Target())) {
+                    return (RADIO_ROGER);
+                }
+                if (DockQueueCount < DOCK_QUEUE_MAX) {
                     return (RADIO_ROGER);
                 }
             }
             return (RADIO_NEGATIVE);
 
-        case STRUCT_REFINERY:
-            if (from->What_Am_I() == RTTI_UNIT && *((UnitClass*)from) == UNIT_HARVESTER
-                && (ScenarioInit || !Is_Something_Attached())) {
+        case STRUCT_REPAIR:
+            if (from->What_Am_I() == RTTI_UNIT || (from->What_Am_I() == RTTI_AIRCRAFT)) {
+                if (ScenarioInit) {
+                    return (RADIO_ROGER);
+                }
+                if (Transmit_Message(RADIO_ON_DEPOT, from) != RADIO_ROGER) {
+                    if (Contact_With_Whom() == NULL || Contact_With_Whom() == from || Dock_Accepts(from->As_Target())
+                        || DockQueueCount < DOCK_QUEUE_MAX) {
+                        return (RADIO_ROGER);
+                    }
+                }
+            }
+            return (RADIO_NEGATIVE);
 
-                return ((Contact_With_Whom() != from) ? RADIO_ROGER : RADIO_NEGATIVE);
+        case STRUCT_REFINERY:
+            if (from->What_Am_I() == RTTI_UNIT && *((UnitClass*)from) == UNIT_HARVESTER) {
+                if (ScenarioInit) {
+                    return (RADIO_ROGER);
+                }
+                if (Contact_With_Whom() == from) {
+                    return (RADIO_NEGATIVE);
+                }
+                if ((!Is_Something_Attached() && !In_Radio_Contact()) || Dock_Accepts(from->As_Target())
+                    || DockQueueCount < DOCK_QUEUE_MAX) {
+                    return (RADIO_ROGER);
+                }
             }
             break;
 
@@ -247,6 +269,7 @@ RadioMessageType BuildingClass::Receive_Message(RadioClass* from, RadioMessageTy
         if (Mission == MISSION_DECONSTRUCTION) {
             return (RADIO_NEGATIVE);
         }
+        Dock_Remove(from->As_Target());
         switch (Class->Type) {
         case STRUCT_REPAIR:
             IsReadyToCommence = true;
@@ -291,26 +314,55 @@ RadioMessageType BuildingClass::Receive_Message(RadioClass* from, RadioMessageTy
         **	preoccupying task.
         */
         if (*this == STRUCT_REPAIR) {
-            if (Contact_With_Whom() != from) {
+            if (Contact_With_Whom() != NULL && Contact_With_Whom() != from) {
                 if (Transmit_Message(RADIO_ON_DEPOT) == RADIO_ROGER) {
                     if (Transmit_Message(RADIO_NEED_REPAIR) == RADIO_NEGATIVE) {
                         Transmit_Message(RADIO_RUN_AWAY);
                         Transmit_Message(RADIO_OVER_OUT);
-                        return (RADIO_ROGER);
+                        Dock_Advance();
                     }
                 }
             }
         }
 
-        /*
-        **	Establish contact with the object if this building isn't already in contact
-        **	with another.
-        */
-        if (!In_Radio_Contact()) {
-            Transmit_Message(RADIO_HELLO, from);
+        if (Is_Dock_Queueable()) {
+            Dock_Advance();
+
+            /*
+            **	Queue non-active requesters while another unit is being serviced.
+            */
+            if (In_Radio_Contact() && Contact_With_Whom() != from) {
+                Dock_Add(from->As_Target());
+                return (RADIO_ROGER);
+            }
+
+            /*
+            **	Without an active contact, only the head of the queue (or the
+            **	first requester when the queue is empty) may establish docking.
+            */
+            if (!In_Radio_Contact()) {
+                TARGET from_target = from->As_Target();
+                if (DockQueueCount == 0 || Dock_Is_Head(from_target)) {
+                    Dock_Remove(from_target);
+                    Transmit_Message(RADIO_HELLO, from);
+                } else {
+                    Dock_Add(from_target);
+                    return (RADIO_ROGER);
+                }
+            } else if (Contact_With_Whom() == from) {
+                Dock_Remove(from->As_Target());
+            }
+        } else {
+            /*
+            **	Establish contact with the object if this building isn't already in contact
+            **	with another.
+            */
+            if (!In_Radio_Contact()) {
+                Transmit_Message(RADIO_HELLO, from);
+            }
         }
 
-        if (Transmit_Message(RADIO_NEED_TO_MOVE) == RADIO_ROGER) {
+        if (Contact_With_Whom() != NULL && Transmit_Message(RADIO_NEED_TO_MOVE) == RADIO_ROGER) {
             switch (Class->Type) {
             case STRUCT_AIRSTRIP:
                 param = As_Target();
@@ -353,9 +405,12 @@ RadioMessageType BuildingClass::Receive_Message(RadioClass* from, RadioMessageTy
     **	state of the building.
     */
     case RADIO_ARE_REFINERY:
-        if (Is_Something_Attached() || In_Radio_Contact() || IsInLimbo || House->Class->House != from->Owner()
-            || (*this != STRUCT_REFINERY /* && *this != STRUCT_REPAIR*/)) {
+        Dock_Advance();
+        if (IsInLimbo || House->Class->House != from->Owner() || *this != STRUCT_REFINERY) {
             return (RADIO_NEGATIVE);
+        }
+        if (Is_Something_Attached() || In_Radio_Contact()) {
+            return (Dock_Accepts(from->As_Target()) ? RADIO_ROGER : RADIO_NEGATIVE);
         }
         return (RADIO_ROGER);
 
@@ -388,11 +443,13 @@ RadioMessageType BuildingClass::Receive_Message(RadioClass* from, RadioMessageTy
     **	a construction yard should stop its construction animation in this case.
     */
     case RADIO_OVER_OUT:
+        Dock_Remove(from->As_Target());
         Begin_Mode(BSTATE_IDLE);
         if (*this == STRUCT_REPAIR) {
             Assign_Mission(MISSION_GUARD);
         }
         TechnoClass::Receive_Message(from, message, param);
+        Dock_Advance();
         return (RADIO_ROGER);
 
     /*
@@ -406,7 +463,9 @@ RadioMessageType BuildingClass::Receive_Message(RadioClass* from, RadioMessageTy
                 return (RADIO_ROGER);
             }
         }
+        Dock_Remove(from->As_Target());
         TechnoClass::Receive_Message(from, message, param);
+        Dock_Advance();
         if (*this == STRUCT_WEAP || *this == STRUCT_AIRSTRIP || *this == STRUCT_REPAIR)
             return (RADIO_RUN_AWAY);
         return (RADIO_ROGER);
@@ -1768,7 +1827,11 @@ BuildingClass::BuildingClass(StructType type, HousesType house)
     , PlacementDelay(0)
     , Rally(-1)
     , LastRally(-1)
+    , DockQueueCount(0)
 {
+    for (int i = 0; i < DOCK_QUEUE_MAX; i++) {
+        DockQueue[i] = TARGET_NONE;
+    }
     House->Tracking_Add(this);
     IsSecondShot = !Class->Is_Two_Shooter();
     Strength = Class->MaxStrength;
@@ -2628,6 +2691,7 @@ bool BuildingClass::Limbo(void)
         */
         Rally = -1;
         Refresh_Rally();
+        Dock_Clear();
     }
     return (TechnoClass::Limbo());
 }
@@ -4352,9 +4416,11 @@ int BuildingClass::Mission_Repair(void)
         case INITIAL: {
             if (!In_Radio_Contact()) {
                 Begin_Mode(BSTATE_IDLE);
+                Dock_Advance();
                 Assign_Mission(MISSION_GUARD);
                 return (1);
             }
+            Dock_Remove(Contact_With_Whom()->As_Target());
             IsReadyToCommence = false;
             int distance = 0x10;
             TechnoClass* tech = Contact_With_Whom();
@@ -4380,6 +4446,8 @@ int BuildingClass::Mission_Repair(void)
 
         case IDLE:
             if (!In_Radio_Contact()) {
+                Begin_Mode(BSTATE_IDLE);
+                Dock_Advance();
                 Assign_Mission(MISSION_GUARD);
                 return (1);
             }
@@ -4420,11 +4488,13 @@ int BuildingClass::Mission_Repair(void)
                         Begin_Mode(BSTATE_ACTIVE);
                         IsReadyToCommence = false;
                     }
-                } else {
-                    //						Transmit_Message(RADIO_RUN_AWAY);
-                    ///*BG*/					if(radio->Health_Ratio() >= Rule.ConditionGreen) {
-                    //								Transmit_Message(RADIO_RUN_AWAY);
-                    //							}
+                } else if (radio != NULL && radio->Health_Ratio() >= Rule.ConditionGreen
+                           && (radio->What_Am_I() != RTTI_UNIT || *(UnitClass*)radio != UNIT_MINELAYER)) {
+                    Transmit_Message(RADIO_RUN_AWAY);
+                    Transmit_Message(RADIO_OVER_OUT);
+                    Dock_Advance();
+                    Begin_Mode(BSTATE_IDLE);
+                    Status = IDLE;
                 }
             }
             break;
@@ -4432,6 +4502,7 @@ int BuildingClass::Mission_Repair(void)
         case DURING:
             if (!In_Radio_Contact()) {
                 Begin_Mode(BSTATE_IDLE);
+                Dock_Advance();
                 Status = IDLE;
                 return (1);
             }
@@ -4464,6 +4535,9 @@ int BuildingClass::Mission_Repair(void)
                 case RADIO_CANT:
                     if (IsOwnedByPlayer)
                         Speak(VOX_NO_CASH);
+                    Transmit_Message(RADIO_RUN_AWAY);
+                    Transmit_Message(RADIO_OVER_OUT);
+                    Dock_Advance();
                     Begin_Mode(BSTATE_IDLE);
                     Status = IDLE;
                     break;
@@ -4479,6 +4553,8 @@ int BuildingClass::Mission_Repair(void)
                         Speak(VOX_UNIT_REPAIRED, House);
 
                     Send_To_Rally(this, Contact_With_Whom());
+                    Transmit_Message(RADIO_OVER_OUT);
+                    Dock_Advance();
                     Begin_Mode(BSTATE_IDLE);
                     Status = IDLE;
                     break;
@@ -4489,7 +4565,9 @@ int BuildingClass::Mission_Repair(void)
                 */
                 case RADIO_NEGATIVE:
                 default:
-                    //							Transmit_Message(RADIO_RUN_AWAY);
+                    Transmit_Message(RADIO_RUN_AWAY);
+                    Transmit_Message(RADIO_OVER_OUT);
+                    Dock_Advance();
                     Begin_Mode(BSTATE_IDLE);
                     Status = IDLE;
                     break;
@@ -4511,32 +4589,42 @@ int BuildingClass::Mission_Repair(void)
         };
         switch (Status) {
         case INITIAL:
-            if (Transmit_Message(RADIO_NEED_TO_MOVE) == RADIO_ROGER
+            if (In_Radio_Contact() && Transmit_Message(RADIO_NEED_TO_MOVE) == RADIO_ROGER
                 && Transmit_Message(RADIO_PREPARED) == RADIO_NEGATIVE) {
                 Begin_Mode(BSTATE_ACTIVE);
                 Contact_With_Whom()->Assign_Mission(MISSION_SLEEP);
                 Status = DURING;
                 return (1);
             }
+            Begin_Mode(BSTATE_IDLE);
+            Dock_Advance();
             Assign_Mission(MISSION_GUARD);
             break;
 
         case DURING:
             if (IsReadyToCommence) {
                 if (!In_Radio_Contact() || Transmit_Message(RADIO_NEED_TO_MOVE) == RADIO_NEGATIVE) {
+                    Begin_Mode(BSTATE_IDLE);
+                    Dock_Advance();
                     Assign_Mission(MISSION_GUARD);
                     return (1);
                 }
 
                 if (Transmit_Message(RADIO_PREPARED) == RADIO_ROGER) {
                     Contact_With_Whom()->Assign_Mission(MISSION_GUARD);
+                    Transmit_Message(RADIO_OVER_OUT);
+                    Begin_Mode(BSTATE_IDLE);
+                    Dock_Advance();
                     Assign_Mission(MISSION_GUARD);
                     return (1);
                 }
 
                 if (Transmit_Message(RADIO_RELOAD) != RADIO_ROGER) {
-                    Assign_Mission(MISSION_GUARD);
                     Contact_With_Whom()->Assign_Mission(MISSION_GUARD);
+                    Transmit_Message(RADIO_OVER_OUT);
+                    Begin_Mode(BSTATE_IDLE);
+                    Dock_Advance();
+                    Assign_Mission(MISSION_GUARD);
                     return (1);
                 } else {
                     fixed pfrac = Saturate(House->Power_Fraction(), 1);
@@ -5150,6 +5238,123 @@ int BuildingClass::Power_Output(void) const
  * HISTORY:                                                                                    *
  *   07/29/1995 JLB : Created.                                                                 *
  *=============================================================================================*/
+bool BuildingClass::Is_Dock_Queueable(void) const
+{
+    if (Mission == MISSION_DECONSTRUCTION || BState == BSTATE_CONSTRUCTION) {
+        return false;
+    }
+    switch (Class->Type) {
+    case STRUCT_REPAIR:
+    case STRUCT_REFINERY:
+    case STRUCT_HELIPAD:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool BuildingClass::Dock_Contains(TARGET target) const
+{
+    if (target == TARGET_NONE) {
+        return false;
+    }
+    for (int i = 0; i < DockQueueCount; i++) {
+        if (DockQueue[i] == target) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool BuildingClass::Dock_Is_Head(TARGET target) const
+{
+    return (DockQueueCount > 0 && DockQueue[0] == target);
+}
+
+TARGET BuildingClass::Dock_Head(void) const
+{
+    return (DockQueueCount > 0) ? DockQueue[0] : TARGET_NONE;
+}
+
+void BuildingClass::Dock_Remove(TARGET target)
+{
+    if (target == TARGET_NONE) {
+        return;
+    }
+    for (int i = 0; i < DockQueueCount; i++) {
+        if (DockQueue[i] == target) {
+            for (int j = i; j < DockQueueCount - 1; j++) {
+                DockQueue[j] = DockQueue[j + 1];
+            }
+            DockQueueCount--;
+            DockQueue[DockQueueCount] = TARGET_NONE;
+            i--;
+        }
+    }
+}
+
+void BuildingClass::Dock_Clear(void)
+{
+    for (int i = 0; i < DOCK_QUEUE_MAX; i++) {
+        DockQueue[i] = TARGET_NONE;
+    }
+    DockQueueCount = 0;
+}
+
+bool BuildingClass::Dock_Add(TARGET target)
+{
+    if (target == TARGET_NONE || !Is_Dock_Queueable()) {
+        return false;
+    }
+    if (Contact_With_Whom() != NULL && Contact_With_Whom()->As_Target() == target) {
+        return true;
+    }
+    if (Dock_Contains(target)) {
+        return true;
+    }
+    if (DockQueueCount >= DOCK_QUEUE_MAX) {
+        return false;
+    }
+    DockQueue[DockQueueCount++] = target;
+    return true;
+}
+
+void BuildingClass::Dock_Advance(void)
+{
+    /*
+    **	Remove invalid or stale entries from the front of the queue. The
+    **	actual promotion happens when the queued unit polls RADIO_DOCKING
+    **	and the building has no active radio contact.
+    */
+    while (DockQueueCount > 0) {
+        TARGET head = DockQueue[0];
+        if (!Target_Legal(head)) {
+            Dock_Remove(head);
+            continue;
+        }
+        TechnoClass* techno = As_Techno(head);
+        if (techno == NULL || techno->IsInLimbo || techno->House != House) {
+            Dock_Remove(head);
+            continue;
+        }
+        break;
+    }
+}
+
+bool BuildingClass::Dock_Accepts(TARGET target) const
+{
+    if (target == TARGET_NONE || !Is_Dock_Queueable()) {
+        return false;
+    }
+    if (Contact_With_Whom() != NULL && Contact_With_Whom()->As_Target() == target) {
+        return true;
+    }
+    if (Dock_Contains(target)) {
+        return true;
+    }
+    return DockQueueCount < DOCK_QUEUE_MAX;
+}
+
 void BuildingClass::Detach(TARGET target, bool all)
 {
     assert(Buildings.ID(this) == ID);
@@ -5162,6 +5367,7 @@ void BuildingClass::Detach(TARGET target, bool all)
     if (target == AnimToTrack) {
         AnimToTrack = TARGET_NONE;
     }
+    Dock_Remove(target);
 }
 
 /***********************************************************************************************

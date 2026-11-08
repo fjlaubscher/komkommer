@@ -4514,8 +4514,10 @@ BuildingClass* TechnoClass::Find_Docking_Bay(StructType b, bool friendly) const
 
         /*
         **	Loop through all the buildings and find the one that matches the specification
-        **	and is willing to dock with this object.
+        **	and is willing to dock with this object. Prefer docks with no active service and
+        **	shorter queues so harvesters/vehicles distribute across busy docks.
         */
+        int bestload = 1000;
         for (int index = 0; index < Buildings.Count(); index++) {
             BuildingClass* building = Buildings.Ptr(index);
 
@@ -4526,16 +4528,17 @@ BuildingClass* TechnoClass::Find_Docking_Bay(StructType b, bool friendly) const
                 && !building->IsInLimbo && *building == b
                 && ((TechnoClass*)this)->Transmit_Message(RADIO_CAN_LOAD, building) == RADIO_ROGER) {
 
-                /*
-                **	If the building qualifies and this building is better than the
-                **	last qualifying building (as rated by distance), then record
-                **	this building and keep scanning.
-                */
-                if (bestval == -1 || Distance(building) < bestval || building->IsLeader) {
+                int dist = Distance(building);
+                int load = (building->In_Radio_Contact() || building->Is_Something_Attached() ? 1 : 0) + building->DockQueueCount;
+                if (building->IsLeader) {
                     best = building;
-                    bestval = Distance(building);
-                    if (building->IsLeader)
-                        break;
+                    bestval = dist;
+                    break;
+                }
+                if (bestval == -1 || load < bestload || (load == bestload && dist < bestval)) {
+                    best = building;
+                    bestval = dist;
+                    bestload = load;
                 }
             }
         }

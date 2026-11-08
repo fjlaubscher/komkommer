@@ -171,6 +171,18 @@ public:
     */
     CELL LastRally;
 
+    /*
+    **	Docking queue for buildings that process vehicles one at a time
+    **	(repair bay, refinery). Units waiting to dock are kept here until
+    **	the active radio contact finishes and the next can be promoted.
+    */
+    enum
+    {
+        DOCK_QUEUE_MAX = 12
+    };
+    TARGET DockQueue[DOCK_QUEUE_MAX];
+    unsigned char DockQueueCount;
+
     /*---------------------------------------------------------------------
     **	Constructors, Destructors, and overloaded operators.
     */
@@ -262,6 +274,20 @@ public:
     virtual bool Unlimbo(COORDINATE, DirType dir = DIR_N);
     virtual bool Limbo(void);
     bool Passes_Proximity_Check(CELL homecell);
+
+    /*
+    **	Docking queue helpers. Used by repair bays and refineries to allow
+    **	multiple vehicles to wait for service.
+    */
+    bool Is_Dock_Queueable(void) const;
+    bool Dock_Add(TARGET target);
+    void Dock_Remove(TARGET target);
+    bool Dock_Contains(TARGET target) const;
+    TARGET Dock_Head(void) const;
+    bool Dock_Is_Head(TARGET target) const;
+    void Dock_Advance(void);
+    void Dock_Clear(void);
+    bool Dock_Accepts(TARGET target) const;
 
     /*
     **	Display and rendering support functionality. Supports imagery and how

@@ -3032,18 +3032,31 @@ int UnitClass::Mission_Harvest(void)
             **	Since the refinery said it was ok to load, establish radio
             **	contact with the refinery and then await docking orders.
             */
-            if (nearest != NULL && Transmit_Message(RADIO_HELLO, nearest) == RADIO_ROGER) {
-                Status = HEADINGHOME;
-                if (nearest->House == PlayerPtr && (PlayerPtr->Capacity - PlayerPtr->Tiberium) < 300
-                    && PlayerPtr->Capacity > 500 && (PlayerPtr->ActiveBScan & (STRUCTF_REFINERY | STRUCTF_CONST))) {
-                    Speak(VOX_NEED_MO_CAPACITY);
-                }
-            } else {
-                ScenarioInit++;
-                nearest = Find_Best_Refinery();
-                ScenarioInit--;
-                if (nearest != NULL) {
-                    Assign_Destination(::As_Target(Nearby_Location(nearest)));
+            if (nearest != NULL) {
+                if (Transmit_Message(RADIO_HELLO, nearest) == RADIO_ROGER) {
+                    Status = HEADINGHOME;
+                    TiberiumUnloadRefinery = nearest->As_Target();
+                    if (nearest->House == PlayerPtr && (PlayerPtr->Capacity - PlayerPtr->Tiberium) < 300
+                        && PlayerPtr->Capacity > 500 && (PlayerPtr->ActiveBScan & (STRUCTF_REFINERY | STRUCTF_CONST))) {
+                        Speak(VOX_NEED_MO_CAPACITY);
+                    }
+                } else if (nearest->Is_Dock_Queueable() && nearest->Dock_Accepts(As_Target())) {
+                    nearest->Dock_Add(As_Target());
+                    TiberiumUnloadRefinery = nearest->As_Target();
+                    ArchiveTarget = nearest->As_Target();
+                    Assign_Destination(nearest->As_Target());
+                    Status = HEADINGHOME;
+                    if (nearest->House == PlayerPtr && (PlayerPtr->Capacity - PlayerPtr->Tiberium) < 300
+                        && PlayerPtr->Capacity > 500 && (PlayerPtr->ActiveBScan & (STRUCTF_REFINERY | STRUCTF_CONST))) {
+                        Speak(VOX_NEED_MO_CAPACITY);
+                    }
+                } else {
+                    ScenarioInit++;
+                    nearest = Find_Best_Refinery();
+                    ScenarioInit--;
+                    if (nearest != NULL) {
+                        Assign_Destination(::As_Target(Nearby_Location(nearest)));
+                    }
                 }
             }
         }
@@ -4185,7 +4198,7 @@ int UnitClass::Mission_Repair(void)
     assert(Units.ID(this) == ID);
     assert(IsActive);
 
-    BuildingClass* nearest = Find_Docking_Bay(STRUCT_REFINERY, true);
+    BuildingClass* nearest = Find_Docking_Bay(STRUCT_REPAIR, true);
 
     IsHarvesting = false;
 
@@ -4195,7 +4208,7 @@ int UnitClass::Mission_Repair(void)
     **	into idle state.
     */
     if (nearest == NULL) {
-        if (!(House->ActiveBScan & STRUCTF_REFINERY)) {
+        if (!(House->ActiveBScan & STRUCTF_REPAIR)) {
             Enter_Idle_Mode();
         }
     } else {

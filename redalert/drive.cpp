@@ -574,12 +574,17 @@ void DriveClass::Assign_Destination(TARGET target)
     BuildingClass* b = As_Building(target);
 
     /*
-    **	If the player clicked on refinery but it is not busy, then assign
-    **	it to unload at the refinery.
+    **	If the player clicked on refinery, assign/queue this harvester to unload.
+    **	A queueable refinery may be busy while still accepting additional harvesters.
     */
     if (b != NULL && *b == STRUCT_REFINERY && What_Am_I() == RTTI_UNIT
         && ((UnitTypeClass*)Techno_Type_Class())->IsToHarvest) {
-        if (Contact_With_Whom() != b && !b->In_Radio_Contact()) {
+        if (Contact_With_Whom() == b) {
+            if (Mission != MISSION_ENTER && Mission != MISSION_HARVEST) {
+                Assign_Mission(MISSION_ENTER);
+                target = TARGET_NONE;
+            }
+        } else if (!b->In_Radio_Contact()) {
             /*
             **	Establish radio contact protocol. If the facility responds correctly,
             **	then remain in radio contact and proceed toward the desired destination.
@@ -588,14 +593,12 @@ void DriveClass::Assign_Destination(TARGET target)
                 if (Mission != MISSION_ENTER && Mission != MISSION_HARVEST) {
                     Assign_Mission(MISSION_ENTER);
                     target = TARGET_NONE;
-                } else {
-                    //					target = TARGET_NONE;
                 }
-            } else {
-                //				target = TARGET_NONE;
             }
-        } else {
-            //			target = TARGET_NONE;
+        } else if (b->Is_Dock_Queueable() && b->Dock_Accepts(As_Target())) {
+            b->Dock_Add(As_Target());
+            Assign_Mission(MISSION_ENTER);
+            target = TARGET_NONE;
         }
     }
 

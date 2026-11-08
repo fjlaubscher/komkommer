@@ -1774,6 +1774,9 @@ int FootClass::Mission_Enter(void)
     if (contact == NULL) {
         contact = As_Techno(ArchiveTarget);
     }
+    if (contact == NULL) {
+        contact = As_Techno(NavCom);
+    }
 
     /*
     **	If in contact, then let the transporter handle the movement coordination.
@@ -1782,10 +1785,13 @@ int FootClass::Mission_Enter(void)
 
         /*
         **	If the transport says to "bug off", then abort the enter mission. The transport may
-        **	likely say all is 'ok' with the "RADIO ROGER", then try again later.
+        **	likely say all is 'ok' with the "RADIO ROGER", then try again later. A queueable dock
+        **	can return ROGER while the unit waits for its turn; keep waiting in that case.
         */
         if (Transmit_Message(RADIO_DOCKING, contact) != RADIO_ROGER && !IsTethered) {
-            Transmit_Message(RADIO_OVER_OUT);
+            if (Contact_With_Whom() == contact || Contact_With_Whom() == NULL) {
+                Transmit_Message(RADIO_OVER_OUT);
+            }
             Enter_Idle_Mode();
         }
 
