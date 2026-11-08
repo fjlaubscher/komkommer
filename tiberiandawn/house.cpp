@@ -109,6 +109,42 @@
 #include "common/fixed.h"
 
 /***********************************************************************************************
+ * Production_Queue_Index -- Maps a production RTTI type to its queue index.                   *
+ *                                                                                             *
+ * INPUT:   type  -- The production RTTI type.                                                 *
+ *                                                                                             *
+ * OUTPUT:  Returns the queue index, or -1 if this type cannot be queued.                      *
+ *=============================================================================================*/
+static int Production_Queue_Index(RTTIType type)
+{
+    switch (type) {
+    case RTTI_INFANTRY:
+    case RTTI_INFANTRYTYPE:
+        return PRODUCTION_QUEUE_INFANTRY;
+
+    case RTTI_UNIT:
+    case RTTI_UNITTYPE:
+        return PRODUCTION_QUEUE_UNIT;
+
+    case RTTI_AIRCRAFT:
+    case RTTI_AIRCRAFTTYPE:
+        return PRODUCTION_QUEUE_AIRCRAFT;
+
+    case RTTI_BUILDING:
+    case RTTI_BUILDINGTYPE:
+        return PRODUCTION_QUEUE_BUILDING;
+
+    case RTTI_SPECIAL:
+        return PRODUCTION_QUEUE_SPECIAL;
+
+    default:
+        break;
+    }
+
+    return -1;
+}
+
+/***********************************************************************************************
  * HouseClass::Validate -- validates house pointer															  *
  *                                                                                             *
  * INPUT:                                                                                      *
@@ -459,6 +495,9 @@ HouseClass::HouseClass(HousesType house)
     SpeakPowerDelay = 1;
     SpecialFactories = 0;
     SpecialFactory = -1;
+    for (int queue_index = 0; queue_index < PRODUCTION_QUEUE_COUNT; queue_index++) {
+        ProductionQueueCount[queue_index] = 0;
+    }
     TeamTime = TEAM_DELAY;
     Tiberium = 0;
     TriggerTime = 0;
@@ -2371,8 +2410,14 @@ ProdFailType HouseClass::Begin_Production(RTTIType type, int id)
     */
     if (*factory != -1) {
         fptr = Factories.Raw_Ptr(*factory);
-        if (fptr->Is_Building())
-            return (PROD_CANT);
+        if (fptr->Is_Building() || fptr->Has_Completed()) {
+
+            /*
+            **	The factory is already busy. Queue the request behind the current
+            **	item instead of rejecting it outright.
+            */
+            return Queue_Production(type, id) ? PROD_OK : PROD_CANT;
+        }
     } else {
         fptr = new FactoryClass();
         if (!fptr)
@@ -2416,6 +2461,88 @@ ProdFailType HouseClass::Begin_Production(RTTIType type, int id)
         return (PROD_OK);
     }
     return (PROD_CANT);
+}
+
+/***********************************************************************************************
+ * HouseClass::Queue_Production -- Queues a production request for later.                      *
+ *                                                                                             *
+ *    This routine adds the requested object to the queue for its production category. Up to   *
+ *    MAX_PRODUCTION_QUEUE items may wait behind the item currently being built.               *
+ *                                                                                             *
+ * INPUT:   type  -- The type of object to queue.                                              *
+ *                                                                                             *
+ *          id    -- The subtype of object to queue.                                           *
+ *                                                                                             *
+ * OUTPUT:  Was the request successfully queued?                                               *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/08/2026 : Created.                                                                     *
+ *=============================================================================================*/
+bool HouseClass::Queue_Production(RTTIType type, int id)
+{
+    Validate();
+    int index = Production_Queue_Index(type);
+
+    if (index == -1) {
+        return (false);
+    }
+
+    if (ProductionQueueCount[index] >= MAX_PRODUCTION_QUEUE) {
+        return (false);
+    }
+
+    ProductionQueueEntryStruct& entry = ProductionQueue[index][ProductionQueueCount[index]];
+    entry.Type = type;
+    entry.ID = id;
+    ProductionQueueCount[index]++;
+
+    return (true);
+}
+
+/***********************************************************************************************
+ * HouseClass::Start_Next_Queued_Production -- Starts the next queued production request.      *
+ *                                                                                             *
+ *    This routine is called when the current production item has been completed or abandoned. *
+ *    It removes the first queued item for the category and begins production of it.           *
+ *                                                                                             *
+ * INPUT:   type  -- The production category whose queue should be advanced.                   *
+ *                                                                                             *
+ * OUTPUT:  Was a queued item started?                                                         *
+ *                                                                                             *
+ * WARNINGS:   Invalid queued items are discarded and the following item is tried.             *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/08/2026 : Created.                                                                     *
+ *=============================================================================================*/
+bool HouseClass::Start_Next_Queued_Production(RTTIType type)
+{
+    Validate();
+    int index = Production_Queue_Index(type);
+
+    if (index == -1 || ProductionQueueCount[index] <= 0) {
+        return (false);
+    }
+
+    ProductionQueueEntryStruct entry = ProductionQueue[index][0];
+
+    /*
+    **	Remove the entry from the head of the queue.
+    */
+    for (int i = 1; i < ProductionQueueCount[index]; i++) {
+        ProductionQueue[index][i - 1] = ProductionQueue[index][i];
+    }
+    ProductionQueueCount[index]--;
+
+    if (Begin_Production(entry.Type, entry.ID) != PROD_OK) {
+        /*
+        **	The queued item could not be started. Discard it and try the next one.
+        */
+        return Start_Next_Queued_Production(type);
+    }
+
+    return (true);
 }
 
 /***********************************************************************************************
@@ -2607,6 +2734,11 @@ ProdFailType HouseClass::Abandon_Production(RTTIType type)
     fptr->Abandon();
     delete fptr;
     *factory = -1;
+
+    /*
+    **	If another production request is waiting for this category, start it now.
+    */
+    Start_Next_Queued_Production(type);
 
     return (PROD_OK);
 }

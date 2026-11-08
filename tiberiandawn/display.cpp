@@ -3143,6 +3143,101 @@ void DisplayClass::Select_These(COORDINATE coord1, COORDINATE coord2, bool addit
 }
 
 /***********************************************************************************************
+ * DisplayClass::Select_All_Of_Type -- Selects all on-screen objects of the same type.        *
+ *                                                                                             *
+ *    This implements the double-click select-all behaviour. All player owned infantry, units *
+ *    and aircraft of the same object type that are visible in the tactical view are selected. *
+ *                                                                                             *
+ * INPUT:   object  -- Object whose type should be selected.                                   *
+ *                                                                                             *
+ * OUTPUT:  none                                                                               *
+ *                                                                                             *
+ * WARNINGS:   Only player owned, non-building objects are considered.                         *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/08/2026 : Created.                                                                     *
+ *=============================================================================================*/
+void DisplayClass::Select_All_Of_Type(ObjectClass* object)
+{
+    if (object == nullptr) {
+        return;
+    }
+
+    RTTIType what = object->What_Am_I();
+
+    /*
+    **	Only infantry, units and aircraft may be mass selected.
+    */
+    if (what != RTTI_INFANTRY && what != RTTI_UNIT && what != RTTI_AIRCRAFT) {
+        return;
+    }
+
+    /*
+    **	Only the player's own objects may be mass selected.
+    */
+    if (object->Owner() != PlayerPtr->Class->House) {
+        return;
+    }
+
+    ObjectTypeClass const* type = &object->Class_Of();
+
+    int x1 = Coord_X(TacticalCoord);
+    int y1 = Coord_Y(TacticalCoord);
+    int x2 = x1 + TacLeptonWidth;
+    int y2 = y1 + TacLeptonHeight;
+
+    Unselect_All();
+
+    bool old_allow_voice = AllowVoice;
+    AllowVoice = false;
+
+    for (int index = 0; index < Layer[LAYER_GROUND].Count(); index++) {
+        ObjectClass* obj = Layer[LAYER_GROUND][index];
+
+        if (obj->What_Am_I() != what || &obj->Class_Of() != type) {
+            continue;
+        }
+        if (obj->Owner() != PlayerPtr->Class->House || obj->Is_Selected_By_Player()) {
+            continue;
+        }
+        if (obj->Is_Techno() && ((TechnoClass*)obj)->Is_Cloaked(PlayerPtr)) {
+            continue;
+        }
+
+        COORDINATE ocoord = obj->Center_Coord();
+        int x = Coord_X(ocoord);
+        int y = Coord_Y(ocoord);
+        if (x < x1 || x > x2 || y < y1 || y > y2) {
+            continue;
+        }
+
+        obj->Select(true);
+    }
+
+    for (int air_index = 0; air_index < Aircraft.Count(); air_index++) {
+        AircraftClass* aircraft = Aircraft.Ptr(air_index);
+
+        if (&aircraft->Class_Of() != type) {
+            continue;
+        }
+        if (aircraft->Owner() != PlayerPtr->Class->House || aircraft->Is_Cloaked(PlayerPtr)) {
+            continue;
+        }
+
+        COORDINATE ocoord = Coord_Add(aircraft->Center_Coord(), XY_Coord(0, -Pixel_To_Lepton(aircraft->Altitude)));
+        int x = Coord_X(ocoord);
+        int y = Coord_Y(ocoord);
+        if (x < x1 || x > x2 || y < y1 || y > y2) {
+            continue;
+        }
+
+        aircraft->Select(true);
+    }
+
+    AllowVoice = old_allow_voice;
+}
+
+/***********************************************************************************************
  * DisplayClass::Refresh_Band -- Causes all cells under the rubber band to be redrawn.         *
  *                                                                                             *
  *    Use this routine to flag all cells that are covered in some fashion by the multi-unit    *
@@ -3836,6 +3931,17 @@ void DisplayClass::Mouse_Left_Up(bool shadow, ObjectClass* object, ActionType ac
 #endif
 }
 
+#ifndef REMASTER_BUILD
+/*
+**	Double-click tracking state. A second select click on the same object type within
+**	this many frames is treated as a double-click.
+*/
+int const DOUBLE_CLICK_FRAME_TICKS = 10;
+static int LastSelectFrame = -1;
+static RTTIType LastSelectRTTI = RTTI_NONE;
+static ObjectTypeClass const* LastSelectType = nullptr;
+#endif
+
 /***********************************************************************************************
  * DisplayClass::Mouse_Left_Release -- Handles the left mouse button release.                  *
  *                                                                                             *
@@ -3898,6 +4004,44 @@ void DisplayClass::Mouse_Left_Release(CELL cell, int x, int y, ObjectClass* obje
             Map.Flag_To_Redraw(false);
 
         } else {
+
+#ifndef REMASTER_BUILD
+            /*
+            **	Detect a double-click on a player owned object and select all on-screen objects
+            **	of the same type. This is handled before the normal action dispatch so that a
+            **	second click on an already selected object (ACTION_SELF) does not trigger its
+            **	special self action.
+            */
+            bool is_select_click = action == ACTION_SELECT || action == ACTION_SELF
+                                   || (action == ACTION_NONE && object && object->Class_Of().IsSelectable);
+
+            if (is_select_click && object != nullptr && object->Owner() == PlayerPtr->Class->House
+                && object->What_Am_I() != RTTI_BUILDING) {
+                RTTIType what = object->What_Am_I();
+                bool is_double_click = LastSelectFrame >= 0 && Frame >= LastSelectFrame
+                                       && (Frame - LastSelectFrame) <= DOUBLE_CLICK_FRAME_TICKS
+                                       && what == LastSelectRTTI && &object->Class_Of() == LastSelectType;
+
+                LastSelectFrame = Frame;
+                LastSelectRTTI = what;
+                LastSelectType = &object->Class_Of();
+
+                if (is_double_click) {
+                    Select_All_Of_Type(object);
+                    Set_Default_Mouse(MOUSE_NORMAL, wwsmall);
+
+                    LastSelectFrame = -1;
+                    LastSelectRTTI = RTTI_NONE;
+                    LastSelectType = nullptr;
+                    IsTentative = false;
+                    return;
+                }
+            } else {
+                LastSelectFrame = -1;
+                LastSelectRTTI = RTTI_NONE;
+                LastSelectType = nullptr;
+            }
+#endif
 
             /*
             **	Toggle the select state of the object.

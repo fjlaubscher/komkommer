@@ -13,6 +13,23 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - The rally flag is shown **only while the structure is selected**.
   - Rally flags do **not** block structure placement (flagged rally cells are ignored for placement blocking where appropriate).
 
+### Double-click select-all (standalone binaries)
+- **Vanilla:** Clicking a unit selects only that unit.
+- **Komkommer (standalone executables only):** Double-clicking a player-owned infantry, unit, or aircraft selects **all of that same type currently visible on screen**.
+  - Matches the unit's `Class_Of()` object type and RTTI (infantry / unit / aircraft only; buildings are excluded).
+  - Only objects owned by the player and currently on-screen (within the tactical view) are selected; cloaked objects and other houses' units are ignored.
+  - Detection uses the in-game frame counter (`Frame`, ~15 ticks/sec) with a ~10-frame double-click window, so it works for rapid clicks in the classic message loop.
+  - This is implemented in the standalone (`komkommertd.exe` / `komkommerra.exe`) build only; the Remastered client already provides native double-click select-all.
+
+### Production queueing (standalone binaries)
+- **Vanilla:** Clicking a production-sidebar icon while its category factory is busy rejects the click with a "no factory"/scold response.
+- **Komkommer (standalone executables only):** Production clicks **queue** behind the item currently being built, up to **5 items per production category** (infantry / unit / aircraft / [TD: special; RA: naval] / building).
+  - When the current item completes and is placed/exits, the next queued item starts automatically.
+  - Queue depth is capped at 5 per category; further clicks are ignored.
+  - Cancelling/holding still operates on the current item, and the next queued item starts after an abandonment.
+  - This is implemented in the standalone build only; the Remastered client already provides its own native production queue UI.
+
+
 ## Tiberian Dawn (TD)
 
 ### Commando limit
@@ -88,4 +105,5 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 ## Notes
 - Values above reflect the current source behavior on this branch at the time of writing.
 - “Vanilla” descriptions refer to stock/original behavior as targeted by these changes; exact legacy values may differ by build/context, but the Komkommer changes listed here are the intentional deviations.
+- **Save-game compatibility:** adding the production queue state to `HouseClass` changes the saved `HouseClass` binary layout, so save files written by older builds will not load with this build (and vice versa).
 - Remaster mod folders: **Komkommer TD** / **Komkommer RA** (DLLs loaded by the CnC Remastered Collection). A rebuilt DLL is picked up the next time that game starts (exit the game before redeploying if the DLL is locked).

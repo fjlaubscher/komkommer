@@ -113,6 +113,26 @@ public:
 **	Player control structure. Each player (computer or human) has one of
 **	these structures associated. These are located in a global array.
 */
+
+/*
+**	Maximum number of production items that may wait behind the item currently
+**	being built for a single production category.
+*/
+enum { MAX_PRODUCTION_QUEUE = 5 };
+
+/*
+**	The production categories that may have queued items. The order is used to
+**	index the per-category queue arrays in HouseClass.
+*/
+typedef enum ProductionQueueTypeEnum {
+    PRODUCTION_QUEUE_INFANTRY = 0,
+    PRODUCTION_QUEUE_UNIT,
+    PRODUCTION_QUEUE_AIRCRAFT,
+    PRODUCTION_QUEUE_VESSEL,
+    PRODUCTION_QUEUE_BUILDING,
+    PRODUCTION_QUEUE_COUNT
+} ProductionQueueType;
+
 class HouseClass
 {
 public:
@@ -490,6 +510,17 @@ public:
     int BuildingFactory;
 
     /*
+    **	Queued production requests. Each production category can have up to
+    **	MAX_PRODUCTION_QUEUE items waiting behind the item currently being built.
+    */
+    struct ProductionQueueEntryStruct {
+        RTTIType Type;
+        int ID;
+    };
+    ProductionQueueEntryStruct ProductionQueue[PRODUCTION_QUEUE_COUNT][MAX_PRODUCTION_QUEUE];
+    int ProductionQueueCount[PRODUCTION_QUEUE_COUNT];
+
+    /*
     **	For human controlled houses, the current state of the radar map
     */
     RadarEnum Radar;
@@ -700,6 +731,8 @@ public:
     ProdFailType Begin_Production(RTTIType type, int id);
     ProdFailType Suspend_Production(RTTIType type);
     ProdFailType Abandon_Production(RTTIType type);
+    bool Queue_Production(RTTIType type, int id);
+    bool Start_Next_Queued_Production(RTTIType type);
     bool Place_Object(RTTIType type, CELL cell);
     bool Manual_Place(BuildingClass* builder, BuildingClass* object);
     void Special_Weapon_AI(SpecialWeaponType id);

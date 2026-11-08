@@ -2108,23 +2108,32 @@ int SidebarClass::StripClass::SelectClass::Action(unsigned flags, KeyNumType& ke
 
                 /*
                 **	If there is already a factory attached to this strip but the player didn't click
-                **	on the icon that has the attached factory, then say that the factory is busy and
-                **	ignore the click.
+                **	on the icon that has the attached factory, then queue this request behind
+                **	the object currently being built.
                 */
                 if (fnumber == -1 && factory != NULL) {
-                    Speak(VOX_NO_FACTORY);
-                    ControlClass::Action(flags, key);
-                    return (true);
-                }
-
-                if (factory != NULL) {
+                    if (otype == RTTI_INFANTRYTYPE) {
+                        Speak(VOX_TRAINING);
+                    } else {
+                        Speak(VOX_BUILDING);
+                    }
+                    OutList.Add(EventClass(EventClass::PRODUCE,
+                                           Strip->Buildables[index].BuildableType,
+                                           Strip->Buildables[index].BuildableID));
+                } else if (factory != NULL) {
 
                     /*
-                    **	If this object is currently being built, then give a scold sound and text and then
-                    **	bail.
+                    **	If this object is currently being built, then queue another one behind it.
                     */
                     if (factory->Is_Building()) {
-                        Speak(VOX_NO_FACTORY);
+                        if (otype == RTTI_INFANTRYTYPE) {
+                            Speak(VOX_TRAINING);
+                        } else {
+                            Speak(VOX_BUILDING);
+                        }
+                        OutList.Add(EventClass(EventClass::PRODUCE,
+                                               Strip->Buildables[index].BuildableType,
+                                               Strip->Buildables[index].BuildableID));
                     } else {
 
                         /*
