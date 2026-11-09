@@ -4,6 +4,13 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 
 ## Both games (TD + RA)
 
+### Double-click selects all on-screen units of the same type
+- **Vanilla:** Double-clicking a unit is treated as two ordinary single clicks (select, then toggle the one unit).
+- **Komkommer:** Double-clicking a selectable combat unit selects **every on-screen unit of that exact type** (infantry, vehicles, aircraft, and RA vessels; buildings are excluded).
+  - The current selection is replaced, unless **Shift** is held, in which case the matching units are added to it.
+  - Matching units that are off-screen, cloaked, or undiscovered are not selected.
+  - Double-click detection follows SDL3's standard: two presses within 500 ms and 32 px (`common/wwkeyboard_sdl2.cpp`). Backends without native detection fall back to the `DOUBLE_CLICK_TIME` timer in each game's `display.cpp`.
+
 ### Rally points for production buildings
 - **Vanilla:** Production buildings do not have a player-settable rally point workflow like this mod’s implementation.
 - **Komkommer:** Production buildings support rally points.
@@ -12,14 +19,6 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - The rally marker is shown as a **player-coloured animated flag** (uses the cell flag/animation system so it renders correctly in both classic and remastered graphics modes).
   - The rally flag is shown **only while the structure is selected**.
   - Rally flags do **not** block structure placement (flagged rally cells are ignored for placement blocking where appropriate).
-
-### Double-click select-all (standalone binaries)
-- **Vanilla:** Clicking a unit selects only that unit.
-- **Komkommer (standalone executables only):** Double-clicking a player-owned infantry, unit, or aircraft selects **all of that same type currently visible on screen**.
-  - Matches the unit's `Class_Of()` object type and RTTI (infantry / unit / aircraft only; buildings are excluded).
-  - Only objects owned by the player and currently on-screen (within the tactical view) are selected; cloaked objects and other houses' units are ignored.
-  - Detection uses the in-game frame counter (`Frame`, ~15 ticks/sec) with a ~10-frame double-click window, so it works for rapid clicks in the classic message loop.
-  - This is implemented in the standalone (`komkommertd.exe` / `komkommerra.exe`) build only; the Remastered client already provides native double-click select-all.
 
 ### Production queueing (standalone binaries)
 - **Vanilla:** Clicking a production-sidebar icon while its category factory is busy rejects the click with a "no factory"/scold response.

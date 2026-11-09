@@ -70,6 +70,12 @@ jobs:
 
     - name: Create archives
       if: ${{ matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
+      env:
+        APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+        APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+        APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+        APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
       run: |  
         dsymutil build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.app/Contents/MacOS/komkommertd -o build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.dSYM
         dsymutil build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.app/Contents/MacOS/komkommerra -o build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.dSYM
@@ -77,6 +83,9 @@ jobs:
         strip -Sx build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.app/Contents/MacOS/komkommerra
         dylibbundler --create-dir --bundle-deps --overwrite-files --dest-dir ./build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.app/Contents/libs --fix-file build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.app/Contents/MacOS/komkommertd
         dylibbundler --create-dir --bundle-deps --overwrite-files --dest-dir ./build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.app/Contents/libs --fix-file build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.app/Contents/MacOS/komkommerra
+        bash .github/scripts/sign-macos-app.sh \
+          build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.app \
+          build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.app
         mkdir artifact
         7z a artifact/komkommer-${{ matrix.preset }}-macos-clang-universal2-${{ steps.gitinfo.outputs.sha_short }}.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.app ./build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.app
         7z a artifact/komkommer-${{ matrix.preset }}-macos-clang-universal2-${{ steps.gitinfo.outputs.sha_short }}-debug.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.dSYM ./build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.dSYM

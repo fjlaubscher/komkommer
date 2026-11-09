@@ -91,6 +91,13 @@
 #include "common/fading.h"
 
 /*
+**	Fallback number of game ticks between two selection clicks for them to count as a
+**	double-click. Only used by keyboard backends that do not report native double-clicks;
+**	the SDL2 backend uses SDL3's 500 ms / 32 pixel detection directly.
+*/
+#define DOUBLE_CLICK_TIME 45
+
+/*
 **	These layer control elements are used to group the displayable objects
 **	so that proper overlap can be obtained.
 */
@@ -187,6 +194,8 @@ DisplayClass::DisplayClass(void)
 {
     ShadowShapes = 0;
     TransIconset = 0;
+    LastClickTime = 0;
+    LastClickType = NULL;
 
     Set_View_Dimensions(0, 8, 320 / CELL_PIXEL_W, 200 / CELL_PIXEL_H);
 }
@@ -278,6 +287,8 @@ void DisplayClass::Init_Clear(void)
     IsRubberBand = false;
     IsTentative = false;
     IsSellMode = false;
+    LastClickTime = 0;
+    LastClickType = NULL;
 
     /*
     ** Empty all the display's layers
@@ -2970,101 +2981,91 @@ void DisplayClass::Select_These(COORDINATE coord1, COORDINATE coord2, bool addit
 }
 
 /***********************************************************************************************
- * DisplayClass::Select_All_Of_Type -- Selects all on-screen objects of the same type.        *
+ * DisplayClass::Select_All_Type -- Selects every on-screen object of the specified type.      *
  *                                                                                             *
- *    This implements the double-click select-all behaviour. All player owned infantry, units *
- *    and aircraft of the same object type that are visible in the tactical view are selected. *
+ *    This is used by the double-click handler. All objects of the matching type that are      *
+ *    currently visible, owned by the local player, selectable and not cloaked are selected.   *
+ *    Buildings are never matched.                                                             *
  *                                                                                             *
- * INPUT:   object  -- Object whose type should be selected.                                   *
+ * INPUT:   type     -- The techno type to match.                                              *
+ *                                                                                             *
+ *          additive -- Does this add to the existing selection or replace it?                 *
  *                                                                                             *
  * OUTPUT:  none                                                                               *
  *                                                                                             *
- * WARNINGS:   Only player owned, non-building objects are considered.                         *
- *                                                                                             *
- * HISTORY:                                                                                    *
- *   11/08/2026 : Created.                                                                     *
+ * WARNINGS:   none                                                                            *
  *=============================================================================================*/
-void DisplayClass::Select_All_Of_Type(ObjectClass* object)
+void DisplayClass::Select_All_Type(TechnoTypeClass const* type, bool additive)
 {
-    if (object == nullptr) {
+    if (type == NULL) {
         return;
     }
 
-    RTTIType what = object->What_Am_I();
+    if (!additive) {
+        Unselect_All();
+    }
+    AllowVoice = true;
 
     /*
-    **	Only infantry, units and aircraft may be mass selected.
+    **	Sweep through all ground layer objects and select the ones that match the
+    **	requested type and are currently on screen.
     */
-    if (what != RTTI_INFANTRY && what != RTTI_UNIT && what != RTTI_AIRCRAFT) {
-        return;
-    }
-
-    /*
-    **	Only the player's own objects may be mass selected.
-    */
-    HouseClass* owner = HouseClass::As_Pointer(object->Owner());
-    if (owner == nullptr || !owner->IsPlayerControl) {
-        return;
-    }
-
-    ObjectTypeClass const* type = &object->Class_Of();
-
-    int x1 = Coord_X(TacticalCoord);
-    int y1 = Coord_Y(TacticalCoord);
-    int x2 = x1 + TacLeptonWidth;
-    int y2 = y1 + TacLeptonHeight;
-
-    Unselect_All();
-
-    bool old_allow_voice = AllowVoice;
-    AllowVoice = false;
-
     for (int index = 0; index < Layer[LAYER_GROUND].Count(); index++) {
         ObjectClass* obj = Layer[LAYER_GROUND][index];
 
-        if (obj->What_Am_I() != what || &obj->Class_Of() != type) {
+        if (!obj->Is_Techno() || obj->What_Am_I() == RTTI_BUILDING) {
             continue;
         }
 
-        HouseClass* hptr = HouseClass::As_Pointer(obj->Owner());
-        if (hptr == nullptr || !hptr->IsPlayerControl || obj->Is_Selected_By_Player()) {
-            continue;
-        }
-        if (obj->Is_Techno() && ((TechnoClass*)obj)->Is_Cloaked(PlayerPtr)) {
-            continue;
-        }
-
-        COORDINATE ocoord = obj->Center_Coord();
-        int x = Coord_X(ocoord);
-        int y = Coord_Y(ocoord);
-        if (x < x1 || x > x2 || y < y1 || y > y2) {
+        TechnoClass* techno = (TechnoClass*)obj;
+        if (techno->Techno_Type_Class() != type || !techno->Is_Owned_By_Player() || !obj->Class_Of().IsSelectable
+            || techno->Is_Cloaked(PlayerPtr) || !techno->Is_Discovered_By_Player()) {
             continue;
         }
 
-        obj->Select(true);
+        /*
+        **	Only select objects that are currently visible in the tactical view.
+        */
+        COORDINATE coord = obj->Render_Coord();
+        int xoff = Coord_X(coord) - Coord_X(TacticalCoord);
+        int yoff = Coord_Y(coord) - Coord_Y(TacticalCoord);
+        if (xoff < 0 || xoff > TacLeptonWidth || yoff < 0 || yoff > TacLeptonHeight) {
+            continue;
+        }
+
+        bool old_allow_voice = AllowVoice;
+        if (obj->Select(true)) {
+            old_allow_voice = false;
+        }
+        AllowVoice = old_allow_voice;
     }
 
+    /*
+    **	Select any matching aircraft that are on screen.
+    */
     for (int air_index = 0; air_index < Aircraft.Count(); air_index++) {
         AircraftClass* aircraft = Aircraft.Ptr(air_index);
 
-        if (&aircraft->Class_Of() != type) {
-            continue;
-        }
-        if (!aircraft->House->IsPlayerControl || aircraft->Is_Cloaked(PlayerPtr)) {
-            continue;
-        }
-
-        COORDINATE ocoord = aircraft->Center_Coord();
-        int x = Coord_X(ocoord);
-        int y = Coord_Y(ocoord);
-        if (x < x1 || x > x2 || y < y1 || y > y2) {
+        if (aircraft->Techno_Type_Class() != type || !aircraft->Is_Owned_By_Player() || !aircraft->Class->IsSelectable
+            || aircraft->Is_Cloaked(PlayerPtr) || !aircraft->Is_Discovered_By_Player()) {
             continue;
         }
 
-        aircraft->Select(true);
+        COORDINATE coord = aircraft->Center_Coord();
+        int xoff = Coord_X(coord) - Coord_X(TacticalCoord);
+        int yoff = Coord_Y(coord) - Coord_Y(TacticalCoord);
+        if (xoff < 0 || xoff > TacLeptonWidth || yoff < 0 || yoff > TacLeptonHeight) {
+            continue;
+        }
+
+        bool old_allow_voice = AllowVoice;
+        if (aircraft->Select(true)) {
+            old_allow_voice = false;
+        }
+        AllowVoice = old_allow_voice;
     }
 
-    AllowVoice = old_allow_voice;
+    AllowVoice = true;
 }
 
 /***********************************************************************************************
@@ -3348,7 +3349,7 @@ int DisplayClass::TacticalClass::Action(unsigned flags, KeyNumType& key)
         **	intercepted and possible rubber-band mode is flagged.
         */
         if (flags & LEFTRELEASE) {
-            Map.Mouse_Left_Release(cell, x, y, object, action);
+            Map.Mouse_Left_Release(cell, x, y, object, action, false, (flags & LEFTDBLCLICK) != 0);
         }
 
         /*
@@ -3436,9 +3437,9 @@ int DisplayClass::TacticalClass::Selection_At_Mouse(unsigned flags, KeyNumType& 
             bool shiftdown = DLL_Export_Get_Input_Key_State(KN_LSHIFT);
 
             if (shiftdown) {
-                Map.Mouse_Left_Release(cell, x, y, object, ACTION_TOGGLE_SELECT);
+                Map.Mouse_Left_Release(cell, x, y, object, ACTION_TOGGLE_SELECT, false, (flags & LEFTDBLCLICK) != 0);
             } else {
-                Map.Mouse_Left_Release(cell, x, y, object, ACTION_SELECT);
+                Map.Mouse_Left_Release(cell, x, y, object, ACTION_SELECT, false, (flags & LEFTDBLCLICK) != 0);
             }
 #endif
         } else {
@@ -3516,7 +3517,7 @@ int DisplayClass::TacticalClass::Command_Object(unsigned flags, KeyNumType& key)
         }
 
         if (action != ACTION_SELECT) {
-            Map.Mouse_Left_Release(cell, x, y, object, action);
+            Map.Mouse_Left_Release(cell, x, y, object, action, false, (flags & LEFTDBLCLICK) != 0);
         }
     }
     return 0;
@@ -3897,17 +3898,6 @@ void DisplayClass::Mouse_Left_Up(CELL cell, bool shadow, ObjectClass* object, Ac
 #endif
 }
 
-#ifndef REMASTER_BUILD
-/*
-**	Double-click tracking state. A second select click on the same object type within
-**	this many frames is treated as a double-click.
-*/
-int const DOUBLE_CLICK_FRAME_TICKS = 10;
-static int LastSelectFrame = -1;
-static RTTIType LastSelectRTTI = RTTI_NONE;
-static ObjectTypeClass const* LastSelectType = nullptr;
-#endif
-
 /***********************************************************************************************
  * DisplayClass::Mouse_Left_Release -- Handles the left mouse button release.                  *
  *                                                                                             *
@@ -3932,7 +3922,13 @@ static ObjectTypeClass const* LastSelectType = nullptr;
  *   02/24/1995 JLB : Created.                                                                 *
  *   03/27/1995 JLB : Handles sell and repair actions.                                         *
  *=============================================================================================*/
-void DisplayClass::Mouse_Left_Release(CELL cell, int x, int y, ObjectClass* object, ActionType action, bool wsmall)
+void DisplayClass::Mouse_Left_Release(CELL cell,
+                                      int x,
+                                      int y,
+                                      ObjectClass* object,
+                                      ActionType action,
+                                      bool wsmall,
+                                      bool double_click)
 {
     if (PendingObjectPtr) {
         /*
@@ -3958,44 +3954,42 @@ void DisplayClass::Mouse_Left_Release(CELL cell, int x, int y, ObjectClass* obje
 
         } else {
 
-#ifndef REMASTER_BUILD
             /*
-            **	Detect a double-click on a player owned object and select all on-screen objects
-            **	of the same type. This is handled before the normal action dispatch so that a
-            **	second click on an already selected object (ACTION_SELF) does not trigger its
-            **	special self action.
+            **	Detect a double-click on a selectable techno. A double-click selects every
+            **	on-screen unit of that type. Holding SHIFT adds to the current selection
+            **	instead of replacing it.
             */
-            bool is_select_click = action == ACTION_SELECT || action == ACTION_SELF
-                                   || (action == ACTION_NONE && object && object->Class_Of().IsSelectable);
+            if (object && object->Is_Techno() && object->What_Am_I() != RTTI_BUILDING && object->Class_Of().IsSelectable
+                && ((TechnoClass*)object)->Is_Owned_By_Player()
+                && (action == ACTION_SELECT || action == ACTION_TOGGLE_SELECT || action == ACTION_SELF
+                    || action == ACTION_NONE)) {
+                TechnoTypeClass const* type = ((TechnoClass*)object)->Techno_Type_Class();
+                unsigned int now = (unsigned int)WinTickCount.Time();
+                bool is_double_click;
 
-            HouseClass* owner = object ? HouseClass::As_Pointer(object->Owner()) : nullptr;
-            if (is_select_click && object != nullptr && owner != nullptr && owner->IsPlayerControl
-                && object->What_Am_I() != RTTI_BUILDING) {
-                RTTIType what = object->What_Am_I();
-                bool is_double_click = LastSelectFrame >= 0 && Frame >= LastSelectFrame
-                                       && (Frame - LastSelectFrame) <= DOUBLE_CLICK_FRAME_TICKS
-                                       && what == LastSelectRTTI && &object->Class_Of() == LastSelectType;
-
-                LastSelectFrame = Frame;
-                LastSelectRTTI = what;
-                LastSelectType = &object->Class_Of();
+                if (Keyboard->Has_Native_Double_Click()) {
+                    is_double_click = double_click;
+                } else {
+                    is_double_click =
+                        (type != NULL && type == LastClickType && (now - LastClickTime) <= DOUBLE_CLICK_TIME);
+                }
 
                 if (is_double_click) {
-                    Select_All_Of_Type(object);
-                    Set_Default_Mouse(MOUSE_NORMAL, wsmall);
-
-                    LastSelectFrame = -1;
-                    LastSelectRTTI = RTTI_NONE;
-                    LastSelectType = nullptr;
-                    IsTentative = false;
-                    return;
-                }
-            } else {
-                LastSelectFrame = -1;
-                LastSelectRTTI = RTTI_NONE;
-                LastSelectType = nullptr;
-            }
+#ifdef REMASTER_BUILD
+                    bool additive = DLL_Export_Get_Input_Key_State(KN_LSHIFT);
+#else
+                    bool additive = (Keyboard->Down(Options.KeySelect1) || Keyboard->Down(Options.KeySelect2));
 #endif
+                    Select_All_Type(type, additive);
+                    Set_Default_Mouse(MOUSE_NORMAL, wsmall);
+                    LastClickTime = 0;
+                    LastClickType = NULL;
+                    action = ACTION_NONE;
+                } else {
+                    LastClickTime = now;
+                    LastClickType = type;
+                }
+            }
 
             /*
             **	Toggle the select state of the object.

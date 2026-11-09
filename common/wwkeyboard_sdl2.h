@@ -12,6 +12,10 @@ public:
     virtual void Close_Controller();
     virtual bool Is_Analog_Scroll_Active();
     virtual unsigned char Get_Scroll_Direction();
+    virtual bool Has_Native_Double_Click(void) const
+    {
+        return (true);
+    }
     virtual KeyASCIIType To_ASCII(unsigned short key);
 
 private:
@@ -39,6 +43,15 @@ private:
     int16_t ControllerRightXAxis = 0;
     int16_t ControllerRightYAxis = 0;
     uint32_t LastControllerTime = 0;
+
+    /*
+    **	Click tracking used to reproduce SDL3's own double-click detection
+    **	(the SDL2 compatibility layer does not forward SDL3's click count).
+    */
+    uint32_t LastClickTime = 0;
+    int LastClickX = 0;
+    int LastClickY = 0;
+    int ClickCount = 0;
     float ControllerSpeedBoost = 1;
     bool AnalogScrollActive = false;
     ScrollDirType ScrollDirection = SDIR_NONE;

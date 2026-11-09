@@ -2,3 +2,6 @@
 /CMakeUserPresets.json
 /.cache
 /.vscode
+/scripts/macos-notary.env
+.DS_Store
+**/.DS_Store

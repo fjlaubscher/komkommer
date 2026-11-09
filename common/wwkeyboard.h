@@ -880,6 +880,16 @@ public:
     virtual bool Is_Analog_Scroll_Active();
     virtual unsigned char Get_Scroll_Direction();
 
+    /*
+    **	Does this keyboard backend report the OS's own double-click detection
+    **	(via WWKEY_DBL_BIT on mouse messages)? When true, the game uses that instead
+    **	of its own timer-based double-click detection.
+    */
+    virtual bool Has_Native_Double_Click(void) const
+    {
+        return (false);
+    }
+
 #if defined(_WIN32) && !defined(SDL_BUILD)
     /* Define the main hook for the message processing loop.					*/
     bool Message_Handler(HWND hwnd, UINT message, UINT wParam, LONG lParam);
@@ -887,13 +897,18 @@ public:
 
     /* Define the public access variables which are used with the			*/
     /*   Keyboard Class.																	*/
+    /*
+    **	Set when the most recently fetched message was an OS-detected double-click.
+    */
+    bool DoubleClick;
+
     int MouseQX;
     int MouseQY;
 
 protected:
     bool Is_Buffer_Full(void) const;
     bool Put_Key_Message(unsigned short vk_key, bool release = false);
-    bool Put_Mouse_Message(unsigned short vk_key, int x, int y, bool release = false);
+    bool Put_Mouse_Message(unsigned short vk_key, int x, int y, bool release = false, bool double_click = false);
 
 private:
     /*
