@@ -57,6 +57,8 @@
 
 extern COORDINATE Coord_Add(COORDINATE coord1, COORDINATE coord2);
 
+class TechnoTypeClass;
+
 class DisplayClass : public MapClass
 {
 public:
@@ -183,6 +185,7 @@ public:
     virtual void Set_Tactical_Position(COORDINATE coord);
     void Refresh_Band(void);
     void Select_These(COORDINATE coord1, COORDINATE coord2, bool additive = false);
+    void Select_All_Type(TechnoTypeClass const* type, bool additive = false);
     COORDINATE Pixel_To_Coord(int x, int y) const;
     bool Coord_To_Pixel(COORDINATE coord, int& x, int& y) const;
     bool Push_Onto_TacMap(COORDINATE& source, COORDINATE& dest);
@@ -228,8 +231,13 @@ protected:
     virtual void Mouse_Left_Press(int x, int y);
     virtual void Mouse_Left_Up(CELL cell, bool shadow, ObjectClass* object, ActionType action, bool wsmall = false);
     virtual void Mouse_Left_Held(int x, int y);
-    virtual void
-    Mouse_Left_Release(CELL cell, int x, int y, ObjectClass* object, ActionType action, bool wsmall = false);
+    virtual void Mouse_Left_Release(CELL cell,
+                                    int x,
+                                    int y,
+                                    ObjectClass* object,
+                                    ActionType action,
+                                    bool wsmall = false,
+                                    bool double_click = false);
 
 public:
     /*
@@ -284,6 +292,14 @@ protected:
     **	mode from being initiated.
     */
     unsigned IsTentative : 1;
+
+    /*
+    **	The timer value and object type of the last selection click. These are used
+    **	to recognize a double-click (two clicks of the same type in quick succession)
+    **	so that every on-screen unit of that type can be selected at once.
+    */
+    unsigned int LastClickTime;
+    TechnoTypeClass const* LastClickType;
 
     /*
     **	This gadget class is used for capturing input to the tactical map. All mouse input

@@ -81,7 +81,37 @@ void WWKeyboardClassSDL2::Fill_Buffer_From_System(void)
                 y = event.button.y / scale_y;
             }
 
-            Put_Mouse_Message(key, x, y, event.type == SDL_MOUSEBUTTONDOWN ? false : true);
+            /*
+            **	Count consecutive left-button clicks the same way SDL3 does (the SDL2
+            **	compatibility layer does not forward SDL3's click count): a new click
+            **	within 500 ms of the previous press, and within 32 pixels of it, counts
+            **	as another click.
+            */
+            bool double_click = false;
+            if (event.button.button == SDL_BUTTON_LEFT) {
+                if (event.type == SDL_MOUSEBUTTONDOWN) {
+                    Uint32 now = SDL_GetTicks();
+                    int dx = event.button.x - LastClickX;
+                    int dy = event.button.y - LastClickY;
+
+                    if (ClickCount > 0 && (now - LastClickTime) < 500 && (dx < 0 ? -dx : dx) <= 32
+                        && (dy < 0 ? -dy : dy) <= 32) {
+                        if (ClickCount < 255) {
+                            ClickCount++;
+                        }
+                    } else {
+                        ClickCount = 1;
+                    }
+
+                    LastClickTime = now;
+                    LastClickX = event.button.x;
+                    LastClickY = event.button.y;
+                }
+
+                double_click = (ClickCount >= 2);
+            }
+
+            Put_Mouse_Message(key, x, y, event.type == SDL_MOUSEBUTTONDOWN ? false : true, double_click);
         } break;
         case SDL_WINDOWEVENT:
             switch (event.window.event) {

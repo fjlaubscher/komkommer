@@ -4,6 +4,13 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 
 ## Both games (TD + RA)
 
+### Double-click selects all on-screen units of the same type
+- **Vanilla:** Double-clicking a unit is treated as two ordinary single clicks (select, then toggle the one unit).
+- **Komkommer:** Double-clicking a selectable combat unit selects **every on-screen unit of that exact type** (infantry, vehicles, aircraft, and RA vessels; buildings are excluded).
+  - The current selection is replaced, unless **Shift** is held, in which case the matching units are added to it.
+  - Matching units that are off-screen, cloaked, or undiscovered are not selected.
+  - Double-click detection follows SDL3's standard: two presses within 500 ms and 32 px (`common/wwkeyboard_sdl2.cpp`). Backends without native detection fall back to the `DOUBLE_CLICK_TIME` timer in each game's `display.cpp`.
+
 ### Rally points for production buildings
 - **Vanilla:** Production buildings do not have a player-settable rally point workflow like this mod’s implementation.
 - **Komkommer:** Production buildings support rally points.

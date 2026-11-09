@@ -83,6 +83,7 @@ WWKeyboardClass::WWKeyboardClass(void)
     , Tail(0)
     , DownSkip(0)
 {
+    DoubleClick = false;
     memset(DownState, '\0', sizeof(DownState));
 }
 
@@ -108,6 +109,14 @@ unsigned short WWKeyboardClass::Buff_Get(void)
     } // wait for key in buffer
 
     unsigned short temp = Fetch_Element();
+
+    /*
+    **	Extract the OS-detected double-click flag (if any) and keep it separate from
+    **	the key code so callers see a normal mouse message.
+    */
+    DoubleClick = ((temp & WWKEY_DBL_BIT) != 0);
+    temp &= ~WWKEY_DBL_BIT;
+
     if (Is_Mouse_Key(temp)) {
         MouseQX = Fetch_Element();
         MouseQY = Fetch_Element();
@@ -153,7 +162,7 @@ KeyNumType WWKeyboardClass::Check(void) const
     ((WWKeyboardClass*)this)->Fill_Buffer_From_System();
     if (Is_Buffer_Empty())
         return KN_NONE;
-    return (KeyNumType)(Peek_Element());
+    return (KeyNumType)(Peek_Element() & ~WWKEY_DBL_BIT);
 }
 
 /***********************************************************************************************
@@ -259,8 +268,12 @@ bool WWKeyboardClass::Put_Key_Message(unsigned short vk_key, bool release)
  * HISTORY:                                                                                    *
  *   11/02/1996 JLB : Created.                                                                 *
  *=============================================================================================*/
-bool WWKeyboardClass::Put_Mouse_Message(unsigned short vk_key, int x, int y, bool release)
+bool WWKeyboardClass::Put_Mouse_Message(unsigned short vk_key, int x, int y, bool release, bool double_click)
 {
+    if (double_click) {
+        vk_key |= WWKEY_DBL_BIT;
+    }
+
     if (Available_Buffer_Room() >= 3 && Is_Mouse_Key(vk_key)) {
         Put_Key_Message(vk_key, release);
         Put((unsigned short)x);
@@ -367,7 +380,7 @@ bool WWKeyboardClass::Put_Element(unsigned short val)
         /* set cached down state for given key, remove all bits */
         if (DownSkip == 0) {
             bool isDown = !(val & KN_RLSE_BIT);
-            val &= ~(KN_SHIFT_BIT | KN_CTRL_BIT | KN_ALT_BIT | KN_RLSE_BIT | KN_BUTTON);
+            val &= ~(KN_SHIFT_BIT | KN_CTRL_BIT | KN_ALT_BIT | KN_RLSE_BIT | KN_BUTTON | WWKEY_DBL_BIT);
             Set_Bit(DownState, val, isDown);
 
             if (Is_Mouse_Key(val)) {

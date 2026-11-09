@@ -204,8 +204,15 @@ int GadgetClass::Clicked_On(KeyNumType& key, unsigned flags, int mousex, int mou
     /*
     **	Set flags to match only those events that occur AND are being looked for. If
     **	the result is NULL, then we know that this button should be ignored.
+    **
+    **	Preserve LEFTDBLCLICK when the gadget accepts left-button events; it is
+    **	metadata attached to a left click, not a separate event type to filter on.
     */
+    unsigned dbl = (flags & LEFTDBLCLICK);
     flags &= Flags;
+    if (dbl && (Flags & (LEFTPRESS | LEFTRELEASE | LEFTHELD | LEFTUP))) {
+        flags |= LEFTDBLCLICK;
+    }
 
     /*
     **	If keyboard input should be processed by this "gadget" and keyboard input is
@@ -560,6 +567,13 @@ KeyNumType GadgetClass::Input(void)
     */
     if (key && !flags) {
         flags |= KEYBOARD;
+    }
+
+    /*
+    **	Flag an OS-detected double-click so the gadget can act on it.
+    */
+    if (key && Keyboard->DoubleClick) {
+        flags |= LEFTDBLCLICK;
     }
 
     /*
