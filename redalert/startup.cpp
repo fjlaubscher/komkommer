@@ -479,6 +479,9 @@ int main(int argc, char* argv[])
         /*
         ** Save settings if they were changed during gameplay.
         */
+#ifndef REMASTER_BUILD
+        Options.Save_Settings();
+#endif
         ini.Load(cfile);
         Settings.Save(ini);
         ini.Save(cfile);

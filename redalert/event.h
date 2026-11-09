@@ -100,7 +100,8 @@ public:
         RETRACT_DRAW,  //	Player retracts proposed draw offer.
 #endif
 
-        RALLY, // Set a production building's rally cell.
+        RALLY,        // Set a production building's rally cell.
+        CANCEL_QUEUE, // Cancel one matching waiting production request.
 
         LAST_EVENT, // one past the last event
     } EventType;

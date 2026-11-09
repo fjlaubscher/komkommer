@@ -92,7 +92,8 @@ unsigned char EventClass::EventLength[EventClass::LAST_EVENT] = {
     0,                                         //	PROPOSE_DRAW
     0,                                         //	RETRACT_DRAW
 #endif
-    size_of(EventClass, Data.NavCom), // RALLY
+    size_of(EventClass, Data.NavCom),   // RALLY
+    size_of(EventClass, Data.Specific), // CANCEL_QUEUE
 };
 
 const char* EventClass::EventNames[EventClass::LAST_EVENT] = {
@@ -104,7 +105,7 @@ const char* EventClass::EventNames[EventClass::LAST_EVENT] = {
 #ifdef FIXIT_VERSION_3 //	Stalemate games.
     "PROPOSE_DRAW", "RETRACT_DRAW",
 #endif
-    "RALLY",
+    "RALLY", "CANCEL_QUEUE",
 };
 
 /***********************************************************************************************
@@ -636,6 +637,12 @@ void EventClass::Execute(void)
     */
     case ABANDON:
         Houses.Raw_Ptr(ID)->Abandon_Production(Data.Specific.Type);
+        break;
+
+    case CANCEL_QUEUE:
+#ifndef REMASTER_BUILD
+        Houses.Raw_Ptr(ID)->Cancel_Queued_Production(Data.Specific.Type, Data.Specific.ID);
+#endif
         break;
 
     /*

@@ -16,7 +16,7 @@ Read the root guide first. Mirror shared fixes into TD when appropriate, but do 
 ## Mode and unit differences
 
 - RA uses `Session.Type`; `GAME_NORMAL` is campaign. Preserve campaign Tanya/hero behavior when changing the skirmish/MP commando split or limits.
-- Aircraft use **`Height`**, not TD's `Altitude`. `Look()` and firing reveals use the type's `SightRange`; do not reintroduce the old grounded-aircraft clamp to one cell (`fcc9076`). INI rules can override default sight.
+- Aircraft use **`Height`**, not TD's `Altitude`. `Look()` and firing reveals use the type's `SightRange`; do not reintroduce the old grounded-aircraft clamp to one cell (`fcc9076`). Stock `Sight=0` entries are raised to three in `RulesClass::Objects` after each INI read; non-zero INI rules override the default.
 - RA selection includes vessels; buildings remain excluded. Double-click helper/state/handler are standalone-only, and the `ACTION_NONE` release case matters for already-selected units.
 - Chronosphere targeting deliberately accepts eligible non-friendly units; keep the remaining type/deploy/transport restrictions (`c091c01`).
 
@@ -43,7 +43,11 @@ The current Soviet skirmish/MP commando is **Saboteur**, not the earlier Volkov 
 
 ## Standalone queues and nuke balance
 
-Production queues are distinct from service queues. Compile their `HouseClass` state/methods, initialization, factory enqueue/advance paths, and sidebar changes only for standalone; preserve GlyphX's original busy-factory behavior for `REMASTER_BUILD`.
+Production queues are distinct from service queues. Compile their `HouseClass` state/methods, initialization, factory enqueue/advance paths, and sidebar changes only for standalone; preserve GlyphX's original busy-factory behavior for `REMASTER_BUILD`. Right-clicking a non-active cameo emits `CANCEL_QUEUE` only for a matching waiting entry; `Cancel_Queued_Production` removes the newest match without touching active production. Keep `EventLength`/`EventNames` synchronized with the event enum.
+
+SDL2 explosion shake uses the shared presentation-only `Request_Video_Shake` path. Keep the blocking snapshot/`Frame_Limiter` loop only for non-SDL2 backends, and preserve the `REMASTER_BUILD` house timers.
+
+Standalone Game Controls treats Esc like its confirmation action so game/scroll sliders are applied and saved. Sound Controls calls `Options.Save_Settings()` when closed, matching TD; do not rely on the outer options dialog to persist sound changes. Standalone shutdown also saves the complete `OptionsClass` state before the separate video/mouse `SettingsClass` save. `OptionsClass::Load_Settings` and `Save_Settings` explicitly use `Paths.User_Path()/redalert.ini`; do not resolve writable options back through the asset search path.
 
 `Do_Atom_Damage` in `anim.cpp` uses a separate campaign/non-campaign branch. Current non-campaign behavior uses radius `3 * CELL_LEPTON_W`, damage `(Rule.AtomDamage * 3) / 4`, and `WARHEAD_NUKE`; keep campaign values separate and update `docs/komkommer.md` with balance edits.
 

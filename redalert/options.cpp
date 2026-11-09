@@ -556,7 +556,8 @@ void OptionsClass::Load_Settings(void)
     /*
     **	Create filename and read the file.
     */
-    CCFileClass file(CONFIG_FILE_NAME);
+    std::string config_path = Paths.Concatenate_Paths(Paths.User_Path(), CONFIG_FILE_NAME);
+    CCFileClass file(config_path.c_str());
     INIClass ini;
     ini.Load(file);
 
@@ -705,7 +706,8 @@ void OptionsClass::Load_Settings(void)
  *=============================================================================================*/
 void OptionsClass::Save_Settings(void)
 {
-    CCFileClass file(CONFIG_FILE_NAME);
+    std::string config_path = Paths.Concatenate_Paths(Paths.User_Path(), CONFIG_FILE_NAME);
+    CCFileClass file(config_path.c_str());
     INIClass ini;
 
     /*

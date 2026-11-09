@@ -78,6 +78,7 @@ unsigned char EventClass::EventLength[EventClass::LAST_EVENT] = {
     size_of(EventClass, Data.Timing),          // TIMING
     size_of(EventClass, Data.ProcessTime),     // PROCESS_TIME
     size_of(EventClass, Data.NavCom),          // RALLY
+    size_of(EventClass, Data.Specific),        // CANCEL_QUEUE
 };
 
 const char* EventClass::EventNames[EventClass::LAST_EVENT] = {
@@ -85,6 +86,7 @@ const char* EventClass::EventNames[EventClass::LAST_EVENT] = {
     "PLACE",         "OPTIONS",       "GAMESPEED",   "PRODUCE", "SUSPEND", "ABANDON",      "PRIMARY",
     "SPECIAL_PLACE", "EXIT",          "ANIMATION",   "REPAIR",  "SELL",    "SPECIAL",      "FRAMESYNC",
     "MESSAGE",       "RESPONSE_TIME", "FRAMEINFO",   "ARCHIVE", "TIMING",  "PROCESS_TIME", "RALLY",
+    "CANCEL_QUEUE",
 };
 
 /***********************************************************************************************
@@ -552,6 +554,13 @@ void EventClass::Execute(void)
     case ABANDON:
         CCDebugString("C&C95 - Abandon packet received\n");
         Houses.Raw_Ptr(ID)->Abandon_Production(Data.Specific.Type);
+        break;
+
+    case CANCEL_QUEUE:
+#ifndef REMASTER_BUILD
+        CCDebugString("C&C95 - Cancel queued production packet received\n");
+        Houses.Raw_Ptr(ID)->Cancel_Queued_Production(Data.Specific.Type, Data.Specific.ID);
+#endif
         break;
 
     /*

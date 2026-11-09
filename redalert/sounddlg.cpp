@@ -423,6 +423,13 @@ void SoundControlsClass::Process(void)
         Theme.Stop();
     }
 
+#ifndef REMASTER_BUILD
+    /*
+    ** Persist changes even when this dialog is closed directly.
+    */
+    Options.Save_Settings();
+#endif
+
     /*
     **	Free the items from the list box.
     */

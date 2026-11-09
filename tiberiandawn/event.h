@@ -86,6 +86,7 @@ public:
         TIMING,        // new timing values for all systems to use
         PROCESS_TIME,  // a system's average processing time, in ticks per frame
         RALLY,         // Set a production building's rally cell.
+        CANCEL_QUEUE,  // Cancel one matching waiting production request.
         LAST_EVENT,    // one past the last event
     } EventType;
 

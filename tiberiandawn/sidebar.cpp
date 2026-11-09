@@ -2387,6 +2387,18 @@ int SidebarClass::StripClass::SelectClass::Action(unsigned flags, KeyNumType& ke
                 */
                 if (factory != NULL) {
 
+#ifndef REMASTER_BUILD
+                    // A cameo without the active factory controls only its own waiting entries.
+                    if (fnumber == -1) {
+                        if (PlayerPtr->Queued_Production_Count(otype, oid) > 0) {
+                            Speak(VOX_CANCELED);
+                            OutList.Add(EventClass(EventClass::CANCEL_QUEUE, otype, oid));
+                        }
+                        ControlClass::Action(flags, key);
+                        return (true);
+                    }
+#endif
+
                     /*
                     **	Cancels placement mode if the sidebar factory is abandoned or
                     **	suspended.

@@ -4511,6 +4511,13 @@ void Shake_The_Screen(int shakes, HousesType house)
             hptr->ScreenShakeTime.Start();
         }
     }
+#elif defined(SDL2_BUILD)
+    // Do not stall simulation inside an explosion to replay the same frame.
+    // Owner and attacker calls refer to the same blast; only the local viewer
+    // should schedule it, rather than playing it twice for opposing houses.
+    if (house == HOUSE_NONE || (PlayerPtr && PlayerPtr->Class->House == house)) {
+        Request_Video_Shake(shakes);
+    }
 #else
     shakes += shakes;
 

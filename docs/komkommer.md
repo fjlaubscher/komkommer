@@ -19,7 +19,7 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - Labels are clipped to the tactical view and hidden on deselection. Remastered rendering is unchanged.
 
 ### Aircraft scouting
-- Aircraft sight defaults to **3 cells** in both engines; RA INI rules can override the default.
+- Aircraft sight defaults to **3 cells** in both engines. Stock RA `Sight=0` entries are raised to that baseline after rules loading, including helicopters; non-zero INI sight values still override it.
 - Terrain-reveal call sites use the type's sight range: TD ground-layer entry/firing, and RA `Look()`/firing. Grounded RA aircraft are no longer clamped to a one-cell sight range.
 
 ### Rally points for production buildings
@@ -38,16 +38,15 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - At most **four waiting** requests may sit behind the active unit; further clicks are ignored. Existing save data is not rewritten to discard older excess unit entries; those drain normally. Legacy building-queue entries are no longer advanced.
   - A tiny gold **1–5** label at the **top-left** of each unit cameo shows the total outstanding count of that exact type, including the current unit. A single active unit always shows **1**; other queued types show their own counts. Digits use a fixed 3×5-pixel font plus a one-pixel black outline. Buildings and superweapons have no count. The existing clock/Ready/Holding overlays still describe the current item.
   - Buildings retain normal hold/resume/cancel and completed-building placement; clicking another building while construction is busy does not add a waiting request.
-  - Cancelling/holding still operates on the current item, and the next queued item starts after an abandonment.
+  - Right-clicking a waiting unit's cameo removes the newest matching waiting request without suspending or cancelling the active unit. Right-clicking the active unit's cameo retains the normal hold/cancel behavior, and the next queued item starts after an abandonment.
   - This is implemented in the standalone build only; the Remastered client already provides its own native production queue UI.
   - Queue fields, initialization, enqueue/advance logic, and classic sidebar click changes are excluded from `REMASTER_BUILD`; the DLL retains its original busy-factory behavior rather than adding a second queue behind GlyphX.
 
-
-## Tiberian Dawn (TD)
-
 ### Non-blocking explosion shake (SDL2 standalone)
 - Screen shake now offsets the live rendered image over subsequent frames instead of replaying a frozen snapshot in a blocking loop. Unit simulation and input continue during building-destruction shake.
-- The visual timer is renderer-local, does not consume simulation RNG, and only schedules owner/attacker shake for the appropriate local player. Remastered, other video backends, and RA's existing shake path are unchanged.
+- The visual timer is renderer-local, does not consume simulation RNG, and only schedules owner/attacker shake for the appropriate local player. Remastered and other video backends retain their existing shake paths.
+
+## Tiberian Dawn (TD)
 
 ### Commando limit
 - **Komkommer:** The TD commando (**Rambo / `INFANTRY_RAMBO`**) is limited to **one per house** (enforced in `HouseClass::Can_Build`).
@@ -89,6 +88,11 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - Ion Cannon recharge/availability rules remain the same (e.g. `ION_CANNON_GONE_TIME` 10 minutes, requires Advanced Comm Center/`STRUCT_EYE` for the normal superweapon, power suspension rules, targeting/firing flow unchanged).
 
 ## Red Alert (RA)
+
+### Options persistence (standalone)
+- Closing Game Controls with either its confirmation button or **Esc** applies and saves game speed and scroll rate; Esc no longer discards those slider changes.
+- Sound Controls saves music/effects volume and score repeat/shuffle settings when the dialog closes, matching TD's existing behavior.
+- RA also saves the complete options state during standalone shutdown, rather than only writing video/mouse settings there. Options load and save use the same explicit `UserPath` INI instead of resolving whichever `redalert.ini` happens to appear in the asset search path.
 
 ### Dock/service queueing (repair bays, refineries, helipads)
 - **Vanilla:** Same general service contention issues for radio/contact-path docks.

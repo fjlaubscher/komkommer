@@ -306,7 +306,13 @@ void GameControlsClass::Process(void)
             break;
 
         case (KN_ESC):
+#ifndef REMASTER_BUILD
+            // This dialog has no separate cancel action; closing it applies the controls.
+            selection = BUTTON_OK;
+            pressed = true;
+#else
             process = false;
+#endif
             break;
 
         case (KN_LEFT):

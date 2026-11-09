@@ -980,7 +980,13 @@ bool RulesClass::Objects(CCINIClass& ini)
     }
 
     for (int aindex = 0; aindex < AircraftTypes.Count(); aindex++) {
-        AircraftTypes.Ptr(aindex)->Read_INI(ini);
+        AircraftTypeClass* aircraft = AircraftTypes.Ptr(aindex);
+        aircraft->Read_INI(ini);
+        if (aircraft->SightRange == 0) {
+            // Stock aircraft rules use Sight=0; use the mod's scouting baseline
+            // while retaining any explicit non-zero INI override.
+            aircraft->SightRange = 3;
+        }
     }
 
     for (int bindex = 0; bindex < BuildingTypes.Count(); bindex++) {

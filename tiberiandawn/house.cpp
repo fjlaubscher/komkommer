@@ -2528,6 +2528,46 @@ bool HouseClass::Queue_Production(RTTIType type, int id)
 }
 
 /***********************************************************************************************
+ * HouseClass::Cancel_Queued_Production -- Removes one matching waiting production request.    *
+ *                                                                                             *
+ *    The most recently queued matching entry is removed without affecting active production.  *
+ *                                                                                             *
+ * INPUT:   type  -- The production category.                                                  *
+ *          id    -- The subtype of object to cancel.                                          *
+ *                                                                                             *
+ * OUTPUT:  Was a waiting request removed?                                                     *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/09/2026 : Created.                                                                     *
+ *=============================================================================================*/
+bool HouseClass::Cancel_Queued_Production(RTTIType type, int id)
+{
+    Validate();
+
+    int index = Production_Queue_Index(type);
+    if (index == -1) {
+        return (false);
+    }
+
+    for (int i = ProductionQueueCount[index] - 1; i >= 0; i--) {
+        if (ProductionQueue[index][i].Type == type && ProductionQueue[index][i].ID == id) {
+            for (int j = i + 1; j < ProductionQueueCount[index]; j++) {
+                ProductionQueue[index][j - 1] = ProductionQueue[index][j];
+            }
+            ProductionQueueCount[index]--;
+
+            if (this == PlayerPtr) {
+                Map.Column[0].Flag_To_Redraw();
+                Map.Column[1].Flag_To_Redraw();
+            }
+            return (true);
+        }
+    }
+
+    return (false);
+}
+
+/***********************************************************************************************
  * HouseClass::Start_Next_Queued_Production -- Starts the next queued production request.      *
  *                                                                                             *
  *    This routine is called when the current production item has been completed or abandoned. *

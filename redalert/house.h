@@ -740,6 +740,7 @@ public:
 #ifndef REMASTER_BUILD
     int Queued_Production_Count(RTTIType type, int id) const;
     bool Queue_Production(RTTIType type, int id);
+    bool Cancel_Queued_Production(RTTIType type, int id);
     bool Start_Next_Queued_Production(RTTIType type);
 #endif
     bool Place_Object(RTTIType type, CELL cell);
