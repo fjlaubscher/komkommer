@@ -1,147 +1,156 @@
-# komkommer
-komkommer is a fully portable version of the first generation C&C engine and is capable of running both Tiberian Dawn and Red Alert on multiple platforms. It can also be used for mod development for the Remastered Collection.
+# Komkommer
 
-The main focus of komkommer is to keep the default out-of-box experience faithful to what the games were back when they were released and work as a drop-in replacement for the original executables while also providing bug fixes, compatiblity and quality of life improvements.
+A personal Command & Conquer engine fork, based on [Vanilla Conquer](https://github.com/TheAssemblyArmada/Vanilla-Conquer), for **Tiberian Dawn** and **Red Alert**. Komkommer keeps the classic games' look and feel while adding quality-of-life improvements and deliberate gameplay changes.
 
-Current project goals are tracked as [GitHub issues with the goal label](https://github.com/Vanilla-Conquer/Vanilla-Conquer/issues?q=is%3Aissue+is%3Aopen+label%3Agoal).
+There are two ways to play:
 
-## Chat with us
+| Build | What it runs |
+| --- | --- |
+| **Standalone** | `komkommertd` / `komkommerra`, using classic game data on Windows, Linux, or macOS |
+| **Remastered mod** | `TiberianDawn.dll` / `RedAlert.dll`, loaded by the Command & Conquer Remastered Collection on Windows |
 
-There are rooms on multiple platforms for discussion:
+Game assets are not included. The standalone engine and the Remastered client have different input, sidebar, and rendering paths; standalone UI improvements do not replace GlyphX's native implementations.
 
-- [The Assembly Armada](https://discord.gg/UnWK2Tw) on [Discord](https://discord.gg)
-- [#vanilla-conquer:vi.fi](https://matrix.to/#/#vanilla-conquer:vi.fi) on [Matrix](https://matrix.org)
-- [#vanilla-conquer](https://web.libera.chat/?channel=#vanilla-conquer) on [Libera.Chat](https://libera.chat]) IRC network
+## What's different?
 
-All of these rooms are bridged together so people can choose their preferred service. Please be nice to each other.
+- **Standalone double-click selection:** select all on-screen units of the same type; hold Shift to add them to the selection.
+- **Standalone production queues:** queue up to five waiting items per production category.
+- **Rally points:** send newly produced and repaired units to a destination, with a player-coloured flag visible while the building is selected.
+- **Service queues:** vehicles and aircraft can wait for repair bays, refineries, and helipads. RA airstrip rearming remains separate.
+- **Aircraft scouting:** aircraft sight defaults to three cells, with terrain-reveal fixes.
+- **TD:** more forgiving base placement, Nod Guard Tower/Repair Bay access, a one-per-house commando limit, and revised Ion Cannon/nuke damage.
+- **RA:** a Soviet **Saboteur** commando for skirmish/multiplayer, commando limits, repair-targeting fixes, and revised nuke damage.
 
-## Building
+See [gameplay changes](docs/komkommer.md) for details and mode-specific exceptions. This is a mod, not an unchanged recreation of vanilla balance.
 
-We support wide variety of compilers and platforms to target. komkommer is known to compile with recent enough gcc, MSVC, mingw-w64 or clang and known to run on Windows, Linux, macOS and BSDs.
+## Play standalone
 
-### Presets
+Use classic **C&C Gold** data for TD or classic **Red Alert** data for RA. The official RA demo also works with the engine. Other editions/repackages can have data differences; reproduce asset-related bugs with classic retail/freeware data where possible.
 
-A [CMakePresets.json](CMakePresets.json) file is provided that contains presets for common build configurations and is used by our CI scripts to build the release builds. These presets require the [Ninja](https://ninja-build.org/) build tool to be available in the system PATH in order to be used.
+On Windows, put the matching executable beside the classic game data, together with architecture-matched `SDL2.dll` and `OpenAL32.dll`. Do not overwrite the original game executable.
 
-We also provide an example [CMakeUserPresets.json](resources/CMakeUserPresets.json.example) that can be copied to the root source directory and renamed. You can edit this file to create your own development presets that won't be included in git commits. A few example presets are provided which override the release presets to build a "debug" configuration.
+Alternatively, keep the build separate and put a `conquer.ini` (TD) or `redalert.ini` (RA) beside the executable:
 
-To build using a preset, add `--preset preset_name` to the CMake command line examples below.
+```ini
+[Paths]
+DataPath=D:\Games\VANILLATD
 
-### Windows
-
-#### Requirements
-
-The following components are needed to build komkommer executables:
-
- - [MSVC v142 C++ x86/x64 build tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
- - Windows 10 SDK
- - CMake (installable from MSVC build tools)
- - [SDL1 or SDL2 development libraries, Visual C++](https://libsdl.org/download-2.0.php)
- - [OpenAL Core SDK](https://www.openal.org/downloads/)
-
-Extract SDL2 and OpenAL somewhere you know. If you are building only Remastered dlls you can skip installing SDL2 and OpenAL.
-
-#### Building
-
-In a VS command line window in the komkommer source directory:
-
-```sh
-cmake -DSDL2_ROOT_DIR=C:\path\to\SDL2 -DOPENAL_ROOT=C:\path\to\OpenAL -B build .
-cmake --build build
+[Intro]
+PlayIntro=no
 ```
 
-This will build komkommer executables in the build directory. If you are building Remastered dlls you need to configure cmake with `-A win32` and ensure your VS command line is x86.
+Change `DataPath` to your game-data directory. A config beside the executable also makes that directory the default location for writable settings/saves; set `UserPath` under `[Paths]` to override it. Without a local config, Windows user data normally lives in `%APPDATA%\Vanilla-Conquer\vanillatd` or `vanillara` (the upstream directory names are retained).
 
-### Linux / macOS / BSD
+**Start a fresh game when testing engine changes.** Added state in `HouseClass` and `BuildingClass` can make saves incompatible between builds. All players in a multiplayer game should use the same build and gameplay data.
 
-#### Requirements
+## Build standalone
 
-- GNU C++ Compiler (g++) or Clang
-- CMake
-- SDL1 or SDL2
-- OpenAL
+Requirements: **CMake 3.25+**, a C++11 compiler, **Ninja** for the standard presets, **SDL2**, and **OpenAL**. ImageMagick is optional for generating application icons.
 
-On Debian/Ubuntu you can install the build requirements as follows:
+### Windows (MSVC)
 
-```sh
-sudo apt update
-sudo apt install g++ cmake libsdl2-dev libopenal-dev
-or
-sudo apt install g++ cmake libsdl1.2-dev libopenal-dev
+Install Visual Studio C++ Build Tools and a Windows SDK. In an **x64 Native Tools** terminal, point CMake at the SDL2 and OpenAL development packages:
+
+```powershell
+cmake --preset release -DSDL2_ROOT_DIR="C:/deps/SDL2" -DOPENAL_ROOT="C:/deps/openal-soft"
+cmake --build --preset release
 ```
 
-On Fedora/RedHat based system you can install the build requirements as follows:
+This produces both executables under `build/release/RelWithDebInfo/`. Dependency libraries and runtime DLLs must match the compiler architecture.
 
-```sh
-sudo dnf install gcc-c++ cmake SDL2-devel openal-soft-devel
-or
-sudo dnf install gcc-c++ cmake SDL-devel openal-soft-devel
+For a development build of just TD:
+
+```powershell
+cmake --build build/release --config Debug --target KomkommerTD
 ```
 
-#### Building
+The binary and symbols are `build/release/Debug/komkommertd.exe` and `.pdb`. Copy the runtime DLLs into that directory and configure its data path before launching. Use target `KomkommerRA` for Red Alert.
+
+The preset name `release` selects a build tree, not a compiler configuration: its default build configuration is **RelWithDebInfo**. **Debug** is unoptimized. Do not reuse a CMake build tree across different compilers or x86/x64 architectures.
+
+### Linux
+
+For Debian/Ubuntu:
 
 ```sh
-cmake -B build .
-cmake --build build
+sudo apt install build-essential cmake ninja-build libsdl2-dev libopenal-dev
+cmake --preset release
+cmake --build --preset release
 ```
 
-This will build komkommer executables in the build directory.
+For Fedora, install `gcc-c++ cmake ninja-build SDL2-devel openal-soft-devel` instead. The executables are in `build/release/RelWithDebInfo/`. To keep game data separate, set `[Paths] DataPath` in `~/.config/vanilla-conquer/vanillatd/conquer.ini` or `vanillara/redalert.ini` (or under `$XDG_CONFIG_HOME` when set).
 
-#### macOS considerations
+### macOS
 
-To create a portable bundle for macOS we run [macdylibbundler](https://github.com/auriamg/macdylibbundler) in our CI builds as an extra step to add the SDL2 and OpenAL libraries to the bundle. If you wish to create a portable bundle yourself, you will need to do this step manually as CMake will not currently do it for you.
+Install the Xcode command-line tools and Homebrew dependencies:
 
-### Icons
+```sh
+brew install cmake ninja sdl2 openal-soft
+cmake --preset release -DCMAKE_PREFIX_PATH="$(brew --prefix);$(brew --prefix openal-soft)"
+cmake --build --preset release
+```
 
-CMake will attempt to generate icons in an appropriate format for Windows and macOS if ImageMagick is found in the system PATH. Otherwise you will end up with generic "program" icons.
+The app bundles are `build/release/RelWithDebInfo/komkommertd.app` and `komkommerra.app`; game assets are still separate. Set `[Paths] DataPath` in `~/Library/Application Support/Vanilla-Conquer/vanillatd/conquer.ini` for TD or `vanillara/redalert.ini` for RA, using an absolute path to the classic game data.
 
-## Releases
+For portable distribution of both apps:
 
-Binary releases of the latest commit are available from [here](https://github.com/TheAssemblyArmada/Vanilla-Conquer/releases/tag/latest), which is updated whenever new code is merged into the main branch.
+```sh
+brew install dylibbundler
+bash scripts/package-macos.sh
+```
 
-## Running
+The script bundles libraries, signs the staged apps, and writes ZIPs to `build/release/macos-dist/`. It also handles the SDL3 runtime loaded dynamically by Homebrew's `sdl2-compat`. A Developer ID identity and App Store Connect API credentials enable notarization; without them it falls back to ad-hoc signing or skips notarization as applicable. Keep credentials in the ignored `scripts/macos-notary.env`, never in source control. The output directory is recreated on each run.
 
-### KomkommerTD and KomkommerRA
+### Other presets and tests
 
-Copy the komkommer executable (`komkommertd.exe` or `komkommerra.exe`) to your legacy game directory, on Windows also copy `SDL2.dll` and `OpenAL32.dll`.
+See [CMakePresets.json](CMakePresets.json) for `internal` (editors/tools), `nonet`, `testing`, and `remaster`. Local overrides can go in the ignored `CMakeUserPresets.json`; start from [the example](resources/CMakeUserPresets.json.example).
 
-For Tiberian Dawn the final freeware Gold CD release ([GDI](https://www.moddb.com/games/cc-gold/downloads/command-conquer-gold-free-game-gdi-iso), [NOD](https://www.moddb.com/games/cc-gold/downloads/command-conquer-gold-free-game-nod-iso)) works fine.
+```sh
+cmake --workflow --preset testing
+```
 
-For Red Alert the freeware [CD release](https://web.archive.org/web/20080901183216/http://www.ea.com/redalert/news-detail.jsp?id=62) works fine as well.
-The official [Red Alert demo](https://www.moddb.com/games/cc-red-alert/downloads/command-conquer-red-alert-demo) is also fully playable.
-The demo supports custom skirmish maps (except interior) and includes one campaign mission for both Allied and Soviet from the retail game.
+On Windows, configure the `testing` preset with the same SDL2/OpenAL paths first. Make their runtime DLLs available on `PATH` or beside the test executables in `build/testing/RelWithDebInfo/`; a successful link does not make those DLLs discoverable at runtime.
 
-While it is possible to use the game data from the Remastered Collection, The Ultimate Collection or The First Decade they are currently _not_ supported.
-Any repackaged version that you may already have from any unofficial source is _not_ supported.
-If you encounter a bug that may be data related like invisible things or crashing when using a certain unit please retest with the retail data first before submitting a bug report.
+The tests cover low-level engine utilities, not complete gameplay. Selection, production, docking, and rendering changes still need in-game testing in the affected modes.
 
-### Remastered
+## Build and install Remastered mods
 
-The build process will produce _komkommer_TD_ and _komkommer_RA_ directories in your build directory if you enable them with `-DBUILD_REMASTERTD=ON` and `-DBUILD_REMASTERRA=ON`.
-These work as mods for the Remastered Collection.
+Remastered requires **32-bit Windows DLLs**, even on 64-bit Windows. SDL2/OpenAL are not required for DLL-only builds. GlyphX already owns double-click selection and production queue UI; Komkommer's standalone implementations are excluded from these builds.
 
-To manually install a local Remastered mod, launch both games once then head to _My Documents/CnCRemastered/CnCRemastered/Mods_.
-You should see _Tiberian\_Dawn_ and _Red\_Alert_ directories.
+From an **x86 Native Tools** terminal, using a separate build tree:
 
-#### Tiberian Dawn
+```powershell
+cmake --preset remaster
+cmake --build --preset remaster
+```
 
-Copy the _komkommer_TD_ directory to the _Tiberian\_Dawn_ directory.
+The build stages complete mod folders in `build/remaster/komkommer_TD` and `build/remaster/komkommer_RA`. Launch each Remastered game once to create its mod directories, then copy the corresponding folder into:
 
-The directory structure should look like this:
+```text
+<Documents>/CnCRemastered/Mods/Tiberian_Dawn/komkommer_TD/
+<Documents>/CnCRemastered/Mods/Red_Alert/komkommer_RA/
+```
 
-    My Documents/CnCRemastered/CnCRemastered/Mods/Tiberian_Dawn/komkommer_TD/Data/TiberianDawn.dll
-    My Documents/CnCRemastered/CnCRemastered/Mods/Tiberian_Dawn/komkommer_TD/ccmod.json
-    My Documents/CnCRemastered/CnCRemastered/Mods/Tiberian_Dawn/komkommer_TD/GameConstants_Mod.xml
+Some installations use `<Documents>/CnCRemastered/CnCRemastered/Mods/` instead. Keep `ccmod.json` at the mod root and the DLL in `Data/`; copy the whole folder, including additional assets/XML. Enable **Komkommer TD** or **Komkommer RA** in the in-game mod list and restart the game after updating a DLL.
 
-You should now see the new mod in the mods list of Tiberian Dawn Remastered.
+The repository also includes a Windows build-and-deploy helper that discovers the Visual Studio toolchain and Documents path, validates DLL architecture, and copies the mod and symbols:
 
-#### Red Alert
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .agents/skills/remaster-mod/scripts/deploy.ps1 -Game Both
+```
 
-Copy the _komkommer_RA_ directory to the _Red\_Alert_ directory.
+Use `-Game TD` or `-Game RA` for one game, and `-Config Debug` for an unoptimized DLL. Close the game before deploying; it locks loaded DLLs.
 
-The directory structure should look like this:
+## Documentation and releases
 
-    My Documents/CnCRemastered/CnCRemastered/Mods/Red_Alert/komkommer_RA/Data/RedAlert.dll
-    My Documents/CnCRemastered/CnCRemastered/Mods/Red_Alert/komkommer_RA/ccmod.json
+- [Gameplay changes](docs/komkommer.md)
+- [Standalone double-click implementation](docs/double-click-select-all.md)
+- [Local Remastered sandbox notes](docs/komkommer-RA-1p-test.md) — machine-specific examples, not bundled maps
+- [Contributor/agent guide](AGENTS.md), with more specific guides in the source directories
+- [Komkommer releases](https://github.com/fjlaubscher/komkommer/releases) and [issues](https://github.com/fjlaubscher/komkommer/issues)
 
-You should now see the new mod in the mods list of Red Alert Remastered.
+CI builds and publishes releases on **`v*` tag pushes**, not ordinary branch pushes or pull requests. Upstream Vanilla Conquer binaries do not contain Komkommer's changes.
+
+## Credits and license
+
+Built on the work of Westwood, Electronic Arts' [released source](https://github.com/electronicarts/CnC_Remastered_Collection), and the Vanilla Conquer contributors. Distributed under the **GPLv3**, with the additional terms described in [License.txt](License.txt). Game assets remain the property of their respective owners.

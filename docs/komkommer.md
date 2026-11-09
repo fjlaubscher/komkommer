@@ -4,12 +4,17 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 
 ## Both games (TD + RA)
 
-### Double-click selects all on-screen units of the same type
+### Double-click selects all on-screen units of the same type (standalone)
 - **Vanilla:** Double-clicking a unit is treated as two ordinary single clicks (select, then toggle the one unit).
 - **Komkommer:** Double-clicking a selectable combat unit selects **every on-screen unit of that exact type** (infantry, vehicles, aircraft, and RA vessels; buildings are excluded).
   - The current selection is replaced, unless **Shift** is held, in which case the matching units are added to it.
   - Matching units that are off-screen, cloaked, or undiscovered are not selected.
   - Double-click detection follows SDL3's standard: two presses within 500 ms and 32 px (`common/wwkeyboard_sdl2.cpp`). Backends without native detection fall back to the `DOUBLE_CLICK_TIME` timer in each game's `display.cpp`.
+  - The helper, click state, and handler are excluded from `REMASTER_BUILD`; GlyphX owns the Remastered client's native selection UI.
+
+### Aircraft scouting
+- Aircraft sight defaults to **3 cells** in both engines; RA INI rules can override the default.
+- Terrain-reveal call sites use the type's sight range: TD ground-layer entry/firing, and RA `Look()`/firing. Grounded RA aircraft are no longer clamped to a one-cell sight range.
 
 ### Rally points for production buildings
 - **Vanilla:** Production buildings do not have a player-settable rally point workflow like this mod’s implementation.
@@ -27,6 +32,7 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - Queue depth is capped at 5 per category; further clicks are ignored.
   - Cancelling/holding still operates on the current item, and the next queued item starts after an abandonment.
   - This is implemented in the standalone build only; the Remastered client already provides its own native production queue UI.
+  - Queue fields, initialization, enqueue/advance logic, and classic sidebar click changes are excluded from `REMASTER_BUILD`; the DLL retains its original busy-factory behavior rather than adding a second queue behind GlyphX.
 
 
 ## Tiberian Dawn (TD)
@@ -37,6 +43,10 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 ### Building placement proximity
 - **Vanilla TD:** Base proximity/adjacency rules were stricter in ways that differed from RA.
 - **Komkommer:** TD allows buildings to be placed **adjacent to friendly structures or with a one-cell gap** between the foundation and a friendly building (RA-style proximity behavior), while still requiring valid radar/placement checks.
+
+### Nod building access
+- Nod can build the **Guard Tower (`GTWR`)** and **Repair Bay (`FIX`)**.
+- Base AI can fall back between faction-appropriate basic defenses and can consider a repair bay with either a War Factory or Nod Airstrip.
 
 ### Dock/service queueing (repair bays, refineries, helipads)
 - **Vanilla:** Service docks using the `BuildingClass` radio/contact path could effectively block/contend in ways that made multiple units/aircraft awkward to service.
@@ -79,6 +89,9 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - **Vanilla/previous behavior (bug):** RA `UnitClass` repair mission could target the wrong building (refinery instead of the repair bay) in the affected path.
 - **Komkommer:** Repair mission targets the **repair bay/docking bay** correctly.
 
+### Chronosphere targeting
+- The Chronosphere can target eligible **non-friendly units**, rather than only friendly/allied units. Existing unit-type, deployment, and transport restrictions still apply.
+
 ### Soviet commando: Saboteur (skirmish/multiplayer)
 - **Vanilla RA:** Tanya is the commando; commando behavior is tied to Tanya-specific handling in several places.
 - **Komkommer (non-singleplayer / skirmish & multiplayer):** Commandos are split by side:
@@ -104,5 +117,5 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 ## Notes
 - Values above reflect the current source behavior on this branch at the time of writing.
 - “Vanilla” descriptions refer to stock/original behavior as targeted by these changes; exact legacy values may differ by build/context, but the Komkommer changes listed here are the intentional deviations.
-- **Save-game compatibility:** adding the production queue state to `HouseClass` changes the saved `HouseClass` binary layout, so save files written by older builds will not load with this build (and vice versa).
+- **Save-game compatibility:** standalone production queues add `HouseClass` state; rally/service queues add `BuildingClass` state. These layout changes can invalidate saves from other builds. Queue state is now excluded from Remastered, which also changes layout relative to earlier DLLs that included it. Start fresh games when testing; do not assume cross-build save compatibility.
 - Remaster mod folders: **Komkommer TD** / **Komkommer RA** (DLLs loaded by the CnC Remastered Collection). A rebuilt DLL is picked up the next time that game starts (exit the game before redeploying if the DLL is locked).
