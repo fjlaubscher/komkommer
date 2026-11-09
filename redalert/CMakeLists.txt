@@ -180,104 +180,51 @@ if(CMAKE_CONFIGURATION_TYPES)
     endforeach()
 endif()
 
-include(ProductVersion)
+include(GameTarget)
 
 if(BUILD_REMASTERRA)
-    if(WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
-        # Generate windows version info.
-        generate_product_version(
-            REMASTERRA_RC
-            NAME "komkommer RedAlert DLL"
-            BUNDLE "komkommer"
-            VERSION_MAJOR 3
-            VERSION_MINOR 3
-            COMPANY_NAME "komkommer"
-            COMPANY_COPYRIGHT "Based on code released under GPLv3 by EA"
-            ORIGINAL_FILENAME "RedAlert.dll"
-            RCFILE_PREFIX "RemasterRA"
-        )
-    endif()
-    add_library(RedAlert SHARED 
-        dllinterface.cpp
-        dllinterfaceeditor.cpp
-        sidebarglyphx.cpp
-        ${REDALERT_SRC}
-        ${REDALERT_HEADERS}
-        ${REMASTERRA_RC}
-    )
-    target_compile_definitions(RedAlert PUBLIC $<$<CONFIG:Debug>:_DEBUG> ${REMASTER_DEFS})
-    target_include_directories(RedAlert PUBLIC ${CMAKE_SOURCE_DIR} .)
-    target_link_libraries(RedAlert commonr ${REMASTER_LIBS} ${STATIC_LIBS})
-    set_target_properties(RedAlert PROPERTIES PREFIX "")
-
-    add_custom_command(TARGET RedAlert POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/resources/remaster_mods/komkommer_RA ${CMAKE_BINARY_DIR}/komkommer_RA
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/komkommer_RA/Data
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:RedAlert> ${CMAKE_BINARY_DIR}/komkommer_RA/Data/
+    # Definitions: REMASTER_DEFS (_USRDLL and REMASTER_BUILD).
+    komkommer_add_game(
+        TARGET RedAlert
+        TYPE shared
+        SOURCES
+            dllinterface.cpp
+            dllinterfaceeditor.cpp
+            sidebarglyphx.cpp
+            ${REDALERT_SRC}
+            ${REDALERT_HEADERS}
+        DEFINITIONS ${REMASTER_DEFS}
+        LIBRARIES commonr ${REMASTER_LIBS} ${STATIC_LIBS}
+        PRODUCT_NAME "komkommer RedAlert DLL"
+        VERSION_MAJOR 3
+        VERSION_MINOR 3
+        ORIGINAL_FILENAME "RedAlert.dll"
+        RC_PREFIX RemasterRA
+        MOD_DIR komkommer_RA
     )
 endif()
 
 if(BUILD_VANILLARA)
-    include(BuildIcons)
-    # Create the custom command for generating the ico file for windows.
-    make_icon(INPUT "${CMAKE_SOURCE_DIR}/resources/komkommerra_icon.svg" OUTPUT VANILLARA_ICON)
-
-    if(WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
-        # Generate windows version info.
-        generate_product_version(
-            VANILLARA_RC
-            NAME "KomkommerRA"
-            BUNDLE "komkommer"
-            VERSION_MAJOR 1
-            VERSION_MINOR 0
-            COMPANY_NAME "komkommer"
-            COMPANY_COPYRIGHT "Based on code released under GPLv3 by EA"
-            ORIGINAL_FILENAME "komkommerra.exe"
-            RCFILE_PREFIX "KomkommerRA"
-            ICON "${VANILLARA_ICON}"
-        )
-    endif()
-
-    # A target must include the icon for the custom command to run.
-    add_executable(KomkommerRA ${REDALERT_SRC} ${REDALERT_NET_SRC} ${REDALERT_HEADERS} ${VANILLARA_RC} ${VANILLARA_ICON})
-
-    if(MAKE_BUNDLE)
-        set_source_files_properties(${VANILLARA_ICON} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-        set_target_properties(KomkommerRA PROPERTIES
-            MACOSX_BUNDLE True
-            MACOSX_BUNDLE_GUI_IDENTIFIER com.komkommer.komkommerra
-            MACOSX_BUNDLE_BUNDLE_NAME KomkommerRA
-            MACOSX_BUNDLE_BUNDLE_VERSION "1.0"
-            MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0"
-            MACOSX_BUNDLE_COPYRIGHT "Based on code released under GPLv3 by EA"
-            MACOSX_BUNDLE_ICON_FILE "komkommerra_icon.icns"
-        )
-    endif()
-
-    target_compile_definitions(KomkommerRA PUBLIC $<$<CONFIG:Debug>:_DEBUG> ${VANILLA_DEFS})
-    target_include_directories(KomkommerRA PUBLIC ${CMAKE_SOURCE_DIR} .)
-    target_link_libraries(KomkommerRA commonv ${VANILLA_LIBS} ${STATIC_LIBS})
-    set_target_properties(KomkommerRA PROPERTIES OUTPUT_NAME komkommerra)
+    set(REDALERT_DEFS ${VANILLA_DEFS})
     if(MAP_EDITORRA)
-        target_compile_definitions(KomkommerRA PUBLIC INTERNAL_VERSION)
+        list(APPEND REDALERT_DEFS INTERNAL_VERSION)
     endif()
-    # Control if we auto generate a console and which "main" function we link using MSVC.
-    if(MSVC)
-        target_link_options(KomkommerRA PRIVATE /subsystem:windows /ENTRY:mainCRTStartup)
-    endif()
-    if(WIN32 AND NOT MSVC)
-        set_target_properties(KomkommerRA PROPERTIES LINK_FLAGS "-mwindows")
-    endif()
-    if(BUILD_WITH_UBSAN)
-        target_compile_options(KomkommerRA PUBLIC
-                    -fsanitize=undefined,float-divide-by-zero,integer,implicit-conversion,implicit-integer-truncation,implicit-integer-arithmetic-value-change,local-bounds,nullability
-                    -g3 -fno-omit-frame-pointer)
-        target_link_options(KomkommerRA PUBLIC -fsanitize=undefined,float-divide-by-zero,integer,implicit-conversion,implicit-integer-truncation,implicit-integer-arithmetic-value-change,local-bounds,nullability)
-    endif()
-    if(BUILD_WITH_ASAN)
-        target_compile_options(KomkommerRA PUBLIC
-                    -fsanitize=address
-                    -g3 -fno-omit-frame-pointer)
-            target_link_options(KomkommerRA PUBLIC -fsanitize=address)
-    endif()
+
+    komkommer_add_game(
+        TARGET KomkommerRA
+        TYPE executable
+        SOURCES ${REDALERT_SRC} ${REDALERT_NET_SRC} ${REDALERT_HEADERS}
+        DEFINITIONS ${REDALERT_DEFS}
+        LIBRARIES commonv ${VANILLA_LIBS} ${STATIC_LIBS}
+        OUTPUT_NAME komkommerra
+        ICON "${CMAKE_SOURCE_DIR}/resources/komkommerra_icon.svg"
+        PRODUCT_NAME "KomkommerRA"
+        VERSION_MAJOR 1
+        VERSION_MINOR 0
+        ORIGINAL_FILENAME "komkommerra.exe"
+        RC_PREFIX KomkommerRA
+        BUNDLE_ID com.komkommer.komkommerra
+        BUNDLE_NAME KomkommerRA
+        BUNDLE_ICON komkommerra_icon.icns
+    )
 endif()
