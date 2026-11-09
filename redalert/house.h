@@ -118,6 +118,7 @@ public:
 **	Maximum number of production items that may wait behind the item currently
 **	being built for a single production category.
 */
+#ifndef REMASTER_BUILD
 enum { MAX_PRODUCTION_QUEUE = 5 };
 
 /*
@@ -132,6 +133,7 @@ typedef enum ProductionQueueTypeEnum {
     PRODUCTION_QUEUE_BUILDING,
     PRODUCTION_QUEUE_COUNT
 } ProductionQueueType;
+#endif
 
 class HouseClass
 {
@@ -513,12 +515,14 @@ public:
     **	Queued production requests. Each production category can have up to
     **	MAX_PRODUCTION_QUEUE items waiting behind the item currently being built.
     */
+#ifndef REMASTER_BUILD
     struct ProductionQueueEntryStruct {
         RTTIType Type;
         int ID;
     };
     ProductionQueueEntryStruct ProductionQueue[PRODUCTION_QUEUE_COUNT][MAX_PRODUCTION_QUEUE];
     int ProductionQueueCount[PRODUCTION_QUEUE_COUNT];
+#endif
 
     /*
     **	For human controlled houses, the current state of the radar map
@@ -731,8 +735,10 @@ public:
     ProdFailType Begin_Production(RTTIType type, int id);
     ProdFailType Suspend_Production(RTTIType type);
     ProdFailType Abandon_Production(RTTIType type);
+#ifndef REMASTER_BUILD
     bool Queue_Production(RTTIType type, int id);
     bool Start_Next_Queued_Production(RTTIType type);
+#endif
     bool Place_Object(RTTIType type, CELL cell);
     bool Manual_Place(BuildingClass* builder, BuildingClass* object);
     void Special_Weapon_AI(SpecialWeaponType id);

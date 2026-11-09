@@ -95,7 +95,9 @@
 **	double-click. Only used by keyboard backends that do not report native double-clicks;
 **	the SDL2 backend uses SDL3's 500 ms / 32 pixel detection directly.
 */
+#ifndef REMASTER_BUILD
 #define DOUBLE_CLICK_TIME 45
+#endif
 
 /*
 **	These layer control elements are used to group the displayable objects
@@ -194,8 +196,10 @@ DisplayClass::DisplayClass(void)
 {
     ShadowShapes = 0;
     TransIconset = 0;
+#ifndef REMASTER_BUILD
     LastClickTime = 0;
     LastClickType = NULL;
+#endif
 
     Set_View_Dimensions(0, 8, 320 / CELL_PIXEL_W, 200 / CELL_PIXEL_H);
 }
@@ -287,8 +291,10 @@ void DisplayClass::Init_Clear(void)
     IsRubberBand = false;
     IsTentative = false;
     IsSellMode = false;
+#ifndef REMASTER_BUILD
     LastClickTime = 0;
     LastClickType = NULL;
+#endif
 
     /*
     ** Empty all the display's layers
@@ -2995,6 +3001,7 @@ void DisplayClass::Select_These(COORDINATE coord1, COORDINATE coord2, bool addit
  *                                                                                             *
  * WARNINGS:   none                                                                            *
  *=============================================================================================*/
+#ifndef REMASTER_BUILD
 void DisplayClass::Select_All_Type(TechnoTypeClass const* type, bool additive)
 {
     if (type == NULL) {
@@ -3067,6 +3074,7 @@ void DisplayClass::Select_All_Type(TechnoTypeClass const* type, bool additive)
 
     AllowVoice = true;
 }
+#endif
 
 /***********************************************************************************************
  * DisplayClass::Refresh_Band -- Causes all cells under the rubber band to be redrawn.         *
@@ -3349,7 +3357,11 @@ int DisplayClass::TacticalClass::Action(unsigned flags, KeyNumType& key)
         **	intercepted and possible rubber-band mode is flagged.
         */
         if (flags & LEFTRELEASE) {
+#ifdef REMASTER_BUILD
+            Map.Mouse_Left_Release(cell, x, y, object, action);
+#else
             Map.Mouse_Left_Release(cell, x, y, object, action, false, (flags & LEFTDBLCLICK) != 0);
+#endif
         }
 
         /*
@@ -3437,9 +3449,9 @@ int DisplayClass::TacticalClass::Selection_At_Mouse(unsigned flags, KeyNumType& 
             bool shiftdown = DLL_Export_Get_Input_Key_State(KN_LSHIFT);
 
             if (shiftdown) {
-                Map.Mouse_Left_Release(cell, x, y, object, ACTION_TOGGLE_SELECT, false, (flags & LEFTDBLCLICK) != 0);
+                Map.Mouse_Left_Release(cell, x, y, object, ACTION_TOGGLE_SELECT);
             } else {
-                Map.Mouse_Left_Release(cell, x, y, object, ACTION_SELECT, false, (flags & LEFTDBLCLICK) != 0);
+                Map.Mouse_Left_Release(cell, x, y, object, ACTION_SELECT);
             }
 #endif
         } else {
@@ -3517,7 +3529,11 @@ int DisplayClass::TacticalClass::Command_Object(unsigned flags, KeyNumType& key)
         }
 
         if (action != ACTION_SELECT) {
+#ifdef REMASTER_BUILD
+            Map.Mouse_Left_Release(cell, x, y, object, action);
+#else
             Map.Mouse_Left_Release(cell, x, y, object, action, false, (flags & LEFTDBLCLICK) != 0);
+#endif
         }
     }
     return 0;
@@ -3922,6 +3938,9 @@ void DisplayClass::Mouse_Left_Up(CELL cell, bool shadow, ObjectClass* object, Ac
  *   02/24/1995 JLB : Created.                                                                 *
  *   03/27/1995 JLB : Handles sell and repair actions.                                         *
  *=============================================================================================*/
+#ifdef REMASTER_BUILD
+void DisplayClass::Mouse_Left_Release(CELL cell, int x, int y, ObjectClass* object, ActionType action, bool wsmall)
+#else
 void DisplayClass::Mouse_Left_Release(CELL cell,
                                       int x,
                                       int y,
@@ -3929,6 +3948,7 @@ void DisplayClass::Mouse_Left_Release(CELL cell,
                                       ActionType action,
                                       bool wsmall,
                                       bool double_click)
+#endif
 {
     if (PendingObjectPtr) {
         /*
@@ -3954,6 +3974,7 @@ void DisplayClass::Mouse_Left_Release(CELL cell,
 
         } else {
 
+#ifndef REMASTER_BUILD
             /*
             **	Detect a double-click on a selectable techno. A double-click selects every
             **	on-screen unit of that type. Holding SHIFT adds to the current selection
@@ -3975,11 +3996,7 @@ void DisplayClass::Mouse_Left_Release(CELL cell,
                 }
 
                 if (is_double_click) {
-#ifdef REMASTER_BUILD
-                    bool additive = DLL_Export_Get_Input_Key_State(KN_LSHIFT);
-#else
                     bool additive = (Keyboard->Down(Options.KeySelect1) || Keyboard->Down(Options.KeySelect2));
-#endif
                     Select_All_Type(type, additive);
                     Set_Default_Mouse(MOUSE_NORMAL, wsmall);
                     LastClickTime = 0;
@@ -3990,6 +4007,7 @@ void DisplayClass::Mouse_Left_Release(CELL cell,
                     LastClickType = type;
                 }
             }
+#endif
 
             /*
             **	Toggle the select state of the object.

@@ -176,7 +176,9 @@ public:
     virtual void Set_Tactical_Position(COORDINATE coord);
     void Refresh_Band(void);
     void Select_These(COORDINATE coord1, COORDINATE coord2, bool additive = false);
+#ifndef REMASTER_BUILD
     void Select_All_Type(TechnoTypeClass const* type, bool additive = false);
+#endif
     COORDINATE Pixel_To_Coord(int x, int y);
     bool Coord_To_Pixel(COORDINATE coord, int& x, int& y);
     bool Push_Onto_TacMap(COORDINATE& source, COORDINATE& dest);
@@ -225,6 +227,10 @@ protected:
     virtual void Mouse_Left_Press(int x, int y);
     virtual void Mouse_Left_Up(bool shadow, ObjectClass* object, ActionType action, bool wwsmall = false);
     virtual void Mouse_Left_Held(int x, int y);
+#ifdef REMASTER_BUILD
+    virtual void
+    Mouse_Left_Release(CELL cell, int x, int y, ObjectClass* object, ActionType action, bool wwsmall = false);
+#else
     virtual void Mouse_Left_Release(CELL cell,
                                     int x,
                                     int y,
@@ -232,6 +238,7 @@ protected:
                                     ActionType action,
                                     bool wwsmall = false,
                                     bool double_click = false);
+#endif
 
 public:
     /*
@@ -292,8 +299,10 @@ protected:
     **	to recognize a double-click (two clicks of the same type in quick succession)
     **	so that every on-screen unit of that type can be selected at once.
     */
+#ifndef REMASTER_BUILD
     unsigned int LastClickTime;
     TechnoTypeClass const* LastClickType;
+#endif
 
     /*
     **	This gadget class is used for capturing input to the tactical map. All mouse input

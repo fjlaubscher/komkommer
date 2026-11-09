@@ -115,6 +115,7 @@
  *                                                                                             *
  * OUTPUT:  Returns the queue index, or -1 if this type cannot be queued.                      *
  *=============================================================================================*/
+#ifndef REMASTER_BUILD
 static int Production_Queue_Index(RTTIType type)
 {
     switch (type) {
@@ -143,6 +144,7 @@ static int Production_Queue_Index(RTTIType type)
 
     return -1;
 }
+#endif
 
 /***********************************************************************************************
  * HouseClass::Validate -- validates house pointer															  *
@@ -495,9 +497,11 @@ HouseClass::HouseClass(HousesType house)
     SpeakPowerDelay = 1;
     SpecialFactories = 0;
     SpecialFactory = -1;
+#ifndef REMASTER_BUILD
     for (int queue_index = 0; queue_index < PRODUCTION_QUEUE_COUNT; queue_index++) {
         ProductionQueueCount[queue_index] = 0;
     }
+#endif
     TeamTime = TEAM_DELAY;
     Tiberium = 0;
     TriggerTime = 0;
@@ -2410,6 +2414,12 @@ ProdFailType HouseClass::Begin_Production(RTTIType type, int id)
     */
     if (*factory != -1) {
         fptr = Factories.Raw_Ptr(*factory);
+#ifdef REMASTER_BUILD
+        // GlyphX owns production queueing; retain the original factory behavior.
+        if (fptr->Is_Building()) {
+            return (PROD_CANT);
+        }
+#else
         if (fptr->Is_Building() || fptr->Has_Completed()) {
 
             /*
@@ -2418,6 +2428,7 @@ ProdFailType HouseClass::Begin_Production(RTTIType type, int id)
             */
             return Queue_Production(type, id) ? PROD_OK : PROD_CANT;
         }
+#endif
     } else {
         fptr = new FactoryClass();
         if (!fptr)
@@ -2480,6 +2491,7 @@ ProdFailType HouseClass::Begin_Production(RTTIType type, int id)
  * HISTORY:                                                                                    *
  *   11/08/2026 : Created.                                                                     *
  *=============================================================================================*/
+#ifndef REMASTER_BUILD
 bool HouseClass::Queue_Production(RTTIType type, int id)
 {
     Validate();
@@ -2544,6 +2556,7 @@ bool HouseClass::Start_Next_Queued_Production(RTTIType type)
 
     return (true);
 }
+#endif
 
 /***********************************************************************************************
  * HouseClass::Suspend_Production -- Temporarily puts production on hold.                      *
@@ -2738,7 +2751,9 @@ ProdFailType HouseClass::Abandon_Production(RTTIType type)
     /*
     **	If another production request is waiting for this category, start it now.
     */
+#ifndef REMASTER_BUILD
     Start_Next_Queued_Production(type);
+#endif
 
     return (PROD_OK);
 }

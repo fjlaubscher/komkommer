@@ -2112,6 +2112,11 @@ int SidebarClass::StripClass::SelectClass::Action(unsigned flags, KeyNumType& ke
                 **	the object currently being built.
                 */
                 if (fnumber == -1 && factory != NULL) {
+#ifdef REMASTER_BUILD
+                    Speak(VOX_NO_FACTORY);
+                    ControlClass::Action(flags, key);
+                    return (true);
+#else
                     if (otype == RTTI_INFANTRYTYPE) {
                         Speak(VOX_TRAINING);
                     } else {
@@ -2120,12 +2125,16 @@ int SidebarClass::StripClass::SelectClass::Action(unsigned flags, KeyNumType& ke
                     OutList.Add(EventClass(EventClass::PRODUCE,
                                            Strip->Buildables[index].BuildableType,
                                            Strip->Buildables[index].BuildableID));
+#endif
                 } else if (factory != NULL) {
 
                     /*
                     **	If this object is currently being built, then queue another one behind it.
                     */
                     if (factory->Is_Building()) {
+#ifdef REMASTER_BUILD
+                        Speak(VOX_NO_FACTORY);
+#else
                         if (otype == RTTI_INFANTRYTYPE) {
                             Speak(VOX_TRAINING);
                         } else {
@@ -2134,6 +2143,7 @@ int SidebarClass::StripClass::SelectClass::Action(unsigned flags, KeyNumType& ke
                         OutList.Add(EventClass(EventClass::PRODUCE,
                                                Strip->Buildables[index].BuildableType,
                                                Strip->Buildables[index].BuildableID));
+#endif
                     } else {
 
                         /*
