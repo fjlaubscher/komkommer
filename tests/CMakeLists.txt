@@ -1,5 +1,6 @@
 add_custom_target(tests)
 add_dependencies(tests test_miscasm test_face test_rect test_fading test_lcw test_xordelta test_irandom test_fatpixel test_tobuff test_drawline test_putpixel test_drawbuff)
+add_dependencies(tests test_tinytext test_screenshake)
 
 add_executable(test_miscasm miscasm.cpp)
 target_include_directories(test_miscasm PUBLIC .. ../common)
@@ -72,3 +73,14 @@ target_include_directories(test_drawbuff PUBLIC .. ../common)
 target_compile_definitions(test_drawbuff PUBLIC TRUE_FALSE_DEFINED ENGLISH $<$<CONFIG:DEBUG>:_DEBUG> _WINDOWS _CRT_SECURE_NO_DEPRECATE _CRT_NONSTDC_NO_DEPRECATE WINSOCK_IPX)
 target_link_libraries(test_drawbuff PUBLIC commonv ${STATIC_LIBS})
 add_test(NAME drawbuff COMMAND ${TARGET_SYSTEM_EMULATOR} $<TARGET_FILE:test_drawbuff>)
+
+add_executable(test_tinytext tinytext.cpp)
+target_include_directories(test_tinytext PUBLIC .. ../common)
+target_compile_definitions(test_tinytext PUBLIC TRUE_FALSE_DEFINED ENGLISH $<$<CONFIG:DEBUG>:_DEBUG> _WINDOWS _CRT_SECURE_NO_DEPRECATE _CRT_NONSTDC_NO_DEPRECATE WINSOCK_IPX)
+target_link_libraries(test_tinytext PUBLIC commonv ${STATIC_LIBS})
+add_test(NAME tinytext COMMAND ${TARGET_SYSTEM_EMULATOR} $<TARGET_FILE:test_tinytext>)
+
+add_executable(test_screenshake screenshake.cpp)
+target_include_directories(test_screenshake PUBLIC ..)
+target_link_libraries(test_screenshake PUBLIC common)
+add_test(NAME screenshake COMMAND ${TARGET_SYSTEM_EMULATOR} $<TARGET_FILE:test_screenshake>)

@@ -14,7 +14,7 @@ Game assets are not included. The standalone engine and the Remastered client ha
 ## What's different?
 
 - **Standalone double-click selection:** select all on-screen units of the same type; hold Shift to add them to the selection.
-- **Standalone production queues:** queue up to five waiting items per production category.
+- **Standalone unit production queues:** up to five units per category, including the unit being built. Buildings remain one-at-a-time.
 - **Rally points:** send newly produced and repaired units to a destination, with a player-coloured flag visible while the building is selected.
 - **Service queues:** vehicles and aircraft can wait for repair bays, refineries, and helipads. RA airstrip rearming remains separate.
 - **Aircraft scouting:** aircraft sight defaults to three cells, with terrain-reveal fixes.

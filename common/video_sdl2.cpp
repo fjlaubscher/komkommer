@@ -44,6 +44,7 @@
 #include "wwmouse.h"
 #include "settings.h"
 #include "debugstring.h"
+#include "screenshake.h"
 
 #include <SDL.h>
 
@@ -53,6 +54,12 @@ static SDL_Renderer* renderer;
 static SDL_Palette* palette;
 static Uint32 pixel_format;
 static SDL_Rect render_dst;
+static ScreenShakeClass screen_shake;
+
+void Request_Video_Shake(int shakes)
+{
+    screen_shake.Request(shakes, SDL_GetTicks());
+}
 
 static struct
 {
@@ -473,6 +480,7 @@ void Get_Video_Mouse(int& x, int& y)
  *=============================================================================================*/
 void Reset_Video_Mode(void)
 {
+    screen_shake.Clear();
     if (hwcursor.Pending) {
         SDL_FreeCursor(hwcursor.Pending);
         hwcursor.Pending = nullptr;
@@ -799,7 +807,15 @@ public:
         void* pixels;
         int pitch;
 
-        SDL_BlitSurface(surface, NULL, windowSurface, NULL);
+        int shake_offset = screen_shake.Offset(SDL_GetTicks());
+        if (shake_offset) {
+            // Shift the current live game image, not a frozen snapshot or cursor.
+            SDL_FillRect(windowSurface, NULL, SDL_MapRGB(windowSurface->format, 0, 0, 0));
+            SDL_Rect destination = {0, shake_offset, surface->w, surface->h};
+            SDL_BlitSurface(surface, NULL, windowSurface, &destination);
+        } else {
+            SDL_BlitSurface(surface, NULL, windowSurface, NULL);
+        }
 
         if (Settings.Video.HardwareCursor) {
             /*

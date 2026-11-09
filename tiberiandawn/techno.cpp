@@ -112,6 +112,7 @@
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include "function.h"
+#include "tinytext.h"
 
 /***************************************************************************
 **	Cloaking control values.
@@ -1126,6 +1127,21 @@ void TechnoClass::Draw_It(int x, int y, WindowNumberType window)
     if ((window == WINDOW_VIRTUAL) || (selected && House->Is_Ally(PlayerPtr))) {
         Draw_Pips((x - lx) + 5, y + ly - 3, window);
     }
+
+#ifndef REMASTER_BUILD
+    // Tiny control-group label at the bottom-left of the selection box.
+    if (window == WINDOW_TACTICAL && Is_Selected_By_Player() && Is_Owned_By_Player()
+        && (What_Am_I() == RTTI_INFANTRY || What_Am_I() == RTTI_UNIT || What_Am_I() == RTTI_AIRCRAFT)
+        && ((FootClass*)this)->Group < 10 && !Is_Cloaked(PlayerPtr)) {
+        GraphicViewPortClass label_window(LogicPage->Get_Graphic_Buffer(),
+                                         WindowList[window][WINDOWX] + LogicPage->Get_XPos(),
+                                         WindowList[window][WINDOWY] + LogicPage->Get_YPos(),
+                                         WindowList[window][WINDOWWIDTH],
+                                         WindowList[window][WINDOWHEIGHT]);
+        char label[] = {char('0' + (((FootClass*)this)->Group + 1) % 10), '\0'};
+        Draw_Tiny_Text(label_window, label, x - lx + 1, y + ly + 2, YELLOW, BLACK, TINY_TEXT_DROP_SHADOW);
+    }
+#endif
 }
 
 /***********************************************************************************************

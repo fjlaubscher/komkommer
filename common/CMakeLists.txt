@@ -86,6 +86,7 @@ set(COMMON_SRC
     straw.cpp
     timer.cpp
     timerdwn.cpp
+    tinytext.cpp
     tobuff.cpp
     toggle.cpp
     vector.cpp

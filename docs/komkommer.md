@@ -10,7 +10,13 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - The current selection is replaced, unless **Shift** is held, in which case the matching units are added to it.
   - Matching units that are off-screen, cloaked, or undiscovered are not selected.
   - Double-click detection follows SDL3's standard: two presses within 500 ms and 32 px (`common/wwkeyboard_sdl2.cpp`). Backends without native detection fall back to the `DOUBLE_CLICK_TIME` timer in each game's `display.cpp`.
+  - RA also recognizes self-clicks that its unit logic translates into move/no-move or blocked-deploy actions; explicit force-move/force-attack and targeting modes retain priority for those cases.
   - The helper, click state, and handler are excluded from `REMASTER_BUILD`; GlyphX owns the Remastered client's native selection UI.
+
+### Control-group labels (standalone)
+- Selected, player-owned units show a tiny gold **3×5-pixel** control-group number below the **bottom-left** of their selection brackets, with a light lower-right shadow (**4×6 pixels overall**, instead of the earlier 5×7 outline). Groups follow the usual keys **1–9, 0**; ungrouped units have no label.
+- TD gains the label; RA moves its existing group-number pip below the selection box and retains the **F** suffix for formation members. Infantry, vehicles, aircraft, and RA vessels use the same convention.
+- Labels are clipped to the tactical view and hidden on deselection. Remastered rendering is unchanged.
 
 ### Aircraft scouting
 - Aircraft sight defaults to **3 cells** in both engines; RA INI rules can override the default.
@@ -27,15 +33,21 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 
 ### Production queueing (standalone binaries)
 - **Vanilla:** Clicking a production-sidebar icon while its category factory is busy rejects the click with a "no factory"/scold response.
-- **Komkommer (standalone executables only):** Production clicks **queue** behind the item currently being built, up to **5 items per production category** (infantry / unit / aircraft / [TD: special; RA: naval] / building).
-  - When the current item completes and is placed/exits, the next queued item starts automatically.
-  - Queue depth is capped at 5 per category; further clicks are ignored.
+- **Komkommer (standalone executables only):** Unit production clicks **queue** behind the unit currently being built, up to **5 total units per category**, including the active unit (infantry / vehicle / aircraft / RA naval). Buildings and superweapons are not queued.
+  - When the current unit completes and exits, the next queued unit starts automatically.
+  - At most **four waiting** requests may sit behind the active unit; further clicks are ignored. Existing save data is not rewritten to discard older excess unit entries; those drain normally. Legacy building-queue entries are no longer advanced.
+  - A tiny gold **1–5** label at the **top-left** of each unit cameo shows the total outstanding count of that exact type, including the current unit. A single active unit always shows **1**; other queued types show their own counts. Digits use a fixed 3×5-pixel font plus a one-pixel black outline. Buildings and superweapons have no count. The existing clock/Ready/Holding overlays still describe the current item.
+  - Buildings retain normal hold/resume/cancel and completed-building placement; clicking another building while construction is busy does not add a waiting request.
   - Cancelling/holding still operates on the current item, and the next queued item starts after an abandonment.
   - This is implemented in the standalone build only; the Remastered client already provides its own native production queue UI.
   - Queue fields, initialization, enqueue/advance logic, and classic sidebar click changes are excluded from `REMASTER_BUILD`; the DLL retains its original busy-factory behavior rather than adding a second queue behind GlyphX.
 
 
 ## Tiberian Dawn (TD)
+
+### Non-blocking explosion shake (SDL2 standalone)
+- Screen shake now offsets the live rendered image over subsequent frames instead of replaying a frozen snapshot in a blocking loop. Unit simulation and input continue during building-destruction shake.
+- The visual timer is renderer-local, does not consume simulation RNG, and only schedules owner/attacker shake for the appropriate local player. Remastered, other video backends, and RA's existing shake path are unchanged.
 
 ### Commando limit
 - **Komkommer:** The TD commando (**Rambo / `INFANTRY_RAMBO`**) is limited to **one per house** (enforced in `HouseClass::Can_Build`).

@@ -131,13 +131,6 @@ static int Production_Queue_Index(RTTIType type)
     case RTTI_AIRCRAFTTYPE:
         return PRODUCTION_QUEUE_AIRCRAFT;
 
-    case RTTI_BUILDING:
-    case RTTI_BUILDINGTYPE:
-        return PRODUCTION_QUEUE_BUILDING;
-
-    case RTTI_SPECIAL:
-        return PRODUCTION_QUEUE_SPECIAL;
-
     default:
         break;
     }
@@ -2478,7 +2471,7 @@ ProdFailType HouseClass::Begin_Production(RTTIType type, int id)
  * HouseClass::Queue_Production -- Queues a production request for later.                      *
  *                                                                                             *
  *    This routine adds the requested object to the queue for its production category. Up to   *
- *    MAX_PRODUCTION_QUEUE items may wait behind the item currently being built.               *
+ *    MAX_PRODUCTION_QUEUE - 1 items may wait behind the item currently being built.           *
  *                                                                                             *
  * INPUT:   type  -- The type of object to queue.                                              *
  *                                                                                             *
@@ -2492,6 +2485,22 @@ ProdFailType HouseClass::Begin_Production(RTTIType type, int id)
  *   11/08/2026 : Created.                                                                     *
  *=============================================================================================*/
 #ifndef REMASTER_BUILD
+int HouseClass::Queued_Production_Count(RTTIType type, int id) const
+{
+    int index = Production_Queue_Index(type);
+    if (index == -1) {
+        return 0;
+    }
+
+    int count = 0;
+    for (int i = 0; i < ProductionQueueCount[index]; i++) {
+        if (ProductionQueue[index][i].ID == id) {
+            count++;
+        }
+    }
+    return count;
+}
+
 bool HouseClass::Queue_Production(RTTIType type, int id)
 {
     Validate();
@@ -2501,7 +2510,7 @@ bool HouseClass::Queue_Production(RTTIType type, int id)
         return (false);
     }
 
-    if (ProductionQueueCount[index] >= MAX_PRODUCTION_QUEUE) {
+    if (ProductionQueueCount[index] >= MAX_PRODUCTION_QUEUE - 1) {
         return (false);
     }
 
@@ -2509,6 +2518,11 @@ bool HouseClass::Queue_Production(RTTIType type, int id)
     entry.Type = type;
     entry.ID = id;
     ProductionQueueCount[index]++;
+
+    if (this == PlayerPtr) {
+        Map.Column[0].Flag_To_Redraw();
+        Map.Column[1].Flag_To_Redraw();
+    }
 
     return (true);
 }
@@ -2546,6 +2560,11 @@ bool HouseClass::Start_Next_Queued_Production(RTTIType type)
         ProductionQueue[index][i - 1] = ProductionQueue[index][i];
     }
     ProductionQueueCount[index]--;
+
+    if (this == PlayerPtr) {
+        Map.Column[0].Flag_To_Redraw();
+        Map.Column[1].Flag_To_Redraw();
+    }
 
     if (Begin_Production(entry.Type, entry.ID) != PROD_OK) {
         /*

@@ -1652,8 +1652,13 @@ short const* InfantryClass::Overlap_List(bool) const
     assert(IsActive);
 
     if (Class->IsDog) {
-        return (Coord_Spillage_List(
-            Coord, 24 + (Doing == DO_DOG_MAUL ? 40 : 0) + (Doing >= DO_GUN_DEATH && Doing <= DO_FIRE_DEATH ? 40 : 0)));
+        int size = 24 + (Doing == DO_DOG_MAUL ? 40 : 0) + (Doing >= DO_GUN_DEATH && Doing <= DO_FIRE_DEATH ? 40 : 0);
+#ifndef REMASTER_BUILD
+        if (Is_Selected_By_Player() && Is_Owned_By_Player() && Group < 10) {
+            size = max(size, 40);
+        }
+#endif
+        return (Coord_Spillage_List(Coord, size));
     } else {
 
         /*
@@ -1663,6 +1668,13 @@ short const* InfantryClass::Overlap_List(bool) const
 
 #ifdef PARTIAL
         Rect rect(-16, -24, 32, 36);
+
+#ifndef REMASTER_BUILD
+        if (Is_Selected_By_Player() && Is_Owned_By_Player() && Group < 10) {
+            // The group label extends a few pixels below the usual infantry bounds.
+            rect = Union(rect, Rect(-16, -24, 32, 44));
+        }
+#endif
 
         /*
         **	If this is for a visual change redraw, then the overlap list will be based

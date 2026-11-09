@@ -3113,6 +3113,10 @@ void Handle_Team(int team, int action)
                     obj->Group = team;
             }
         }
+#ifndef REMASTER_BUILD
+        // A stationary selected unit must show its new group immediately.
+        Map.Flag_To_Redraw(true);
+#endif
         break;
     }
     AllowVoice = true;
@@ -3973,6 +3977,13 @@ void Shake_The_Screen(int shakes, HousesType house)
         if ((hptr != nullptr) && hptr->IsActive && hptr->IsHuman) {
             hptr->ScreenShakeTime = hptr->ScreenShakeTime + shakes + shakes;
         }
+    }
+#elif defined(SDL2_BUILD)
+    // Do not stall simulation inside an explosion to replay the same frame.
+    // Owner and attacker calls refer to the same blast; only the local viewer
+    // should schedule it, rather than playing it twice for opposing houses.
+    if (house == HOUSE_NONE || (PlayerPtr && PlayerPtr->Class->House == house)) {
+        Request_Video_Shake(shakes);
     }
 #else
     shakes += shakes;

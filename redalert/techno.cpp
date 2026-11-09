@@ -131,6 +131,7 @@
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include "function.h"
+#include "tinytext.h"
 #include "utracker.h"
 
 /***************************************************************************
@@ -1250,6 +1251,29 @@ void TechnoClass::Draw_It(int x, int y, WindowNumberType window) const
         || (selected && (House->Is_Ally(PlayerPtr) || (Spied_By() & (1 << (PlayerPtr->Class->House)))))) {
         Draw_Pips((x - lx) + 5, y + ly - 3, window);
     }
+
+#ifndef REMASTER_BUILD
+    // Tiny control-group label at the bottom-left, separate from cargo/ammo pips.
+    if (window == WINDOW_TACTICAL && Is_Selected_By_Player() && Is_Owned_By_Player() && Is_Foot()
+        && ((FootClass*)this)->Group < 10 && !Is_Cloaked(PlayerPtr)) {
+        FootClass const* foot = (FootClass const*)this;
+        GraphicViewPortClass label_window(LogicPage->Get_Graphic_Buffer(),
+                                         WindowList[window][WINDOWX] + LogicPage->Get_XPos(),
+                                         WindowList[window][WINDOWY] + LogicPage->Get_YPos(),
+                                         WindowList[window][WINDOWWIDTH],
+                                         WindowList[window][WINDOWHEIGHT]);
+        char label[] = {char('0' + (foot->Group + 1) % 10),
+                        foot->XFormOffset != INVALID_FORMATION ? 'F' : '\0',
+                        '\0'};
+        Draw_Tiny_Text(label_window,
+                       label,
+                       x - lx + 1,
+                       y + ly + 2,
+                       ColorRemaps[PCOLOR_GOLD].Color,
+                       BLACK,
+                       TINY_TEXT_DROP_SHADOW);
+    }
+#endif
 }
 
 /***********************************************************************************************
@@ -6234,15 +6258,10 @@ bool TechnoClass::Evaluate_Object(ThreatType method,
         **	Display what group this unit belongs to. This corresponds to the team
         **	number assigned with the <CTRL> key.
         */
+#ifdef REMASTER_BUILD
         if (Is_Foot() && ((FootClass*)this)->Group != 0xFF && ((FootClass*)this)->Group < 10) {
             int yval = -1;
             int group = ((FootClass*)this)->Group;
-
-#ifndef REMASTER_BUILD
-            // Original code was Group + 1, remaster changed that and it affects legacy renderer.
-            // Add 1 here to correct standalone group number.
-            ++group;
-#endif
 
             if (Class_Of().Max_Pips())
                 yval -= 4;
@@ -6260,6 +6279,7 @@ bool TechnoClass::Evaluate_Object(ThreatType method,
                 CC_Draw_Shape(Class_Of().PipShapes, PIP_LETTERF, x + 8, y + yval, window, SHAPE_CENTER | SHAPE_WIN_REL);
             }
         }
+#endif
 
         /*
         ** If this building is being spied on by the player, draw the money or

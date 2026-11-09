@@ -76,6 +76,7 @@
 
 #include "function.h"
 #include "settings.h"
+#include "tinytext.h"
 
 /*
 **	Define "_RETRIEVE" if the palette morphing tables are part of the loaded data. If this
@@ -2001,6 +2002,35 @@ void SidebarClass::StripClass::Draw_It(bool complete)
                 }
             }
         }
+#ifndef REMASTER_BUILD
+        // Draw queue labels last and clip them to the visible strip during scrolling.
+        GraphicViewPortClass queue_window(LogicPage->Get_Graphic_Buffer(),
+                                         X + LeftEdgeOffset + LogicPage->Get_XPos(),
+                                         Y - 1 + LogicPage->Get_YPos(),
+                                         ObjectWidth,
+                                         MAX_VISIBLE * ObjectHeight);
+        for (int i = 0; i < MAX_VISIBLE + (IsScrolling ? 1 : 0); i++) {
+            int index = i + TopIndex;
+            if (index >= BuildableCount || Buildables[index].BuildableType == RTTI_SPECIAL
+                || Buildables[index].BuildableType == RTTI_BUILDINGTYPE
+                || Buildables[index].BuildableType == RTTI_BUILDING) {
+                continue;
+            }
+            int count = PlayerPtr->Queued_Production_Count(Buildables[index].BuildableType,
+                                                         Buildables[index].BuildableID);
+            if (Buildables[index].Factory != -1) {
+                count++;
+            }
+            if (count > 0) {
+                int y = i * ObjectHeight + 2;
+                if (IsScrolling) {
+                    y -= ObjectHeight - Slid;
+                }
+                char label[] = {char('0' + count), '\0'};
+                Draw_Tiny_Text(queue_window, label, 2, y, YELLOW, BLACK);
+            }
+        }
+#endif
     }
 }
 
@@ -2379,6 +2409,17 @@ int SidebarClass::StripClass::SelectClass::Action(unsigned flags, KeyNumType& ke
             }
 
             if (flags & LEFTPRESS) {
+
+#ifndef REMASTER_BUILD
+                // Buildings are one-at-a-time: reject another busy-building click,
+                // but retain resume and placement on the current building's icon.
+                if ((otype == RTTI_BUILDINGTYPE || otype == RTTI_BUILDING) && genfactory != -1
+                    && (fnumber == -1 || (factory && factory->Is_Building()))) {
+                    Speak(VOX_NO_FACTORY);
+                    ControlClass::Action(flags, key);
+                    return (true);
+                }
+#endif
 
                 /*
                 **	If there is already a factory attached to this strip but the player didn't click

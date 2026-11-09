@@ -3980,10 +3980,19 @@ void DisplayClass::Mouse_Left_Release(CELL cell,
             **	on-screen unit of that type. Holding SHIFT adds to the current selection
             **	instead of replacing it.
             */
+            // RA turns a selected tank's ACTION_SELF into ACTION_NOMOVE, and
+            // aircraft can turn it into ACTION_MOVE. Blocked deploys have their
+            // own action too. These are still selection clicks on the unit itself,
+            // but explicit force commands and targeting modes must keep priority.
+            bool self_selection = object && CurrentObject.Count() == 1 && CurrentObject[0] == object
+                                  && !IsRepairMode && !IsSellMode && IsTargettingMode == SPC_NONE
+                                  && !Keyboard->Down(Options.KeyForceMove1) && !Keyboard->Down(Options.KeyForceMove2)
+                                  && !Keyboard->Down(Options.KeyForceAttack1) && !Keyboard->Down(Options.KeyForceAttack2)
+                                  && (action == ACTION_NOMOVE || action == ACTION_MOVE || action == ACTION_NO_DEPLOY);
             if (object && object->Is_Techno() && object->What_Am_I() != RTTI_BUILDING && object->Class_Of().IsSelectable
                 && ((TechnoClass*)object)->Is_Owned_By_Player()
                 && (action == ACTION_SELECT || action == ACTION_TOGGLE_SELECT || action == ACTION_SELF
-                    || action == ACTION_NONE)) {
+                    || action == ACTION_NONE || self_selection)) {
                 TechnoTypeClass const* type = ((TechnoClass*)object)->Techno_Type_Class();
                 unsigned int now = (unsigned int)WinTickCount.Time();
                 bool is_double_click;

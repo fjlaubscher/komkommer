@@ -67,6 +67,10 @@ void Move_Video_Mouse(float xrel, float yrel);
 void Get_Video_Mouse(int& x, int& y);
 void Toggle_Video_Fullscreen();
 void Reset_Video_Mode();
+#ifdef SDL2_BUILD
+// Queue a short visual shake without blocking the game loop.
+void Request_Video_Shake(int shakes);
+#endif
 unsigned Get_Free_Video_Memory();
 void Wait_Blit();
 

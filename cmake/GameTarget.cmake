@@ -93,6 +93,11 @@ function(komkommer_add_game)
             list(APPEND version_args ICON "${game_icon}")
         endif()
         generate_product_version(game_rc ${version_args})
+        if(game_icon)
+            # Ninja must rebuild the compiled Windows resource when the SVG's
+            # generated ICO changes, not merely relink the existing resource.
+            set_source_files_properties(${game_rc} PROPERTIES OBJECT_DEPENDS "${game_icon}")
+        endif()
     endif()
 
     if(GAME_TYPE STREQUAL "executable")

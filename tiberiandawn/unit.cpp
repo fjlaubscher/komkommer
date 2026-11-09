@@ -2996,6 +2996,13 @@ short const* UnitClass::Overlap_List(void) const
     if (Is_Selected_By_Player() || Class->IsGigundo || IsAnimAttached || Flagged != HOUSE_NONE) {
         size = ICON_PIXEL_W * 2;
     }
+#ifndef REMASTER_BUILD
+    if (Is_Selected_By_Player() && Is_Owned_By_Player() && Group < 10) {
+        int width, height;
+        Class->Dimensions(width, height);
+        size = MAX(size, height + 24);
+    }
+#endif
     return (Coord_Spillage_List(Coord, size) + 1);
 }
 

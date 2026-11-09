@@ -3184,6 +3184,14 @@ short const* UnitClass::Overlap_List(bool redraw) const
 
         if (Is_Selected_By_Player()) {
             rect = Union(rect, Rect(-15, -15, 30, 30));
+#ifndef REMASTER_BUILD
+            if (Is_Owned_By_Player() && Group < 10) {
+                // Include the group label below the selection box in dirty redraws.
+                int width, height;
+                Class->Dimensions(width, height);
+                rect = Union(rect, Rect(-width / 2, height / 2 + 1, 12, 9));
+            }
+#endif
         }
 
         if (Class->IsTurretEquipped || Class->IsRadarEquipped) {
@@ -3204,6 +3212,14 @@ short const* UnitClass::Overlap_List(bool redraw) const
     if (Class->IsGigundo || IsAnimAttached) {
         size = ICON_PIXEL_W * 2;
     }
+
+#ifndef REMASTER_BUILD
+    if (redraw && Is_Selected_By_Player() && Is_Owned_By_Player() && Group < 10) {
+        int width, height;
+        Class->Dimensions(width, height);
+        size = max(size, height + 24);
+    }
+#endif
 
     return (Coord_Spillage_List(Coord, size) + 1);
 }

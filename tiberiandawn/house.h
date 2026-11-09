@@ -50,8 +50,9 @@ class FactoryClass; // ST - 7/17/2019 11:54AM
 #endif              // USE_RA_AI
 
 /*
-**	Maximum number of production items that may wait behind the item currently
-**	being built for a single production category.
+**	Maximum total unit production items per category, including the active item.
+**	The queue array retains its fifth storage slot to preserve class layout;
+**	only four waiting entries may be added behind the active item.
 */
 #ifndef REMASTER_BUILD
 enum { MAX_PRODUCTION_QUEUE = 5 };
@@ -59,6 +60,7 @@ enum { MAX_PRODUCTION_QUEUE = 5 };
 /*
 **	The production categories that may have queued items. The order is used to
 **	index the per-category queue arrays in HouseClass.
+**	Building/special slots remain reserved for serialized layout compatibility.
 */
 typedef enum ProductionQueueTypeEnum {
     PRODUCTION_QUEUE_INFANTRY = 0,
@@ -385,7 +387,7 @@ public:
 
     /*
     **	Queued production requests. Each production category can have up to
-    **	MAX_PRODUCTION_QUEUE items waiting behind the item currently being built.
+    **	MAX_PRODUCTION_QUEUE - 1 items waiting behind the item currently being built.
     */
 #ifndef REMASTER_BUILD
     struct ProductionQueueEntryStruct {
@@ -493,6 +495,7 @@ public:
     ProdFailType Suspend_Production(RTTIType type);
     ProdFailType Abandon_Production(RTTIType type);
 #ifndef REMASTER_BUILD
+    int Queued_Production_Count(RTTIType type, int id) const;
     bool Queue_Production(RTTIType type, int id);
     bool Start_Next_Queued_Production(RTTIType type);
 #endif

@@ -34,7 +34,8 @@ Read the root guide first; shared gameplay concepts have a counterpart in `redal
 
 ## Standalone UI and balance
 
-- Guard production queue declarations/state, constructor initialization, busy-factory handling, advancement after abandonment, and sidebar click behavior with `REMASTER_BUILD` boundaries. GlyphX has its own queue system. The standalone limit is five **waiting** entries per category, not five including the current item.
+- Guard production queue declarations/state, constructor initialization, busy-factory handling, advancement after abandonment, and sidebar click behavior with `REMASTER_BUILD` boundaries. GlyphX has its own queue system. Standalone queues are **units only**, with five total per category: one active plus four waiting. Buildings retain normal hold/resume/placement without queueing. Keep the existing queue-array storage size and reserved building/special slots; changing queue policy does not require changing serialized class layout.
+- SDL2 screen shake is presentation-only (`Request_Video_Shake`); do not reintroduce a `Frame_Limiter` loop inside an explosion. The old snapshot/blit loop blocks simulation. RA and non-SDL2 backends still have their original paths unless deliberately changed.
 - Double-click matches `Techno_Type_Class()` and filters ownership, selectable/discovered state, cloak, and tactical viewport. Buildings are excluded; Shift adds. An already-selected target can report `ACTION_NONE`, so do not narrow that release gate. Keep helper/state/handler standalone-only.
 - Nuke changes in `anim.cpp` separate campaign from non-campaign damage. The Ion Cannon area-damage change applies to all modes. Do not describe all superweapon changes as skirmish-only; see `docs/komkommer.md` for current values.
 

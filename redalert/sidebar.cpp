@@ -76,6 +76,7 @@
 
 #include "function.h"
 #include "factory.h"
+#include "tinytext.h"
 
 void* SidebarClass::SidebarShape = NULL;
 void* SidebarClass::SidebarMiddleShape = NULL;
@@ -1835,6 +1836,42 @@ void SidebarClass::StripClass::Draw_It(bool complete)
             }
         }
 
+#ifndef REMASTER_BUILD
+        // Draw queue labels last so later scrolling cameos cannot cover them.
+        // Clip them to the strip rather than drawing over the scroll buttons.
+        GraphicViewPortClass queue_window(LogicPage->Get_Graphic_Buffer(),
+                                         X + LEFT_EDGE_OFFSET * RESFACTOR + LogicPage->Get_XPos(),
+                                         Y + LogicPage->Get_YPos(),
+                                         OBJECT_WIDTH * RESFACTOR,
+                                         MAX_VISIBLE * OBJECT_HEIGHT * RESFACTOR);
+        for (int i = 0; i < MAX_VISIBLE + (IsScrolling ? 1 : 0); i++) {
+            int index = i + TopIndex;
+            if (index >= BuildableCount || Buildables[index].BuildableType == RTTI_SPECIAL
+                || Buildables[index].BuildableType == RTTI_BUILDINGTYPE
+                || Buildables[index].BuildableType == RTTI_BUILDING) {
+                continue;
+            }
+            int count = PlayerPtr->Queued_Production_Count(Buildables[index].BuildableType,
+                                                         Buildables[index].BuildableID);
+            if (Buildables[index].Factory != -1) {
+                count++;
+            }
+            if (count > 0) {
+                int y = i * OBJECT_HEIGHT * RESFACTOR + 2;
+                if (IsScrolling) {
+                    y -= (OBJECT_HEIGHT - Slid) * RESFACTOR;
+                }
+                char label[] = {char('0' + count), '\0'};
+                Draw_Tiny_Text(queue_window,
+                               label,
+                               2,
+                               y,
+                               ColorRemaps[PCOLOR_GOLD].Color,
+                               BLACK);
+            }
+        }
+#endif
+
         LastSlid = Slid;
     }
 }
@@ -2105,6 +2142,17 @@ int SidebarClass::StripClass::SelectClass::Action(unsigned flags, KeyNumType& ke
             }
 
             if (flags & LEFTPRESS) {
+
+#ifndef REMASTER_BUILD
+                // Buildings are one-at-a-time: reject another busy-building click,
+                // but retain resume and placement on the current building's icon.
+                if ((otype == RTTI_BUILDINGTYPE || otype == RTTI_BUILDING) && factory != NULL
+                    && (fnumber == -1 || factory->Is_Building())) {
+                    Speak(VOX_NO_FACTORY);
+                    ControlClass::Action(flags, key);
+                    return (true);
+                }
+#endif
 
                 /*
                 **	If there is already a factory attached to this strip but the player didn't click
