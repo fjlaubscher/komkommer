@@ -46,6 +46,15 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - Screen shake now offsets the live rendered image over subsequent frames instead of replaying a frozen snapshot in a blocking loop. Unit simulation and input continue during building-destruction shake.
 - The visual timer is renderer-local, does not consume simulation RNG, and only schedules owner/attacker shake for the appropriate local player. Remastered and other video backends retain their existing shake paths.
 
+### Pathfinding (A*)
+- **Vanilla:** `Find_Path` walked a straight line and, on hitting an impassable cell, "edge-followed" the obstacle clockwise/counterclockwise. It could route around obstacles on the long side, wander, and fail in cul-de-sacs, doughnut-shaped obstacles, and maze-like base layouts.
+- **Komkommer:** `Find_Path` uses an **A\*** search over the cell grid (8-direction movement, Chebyshev heuristic, binary-heap open list) that finds the optimal route under the game's movement-cost model.
+  - Cell passability and cost still come from the existing `Passable_Cell`, so the caller's movement threshold (`MOVE_CLOAK` → `MOVE_TEMP`) and roundabout-team threat avoidance are preserved.
+  - Diagonal moves never cut a corner: both orthogonal cells that share the corner must be passable.
+  - If the destination is unreachable, the search still returns a best-effort path to the closest reachable cell, so units make progress and re-path instead of stalling.
+  - The command list is still smoothed by the existing `Optimize_Moves` pass.
+- This changes only the path search itself; the `PathType` command-list contract and the movement/`drive.cpp` consumers are unchanged.
+
 ## Tiberian Dawn (TD)
 
 ### Commando limit
