@@ -85,6 +85,7 @@
 **	the SDL2 backend uses SDL3's 500 ms / 32 pixel detection directly.
 */
 #ifndef REMASTER_BUILD
+#include "common/selectscan.h"
 #define DOUBLE_CLICK_TIME 45
 #endif
 
@@ -3187,64 +3188,44 @@ void DisplayClass::Select_All_Type(TechnoTypeClass const* type, bool additive)
     AllowVoice = true;
 
     /*
-    **	Sweep through all ground layer objects and select the ones that match the
-    **	requested type and are currently on screen.
+    **	Same checks as before, in the same order. The shared scan walks the ground
+    **	layer and then the aircraft heap. Buildings are rejected here. A landed
+    **	aircraft can sit on the ground layer too, and that pass still uses
+    **	Render_Coord; only the aircraft heap subtracts Altitude.
     */
-    for (int index = 0; index < Layer[LAYER_GROUND].Count(); index++) {
-        ObjectClass* obj = Layer[LAYER_GROUND][index];
-
-        if (!obj->Is_Techno() || obj->What_Am_I() == RTTI_BUILDING) {
-            continue;
+    auto accept = [&](ObjectClass* obj, bool from_air_heap) -> bool {
+        if (!from_air_heap && (!obj->Is_Techno() || obj->What_Am_I() == RTTI_BUILDING)) {
+            return false;
         }
 
         TechnoClass* techno = (TechnoClass*)obj;
-        if (techno->Techno_Type_Class() != type || !techno->Is_Owned_By_Player() || !obj->Class_Of().IsSelectable
-            || techno->Is_Cloaked(PlayerPtr) || !techno->Is_Discovered_By_Player()) {
-            continue;
+        return techno->Techno_Type_Class() == type && techno->Is_Owned_By_Player() && techno->Class_Of().IsSelectable
+               && !techno->Is_Cloaked(PlayerPtr) && techno->Is_Discovered_By_Player();
+    };
+    auto screen_point = [&](ObjectClass* obj, bool from_air_heap) -> SelectScanPoint {
+        COORDINATE coord;
+        if (from_air_heap) {
+            AircraftClass* aircraft = (AircraftClass*)obj;
+            coord = Coord_Add(aircraft->Center_Coord(), XY_Coord(0, -Pixel_To_Lepton(aircraft->Altitude)));
+        } else {
+            coord = obj->Render_Coord();
         }
 
-        /*
-        **	Only select objects that are currently visible in the tactical view.
-        */
-        COORDINATE coord = obj->Render_Coord();
-        int xoff = Coord_X(coord) - Coord_X(TacticalCoord);
-        int yoff = Coord_Y(coord) - Coord_Y(TacticalCoord);
-        if (xoff < 0 || xoff > TacLeptonWidth || yoff < 0 || yoff > TacLeptonHeight) {
-            continue;
-        }
+        SelectScanPoint point;
+        point.X = Coord_X(coord);
+        point.Y = Coord_Y(coord);
+        return point;
+    };
 
-        bool old_allow_voice = AllowVoice;
-        if (obj->Select(true)) {
-            old_allow_voice = false;
-        }
-        AllowVoice = old_allow_voice;
-    }
-
-    /*
-    **	Select any matching aircraft that are on screen.
-    */
-    for (int air_index = 0; air_index < Aircraft.Count(); air_index++) {
-        AircraftClass* aircraft = Aircraft.Ptr(air_index);
-
-        if (aircraft->Techno_Type_Class() != type || !aircraft->Is_Owned_By_Player()
-            || !aircraft->Class_Of().IsSelectable || aircraft->Is_Cloaked(PlayerPtr)
-            || !aircraft->Is_Discovered_By_Player()) {
-            continue;
-        }
-
-        COORDINATE coord = Coord_Add(aircraft->Center_Coord(), XY_Coord(0, -Pixel_To_Lepton(aircraft->Altitude)));
-        int xoff = Coord_X(coord) - Coord_X(TacticalCoord);
-        int yoff = Coord_Y(coord) - Coord_Y(TacticalCoord);
-        if (xoff < 0 || xoff > TacLeptonWidth || yoff < 0 || yoff > TacLeptonHeight) {
-            continue;
-        }
-
-        bool old_allow_voice = AllowVoice;
-        if (aircraft->Select(true)) {
-            old_allow_voice = false;
-        }
-        AllowVoice = old_allow_voice;
-    }
+    Select_Matching_On_Screen(Layer[LAYER_GROUND],
+                              Aircraft,
+                              Coord_X(TacticalCoord),
+                              Coord_Y(TacticalCoord),
+                              TacLeptonWidth,
+                              TacLeptonHeight,
+                              accept,
+                              screen_point,
+                              AllowVoice);
 
     AllowVoice = true;
 }

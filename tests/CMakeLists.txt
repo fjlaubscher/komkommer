@@ -1,6 +1,6 @@
 add_custom_target(tests)
 add_dependencies(tests test_miscasm test_face test_rect test_fading test_lcw test_xordelta test_irandom test_fatpixel test_tobuff test_drawline test_putpixel test_drawbuff)
-add_dependencies(tests test_tinytext test_screenshake)
+add_dependencies(tests test_tinytext test_screenshake test_selectscan)
 
 add_executable(test_miscasm miscasm.cpp)
 target_include_directories(test_miscasm PUBLIC .. ../common)
@@ -84,3 +84,8 @@ add_executable(test_screenshake screenshake.cpp)
 target_include_directories(test_screenshake PUBLIC ..)
 target_link_libraries(test_screenshake PUBLIC common)
 add_test(NAME screenshake COMMAND ${TARGET_SYSTEM_EMULATOR} $<TARGET_FILE:test_screenshake>)
+
+add_executable(test_selectscan selectscan.cpp)
+target_include_directories(test_selectscan PUBLIC ..)
+target_link_libraries(test_selectscan PUBLIC common)
+add_test(NAME selectscan COMMAND ${TARGET_SYSTEM_EMULATOR} $<TARGET_FILE:test_selectscan>)
