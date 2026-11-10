@@ -17,7 +17,7 @@ This is a **standalone UI feature**. `REMASTER_BUILD` excludes its selection hel
 2. **Keyboard buffer:** `Put_Mouse_Message` in `common/wwkeyboard.cpp/.h` carries a double-click flag. `Has_Native_Double_Click()` tells the game whether to trust backend detection or use its fallback.
 3. **Gadgets:** `common/gadget.cpp/.h` dispatches `LEFTDBLCLICK`. `GadgetClass::Clicked_On` preserves that metadata while masking events against the gadget's accepted left-button flags.
 4. **Tactical display:** each game's `display.cpp` forwards the flag to `Mouse_Left_Release`. This checks selection-compatible actions, including `ACTION_SELF` and **`ACTION_NONE`**: a second click on an already-selected unit may otherwise be discarded. RA also accepts `ACTION_NOMOVE`, `ACTION_MOVE`, and `ACTION_NO_DEPLOY` when clicking the sole selected unit, outside repair/sell/superweapon targeting modes and without force-move/force-attack modifiers. RA's tank and aircraft overrides can translate `ACTION_SELF` into these actions before the release handler sees it; TD's ordinary tanks instead return `ACTION_NONE`.
-5. **Selection:** `DisplayClass::Select_All_Type` compares `Techno_Type_Class()` pointers, filters eligible objects, and sweeps the ground layer and aircraft heap. TD adjusts aircraft screen position for `Altitude`; RA uses its own coordinate conventions.
+5. **Selection:** `DisplayClass::Select_All_Type` compares `Techno_Type_Class()` pointers and filters eligible objects. The ground-layer and aircraft-heap walk is `Select_Matching_On_Screen` in `common/selectscan.h`. Each game passes its own filter and screen point. TD adjusts aircraft-heap positions for `Altitude` and still uses `Render_Coord` for the ground layer, including landed aircraft. RA aircraft use `Center_Coord()`; that scan does not subtract `Height`, which is what drawing does. Buildings are rejected by the filter, so RA vessels stay included. Box selection remains `Select_These` in each `display.cpp` and still runs in Remastered builds.
 
 For backends without native detection, the display checks the last type and elapsed `WinTickCount.Time()` against `DOUBLE_CLICK_TIME` (currently 45 ticks). It does **not** use the simulation `Frame` counter. Tracking resets in the constructor and `Init_Clear`; a successful double-click consumes/reset its tracking state rather than dispatching the unit's normal self-action.
 
@@ -27,6 +27,7 @@ The SDL2 distance check uses window coordinates. Positions delivered to the engi
 
 - `common/wwkeyboard.h`, `wwkeyboard.cpp`, `wwkeyboard_sdl2.cpp/.h`
 - `common/gadget.cpp/.h`
+- `common/selectscan.h`
 - `tiberiandawn/display.cpp/.h`
 - `redalert/display.cpp/.h`
 

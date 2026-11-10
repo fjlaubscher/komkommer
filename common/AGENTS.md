@@ -9,7 +9,7 @@ The standalone path is a chain, not just a selection loop:
 1. `wwkeyboard_sdl2.cpp`: synthesize consecutive left clicks using elapsed milliseconds and cursor distance. Homebrew's SDL2 compatibility layer does not reliably forward SDL3's click count, so do not rely solely on `event.button.clicks`.
 2. `wwkeyboard.h/.cpp`: `Put_Mouse_Message` transports the double-click flag with the buffered mouse event; `Has_Native_Double_Click()` tells the display layer whether the backend supplies detection.
 3. `gadget.cpp/.h`: `LEFTDBLCLICK` must survive dispatch and `GadgetClass::Clicked_On`'s flag mask when a gadget accepts left-button input. Silently masking it out makes the game see ordinary single clicks.
-4. Each game's `display.cpp`: forward the flag into `Mouse_Left_Release`, then select matching types. Keep this standalone selection behavior out of `REMASTER_BUILD`; GlyphX owns its selection UI.
+4. Each game's `display.cpp`: forward the flag into `Mouse_Left_Release`, then select matching types. The on-screen walk is `Select_Matching_On_Screen` in `selectscan.h`; each game passes the filter and the screen point (TD aircraft subtract `Altitude`, RA aircraft use `Center_Coord`). Include that header only outside `REMASTER_BUILD`. GlyphX owns the Remastered client's selection UI. Box select stays in `Select_These`.
 
 SDL2 detection currently uses a `<500 ms` press interval and at most 32 pixels per axis, calculated in SDL window coordinates. Mouse positions passed to the game still honor raw-input/gamepad handling and video scale. Keep those coordinate systems separate.
 
