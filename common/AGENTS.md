@@ -1,6 +1,6 @@
 # Shared engine/platform code
 
-Changes here can affect both games. Read the root `AGENTS.md`; compile/test both TD and RA for shared input or utility changes.
+Changes here can affect both games. Read the root `AGENTS.md`, including Sharing code between the games, for what belongs in this directory and what stays in each game. Compile and test both TD and RA for a shared input or utility change.
 
 ## Double-click input pipeline
 
