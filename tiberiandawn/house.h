@@ -53,9 +53,10 @@ class FactoryClass; // ST - 7/17/2019 11:54AM
 **	Maximum total unit production items per category, including the active item.
 **	The queue array retains its fifth storage slot to preserve class layout;
 **	only four waiting entries may be added behind the active item.
+**	The shared entry type and the slot count are in common/productionqueue.h.
 */
 #ifndef REMASTER_BUILD
-enum { MAX_PRODUCTION_QUEUE = 5 };
+#include "common/productionqueue.h"
 
 /*
 **	The production categories that may have queued items. The order is used to
@@ -390,10 +391,7 @@ public:
     **	MAX_PRODUCTION_QUEUE - 1 items waiting behind the item currently being built.
     */
 #ifndef REMASTER_BUILD
-    struct ProductionQueueEntryStruct {
-        RTTIType Type;
-        int ID;
-    };
+    // Entry layout (type + id, five per category) is common/productionqueue.h.
     ProductionQueueEntryStruct ProductionQueue[PRODUCTION_QUEUE_COUNT][MAX_PRODUCTION_QUEUE];
     int ProductionQueueCount[PRODUCTION_QUEUE_COUNT];
 #endif
@@ -1009,4 +1007,34 @@ public:
     *save/load
     */
 };
+
+#ifndef REMASTER_BUILD
+// Keep the queue in the same place inside HouseClass. A save copies the whole
+// object, so a moved or resized queue would load as different bytes.
+// HouseClass mixes public and private, so it is not standard-layout and
+// offsetof is only conditionally supported. The values are still the offsets
+// the compiler assigns.
+static_assert(PRODUCTION_QUEUE_COUNT == 5, "five production categories stay in the save");
+static_assert(sizeof(HouseClass::ProductionQueue) == 200, "the queue array must stay 200 bytes");
+static_assert(sizeof(HouseClass::ProductionQueueCount) == 20, "the queue counts must stay 20 bytes");
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
+static_assert(offsetof(HouseClass, SpecialFactory) + sizeof(HouseClass::SpecialFactory)
+                  == offsetof(HouseClass, ProductionQueue),
+              "the queue must stay directly after SpecialFactory");
+static_assert(offsetof(HouseClass, ProductionQueue) + sizeof(HouseClass::ProductionQueue)
+                  == offsetof(HouseClass, ProductionQueueCount),
+              "the queue counts must stay directly after the queue");
+static_assert(offsetof(HouseClass, ProductionQueueCount) + sizeof(HouseClass::ProductionQueueCount)
+                  == offsetof(HouseClass, Radar),
+              "Radar must stay directly after the queue counts");
+#if defined(__linux__) && defined(__x86_64__)
+static_assert(sizeof(HouseClass) == 7248, "HouseClass size changed on Linux x86_64");
+static_assert(offsetof(HouseClass, ProductionQueue) == 1600, "ProductionQueue moved on Linux x86_64");
+static_assert(offsetof(HouseClass, ProductionQueueCount) == 1800, "ProductionQueueCount moved on Linux x86_64");
 #endif
+#pragma GCC diagnostic pop
+#endif // __GNUC__
+#endif // !REMASTER_BUILD
+#endif // HOUSE_H
