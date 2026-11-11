@@ -233,6 +233,18 @@ bool FootClass::Find_Path_AStar(CELL source,
     int best_h = AStar_Heuristic(source);
     bool reached = false;
 
+    /*
+    **	Impassable ground beside a diagonal step is a corridor wall (bridge,
+    **	cliff gap, diagonal wall). An occupied passable cell still blocks the cut.
+    */
+    auto Blocks_Corner = [&](CELL side) -> bool {
+        if (Passable_Cell(side, FACING_NONE, threat, threshhold)) {
+            return false;
+        }
+        LandType land = Map[side].Land_Type();
+        return (land != LAND_WATER && land != LAND_RIVER && land != LAND_ROCK && land != LAND_WALL);
+    };
+
     while (AStarHeapSize > 0) {
         CELL cur = AStar_Pop();
         AStarState[cur] = 2;
@@ -260,12 +272,11 @@ bool FootClass::Find_Path_AStar(CELL source,
                 continue;
 
             /*
-            **	Never cut a corner: a diagonal move is only legal when both
-            **	orthogonal cells that share the corner are passable.
+            **	Never cut a corner through an occupied cell. Impassable ground
+            **	beside the step does not disconnect a one-cell corridor.
             */
             if (dir & 1) {
-                if (!Passable_Cell(XY_Cell(x + AStarDX[dir], y), FACING_NONE, threat, threshhold)
-                    || !Passable_Cell(XY_Cell(x, y + AStarDY[dir]), FACING_NONE, threat, threshhold)) {
+                if (Blocks_Corner(XY_Cell(x + AStarDX[dir], y)) || Blocks_Corner(XY_Cell(x, y + AStarDY[dir]))) {
                     continue;
                 }
             }
@@ -551,9 +562,15 @@ int FootClass::Optimize_Moves(PathType* path, MoveType threshhold)
                 }
 
                 /*
-                **	Allow shortening turn only on right angle moves that are based on
-                **	90 degrees. Always allow 135 degree optimizations.
+                **	Shorten a 90° or 135° bend only when the shortcut cell is
+                **	passable. Otherwise the drive rejects the step and drops the path.
                 */
+                if (!Passable_Cell(Adjacent_Cell(cell, newdir), newdir, -1, threshhold)) {
+                    cell = Adjacent_Cell(cell, *cmd1);
+                    cmd2++;
+                    continue;
+                }
+
                 *cmd2 = newdir;
                 *cmd1 = EMPTY;
 
