@@ -4585,6 +4585,7 @@ int BuildingClass::Mission_Repair(void)
                         Speak(VOX_UNIT_REPAIRED, House);
 
                     Send_To_Rally(this, Contact_With_Whom());
+                    Transmit_Message(RADIO_RUN_AWAY);
                     Transmit_Message(RADIO_OVER_OUT);
                     Dock_Advance();
                     Begin_Mode(BSTATE_IDLE);

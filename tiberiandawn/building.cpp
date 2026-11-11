@@ -4867,9 +4867,8 @@ int BuildingClass::Mission_Repair(void)
                     TechnoClass* radio = Contact_With_Whom();
                     if (radio != NULL && radio->Health_Ratio() >= 0x0100) {
                         Send_To_Rally(this, radio);
-                    } else {
-                        Transmit_Message(RADIO_RUN_AWAY);
                     }
+                    Transmit_Message(RADIO_RUN_AWAY);
                     Transmit_Message(RADIO_OVER_OUT);
                     Dock_Advance();
                     Begin_Mode(BSTATE_IDLE);
