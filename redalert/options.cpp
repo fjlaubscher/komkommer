@@ -727,12 +727,7 @@ void OptionsClass::Save_Settings(void)
     ini.Put_Int(OPTIONS, "ScrollRate", ScrollRate);
     ini.Put_Fixed(OPTIONS, "Brightness", Brightness);
     ini.Put_Fixed(OPTIONS, "Volume", Volume);
-#ifdef FIXIT_VERSION_3
-    if (Session.Type == GAME_NORMAL) //	Save only when non-multiplayer.
-        ini.Put_Fixed(OPTIONS, "ScoreVolume", ScoreVolume);
-#else
     ini.Put_Fixed(OPTIONS, "ScoreVolume", ScoreVolume);
-#endif
 #ifdef FIXIT_VERSION_3
     ini.Put_Fixed(OPTIONS, "MultiplayerScoreVolume", MultiScoreVolume);
 #endif

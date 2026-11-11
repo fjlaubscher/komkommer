@@ -27,7 +27,7 @@ enum
     VOLUME_MAX = 255,
     PRIORITY_MIN = 0,
     PRIORITY_MAX = 255,
-    MAX_SAMPLE_TRACKERS = 5, // C&C issue where sounds get cut off is because of the small number of trackers.
+    MAX_SAMPLE_TRACKERS = 16,
     STREAM_BUFFER_COUNT = 16,
     BUFFER_CHUNK_SIZE = 8192, // 256 * 32,
     UNCOMP_BUFFER_SIZE = 2098,

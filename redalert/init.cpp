@@ -888,11 +888,6 @@ bool Select_Game(bool fade)
                 case GAME_SKIRMISH:
                     Theme.Fade_Out();
                     process = false;
-#ifdef FIXIT_VERSION_3
-                    Options.ScoreVolume = Options.MultiScoreVolume;
-#else
-                    Options.ScoreVolume = 0;
-#endif
                     break;
 
 #ifdef WOLAPI_INTEGRATION //	implies also WINSOCK_IPX
@@ -956,11 +951,6 @@ bool Select_Game(bool fade)
 
                     WWDebugString("RA95 - About to call Init_Network.\n");
                     if (Session.Type == GAME_IPX && Init_Network() && Remote_Connect()) {
-#ifdef FIXIT_VERSION_3
-                        Options.ScoreVolume = Options.MultiScoreVolume;
-#else
-                        Options.ScoreVolume = 0;
-#endif
                         process = false;
                         Theme.Fade_Out();
                     } else { // user hit cancel, or init failed

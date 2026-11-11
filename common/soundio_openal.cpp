@@ -226,11 +226,11 @@ void SoundImp_Start_Sample(SampleTrackerTypeImp* st)
 
 void SoundImp_Stop_Sample(SampleTrackerTypeImp* st)
 {
-    ALint processed_count = -1;
+    ALint queued_count = 0;
     alSourceStop(st->OpenALSource);
-    alGetSourcei(st->OpenALSource, AL_BUFFERS_PROCESSED, &processed_count);
+    alGetSourcei(st->OpenALSource, AL_BUFFERS_QUEUED, &queued_count);
 
-    while (processed_count-- > 0) {
+    while (queued_count-- > 0) {
         ALuint tmp;
         alSourceUnqueueBuffers(st->OpenALSource, 1, &tmp);
     }

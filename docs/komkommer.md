@@ -50,6 +50,10 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - Screen shake now offsets the live rendered image over subsequent frames instead of replaying a frozen snapshot in a blocking loop. Unit simulation and input continue during building-destruction shake.
 - The visual timer is renderer-local, does not consume simulation RNG, and only schedules owner/attacker shake for the appropriate local player. Remastered and other video backends retain their existing shake paths.
 
+### Sound playback (standalone)
+- **Vanilla:** At most 5 sound effects could play at once; starting a sound above that limit immediately cut off the lowest-priority one, and the OpenAL mixer could also leave a stale buffer queued after such a cut-off, glitching the replacement sound.
+- **Komkommer:** The standalone OpenAL mixer now allows up to **16** simultaneous sound effects, and stopping a sample fully unqueues its OpenAL buffers so a voice-stolen sound starts cleanly. Remastered (DirectSound) playback is unchanged.
+
 ### Pathfinding (A*)
 - **Vanilla:** `Find_Path` walked a straight line and, on hitting an impassable cell, "edge-followed" the obstacle clockwise/counterclockwise. It could route around obstacles on the long side, wander, and fail in cul-de-sacs, doughnut-shaped obstacles, and maze-like base layouts.
 - **Komkommer:** `Find_Path` uses an **A\*** search over the cell grid (8-direction movement, Chebyshev heuristic, binary-heap open list) that finds the optimal route under the game's movement-cost model.
@@ -106,6 +110,7 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - Closing Game Controls with either its confirmation button or **Esc** applies and saves game speed and scroll rate; Esc no longer discards those slider changes.
 - Sound Controls saves music/effects volume and score repeat/shuffle settings when the dialog closes, matching TD's existing behavior.
 - RA also saves the complete options state during standalone shutdown, rather than only writing video/mouse settings there. Options load and save use the same explicit `UserPath` INI instead of resolving whichever `redalert.ini` happens to appear in the asset search path.
+- Music volume is a single persistent value across campaign and skirmish/multiplayer. Vanilla RA kept a separate `MultiplayerScoreVolume` (saving `ScoreVolume` only in campaign and overwriting it with the multiplayer value on skirmish/MP start), which made music volume appear to reset after relaunch.
 
 ### Dock/service queueing (repair bays, refineries, helipads)
 - **Vanilla:** Same general service contention issues for radio/contact-path docks.
