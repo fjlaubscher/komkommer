@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   vanilla_win_gcc:
     runs-on: ubuntu-22.04
