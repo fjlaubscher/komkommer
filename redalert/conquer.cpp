@@ -1717,6 +1717,8 @@ bool Main_Loop()
     if (!GameActive)
         return (!GameActive);
 
+    Campaign_Autosave();
+
     /*
     ** Call the focus loss handler
     */

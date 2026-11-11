@@ -445,7 +445,8 @@ typedef enum DiffType : unsigned char
 **	Filenames of the data files it can create at run time.
 */
 #define FAME_FILE_NAME     "HALLFAME.DAT"
-#define NET_SAVE_FILE_NAME "SAVEGAME.NET"
+#define NET_SAVE_FILE_NAME     "SAVEGAME.NET"
+#define CAMPAIGN_AUTOSAVE_SLOT 999
 #define CONFIG_FILE_NAME   "REDALERT.INI"
 
 /**********************************************************************

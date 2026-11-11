@@ -242,7 +242,8 @@ typedef enum DiffType : unsigned char
 #define RELEASE_NUMBER 01
 
 #define FAME_FILE_NAME     "HALLFAME.DAT"
-#define NET_SAVE_FILE_NAME "SAVEGAME.NET"
+#define NET_SAVE_FILE_NAME     "SAVEGAME.NET"
+#define CAMPAIGN_AUTOSAVE_SLOT 999
 #define CONFIG_FILE_NAME   "CONQUER.INI"
 
 /**********************************************************************

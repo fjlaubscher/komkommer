@@ -18,8 +18,12 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - TD gains the label; RA moves its existing group-number pip below the selection box and retains the **F** suffix for formation members. Infantry, vehicles, aircraft, and RA vessels use the same convention.
 - Labels are clipped to the tactical view and hidden on deselection. Remastered rendering is unchanged.
 
+### Campaign autosave (standalone)
+- Each campaign mission writes `SAVEGAME.999` when it starts. The next mission overwrites that file. Skirmish, multiplayer, the scenario editor, and loading an existing save do not.
+- The load list shows `AUTOSAVE: NOD 01` (GDI, SOVIET, or ALLIES the same way). Remastered keeps the host's own save UI.
+
 ### Aircraft scouting
-- Aircraft sight defaults to **3 cells** in both engines. Stock RA `Sight=0` entries are raised to that baseline after rules loading, including helicopters; non-zero INI sight values still override it.
+- Aircraft sight defaults to **3 cells** in both engines. Stock RA `Sight=0` entries are raised to that baseline after rules loading, including helicopters; non-zero INI sight values still override it. The TD airstrip delivery plane (`C17`) stays at **0** so its flight does not reveal the map.
 - Terrain-reveal call sites use the type's sight range: TD ground-layer entry/firing, and RA `Look()`/firing. Grounded RA aircraft are no longer clamped to a one-cell sight range.
 
 ### Rally points for production buildings

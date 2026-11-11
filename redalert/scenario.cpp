@@ -311,6 +311,10 @@ bool ScenarioClass::Set_Global_To(int global, bool value)
  * HISTORY:                                                                                    *
  *   07/04/1995 JLB : Created.                                                                 *
  *=============================================================================================*/
+#ifndef REMASTER_BUILD
+static bool CampaignAutosavePending;
+#endif
+
 bool Start_Scenario(char* name, bool briefing)
 {
     if (Session.Type != GAME_NORMAL) {
@@ -418,8 +422,31 @@ bool Start_Scenario(char* name, bool briefing)
     */
     Options.Set();
 
+#ifndef REMASTER_BUILD
+    if (Session.Type == GAME_NORMAL && !Session.Play && !Debug_Map) {
+        CampaignAutosavePending = true;
+    }
+#endif
     return (true);
 }
+
+#ifndef REMASTER_BUILD
+void Campaign_Autosave(void)
+{
+    if (!CampaignAutosavePending) {
+        return;
+    }
+    CampaignAutosavePending = false;
+
+    char descr[DESCRIP_MAX];
+    descr[0] = '\0';
+    Save_Game(CAMPAIGN_AUTOSAVE_SLOT, descr);
+}
+#else
+void Campaign_Autosave(void)
+{
+}
+#endif
 
 /***********************************************************************************************
  * Set_Scenario_Difficulty -- Sets the difficulty of the scenario.                             *

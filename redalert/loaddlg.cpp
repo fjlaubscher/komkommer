@@ -685,16 +685,21 @@ void LoadOptionsClass::Fill_List(ListClass* list)
             fdata = new FileEntryClass;
 
             fdata->Descr[0] = '\0';
-            if (!ok) {
-                strcpy(fdata->Descr, Text_String(TXT_OLD_GAME));
+            if (ok && id == CAMPAIGN_AUTOSAVE_SLOT) {
+                const char* side = (house == HOUSE_USSR || house == HOUSE_UKRAINE) ? "SOVIET" : "ALLIES";
+                snprintf(fdata->Descr, sizeof(fdata->Descr), "AUTOSAVE: %s %02u", side, scenario);
             } else {
-                if (house == HOUSE_USSR || house == HOUSE_UKRAINE) {
-                    sprintf(fdata->Descr, "(%s) ", Text_String(TXT_SOVIET));
+                if (!ok) {
+                    strcpy(fdata->Descr, Text_String(TXT_OLD_GAME));
                 } else {
-                    sprintf(fdata->Descr, "(%s) ", Text_String(TXT_ALLIES));
+                    if (house == HOUSE_USSR || house == HOUSE_UKRAINE) {
+                        sprintf(fdata->Descr, "(%s) ", Text_String(TXT_SOVIET));
+                    } else {
+                        sprintf(fdata->Descr, "(%s) ", Text_String(TXT_ALLIES));
+                    }
                 }
+                strncat(fdata->Descr, descr, (sizeof(fdata->Descr) - strlen(fdata->Descr)) - 1);
             }
-            strncat(fdata->Descr, descr, (sizeof(fdata->Descr) - strlen(fdata->Descr)) - 1);
             fdata->Valid = ok;
             fdata->Scenario = scenario;
             fdata->House = house;

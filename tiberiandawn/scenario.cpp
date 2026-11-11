@@ -100,6 +100,10 @@ ScenarioClass::ScenarioClass(void)
  * HISTORY:                                                                                    *
  *   07/04/1995 JLB : Created.                                                                 *
  *=============================================================================================*/
+#ifndef REMASTER_BUILD
+static bool CampaignAutosavePending;
+#endif
+
 bool Start_Scenario(char* root, bool briefing)
 {
 
@@ -185,8 +189,31 @@ bool Start_Scenario(char* root, bool briefing)
     CCDebugString("C&C95 - About to call Options.Set.\n");
     Options.Set();
     CCDebugString("C&C95 - About to return from Start_Scenario.\n");
+#ifndef REMASTER_BUILD
+    if (GameToPlay == GAME_NORMAL && !PlaybackGame && !Debug_Map) {
+        CampaignAutosavePending = true;
+    }
+#endif
     return (true);
 }
+
+#ifndef REMASTER_BUILD
+void Campaign_Autosave(void)
+{
+    if (!CampaignAutosavePending) {
+        return;
+    }
+    CampaignAutosavePending = false;
+
+    char descr[DESCRIP_MAX];
+    descr[0] = '\0';
+    Save_Game(CAMPAIGN_AUTOSAVE_SLOT, descr);
+}
+#else
+void Campaign_Autosave(void)
+{
+}
+#endif
 
 /***********************************************************************************************
  * Set_Scenario_Difficulty -- Sets the difficulty of the scenario.                             *

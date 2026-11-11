@@ -1544,6 +1544,8 @@ void Reallocate_Big_Shape_Buffer(void);
 
 bool Main_Loop()
 {
+    Campaign_Autosave();
+
     KeyNumType input; // Player input.
     int x;
     int y;

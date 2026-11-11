@@ -240,7 +240,7 @@ static AircraftTypeClass const CargoPlane(AIRCRAFT_CARGO, // What kind of aircra
                                           true,           // Is there a crew inside?
                                           0,              // Number of shots it has (default).
                                           25,             // The strength of this unit.
-                                          3,              // The range that it reveals terrain around itself.
+                                          0,              // Sight: delivery plane must not reveal the map.
                                           800,            // Credit cost to construct.
                                           0,              // The scenario this becomes available.
                                           10,

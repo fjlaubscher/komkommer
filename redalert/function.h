@@ -535,6 +535,7 @@ void Post_Load_Game(int load_net);
 bool End_Game(void);
 bool Read_Scenario(char* root);
 bool Start_Scenario(char* root, bool briefing = true);
+void Campaign_Autosave(void);
 void Set_Scenario_Difficulty(int difficulty);
 HousesType Select_House(void);
 void Clear_Scenario(void);
