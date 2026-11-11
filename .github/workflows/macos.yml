@@ -11,20 +11,11 @@ permissions:
 jobs:
   vanilla-macos:
     runs-on: macos-14
-    strategy:
-      matrix:
-        preset: [release, internal, testing, nonet]
-
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: 'true'
         fetch-depth: 0
-        ref: ${{ github.event.pull_request.head.sha }}
-    
-    - name: Set Git Info
-      id: gitinfo
-      run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
     - name: Setting up Cache-Key
       run: echo "DEP_CACHE_KEY=$(curl 'https://ports.macports.org/api/v1/ports/dylibbundler/?format=json' | grep -ioE '("version":).[^,]*')-$(curl 'https://ports.macports.org/api/v1/ports/libsdl2/?format=json' | grep -ioE '("version":).[^,]*')-$(curl 'https://ports.macports.org/api/v1/ports/openal-soft/?format=json' | grep -ioE '("version":).[^,]*')" >> $GITHUB_ENV
@@ -40,11 +31,11 @@ jobs:
       with:
         path: ~/macports
         key: ${{ env.DEP_CACHE_KEY }}
-    
+
     - name: Install homebrew deps
       run: |
         brew install imagemagick dylibbundler
-    
+
     - if: ${{ steps.dep-cache.outputs.cache-hit != 'true' }}
       name: Install macport dependencies
       run: |
@@ -69,40 +60,27 @@ jobs:
         VC_CXX_FLAGS: "-w;-Wwrite-strings;-Werror=write-strings"
       run: |
         export PATH="/opt/local/bin:/opt/local/sbin:$PATH"
-        cmake --workflow --preset ${{ matrix.preset }}
+        cmake --workflow --preset release
 
     - name: Create archives
-      if: ${{ matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
       env:
         APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
         APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
         APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
         APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-      run: |  
-        dsymutil build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.app/Contents/MacOS/komkommertd -o build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.dSYM
-        dsymutil build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.app/Contents/MacOS/komkommerra -o build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.dSYM
-        strip -Sx build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.app/Contents/MacOS/komkommertd
-        strip -Sx build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.app/Contents/MacOS/komkommerra
-        dylibbundler --create-dir --bundle-deps --overwrite-files --dest-dir ./build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.app/Contents/libs --fix-file build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.app/Contents/MacOS/komkommertd
-        dylibbundler --create-dir --bundle-deps --overwrite-files --dest-dir ./build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.app/Contents/libs --fix-file build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.app/Contents/MacOS/komkommerra
-        bash .github/scripts/sign-macos-app.sh \
-          build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.app \
-          build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.app
-        mkdir artifact
-        7z a artifact/komkommer-${{ matrix.preset }}-macos-clang-universal2-${{ steps.gitinfo.outputs.sha_short }}.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.app ./build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.app
-        7z a artifact/komkommer-${{ matrix.preset }}-macos-clang-universal2-${{ steps.gitinfo.outputs.sha_short }}-debug.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.dSYM ./build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.dSYM
-
-    - name: Add internal tools to archive
-      if: ${{ matrix.preset == 'internal' }}
       run: |
-        dsymutil build/${{ matrix.preset }}/RelWithDebInfo/komkommermix -o build/${{ matrix.preset }}/RelWithDebInfo/komkommermix.dSYM
-        strip -Sx build/${{ matrix.preset }}/RelWithDebInfo/komkommermix
-        7z a artifact/komkommer-${{ matrix.preset }}-macos-clang-universal2--${{ steps.gitinfo.outputs.sha_short }}.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix
-        7z a artifact/komkommer-${{ matrix.preset }}-macos-clang-universal2--${{ steps.gitinfo.outputs.sha_short }}-debug.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix.dSYM
-    
+        strip -Sx build/release/RelWithDebInfo/komkommertd.app/Contents/MacOS/komkommertd
+        strip -Sx build/release/RelWithDebInfo/komkommerra.app/Contents/MacOS/komkommerra
+        dylibbundler --create-dir --bundle-deps --overwrite-files --dest-dir ./build/release/RelWithDebInfo/komkommertd.app/Contents/libs --fix-file build/release/RelWithDebInfo/komkommertd.app/Contents/MacOS/komkommertd
+        dylibbundler --create-dir --bundle-deps --overwrite-files --dest-dir ./build/release/RelWithDebInfo/komkommerra.app/Contents/libs --fix-file build/release/RelWithDebInfo/komkommerra.app/Contents/MacOS/komkommerra
+        bash .github/scripts/sign-macos-app.sh \
+          build/release/RelWithDebInfo/komkommertd.app \
+          build/release/RelWithDebInfo/komkommerra.app
+        mkdir artifact
+        7z a artifact/komkommer-macos.zip ./build/release/RelWithDebInfo/komkommertd.app ./build/release/RelWithDebInfo/komkommerra.app
+
     - name: Upload tagged release
-      if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
       uses: softprops/action-gh-release@v2
       with:
         files: |

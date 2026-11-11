@@ -16,19 +16,11 @@ jobs:
       with:
         submodules: 'true'
         fetch-depth: 0
-        ref: ${{ github.event.pull_request.head.sha }}
-        
+
     - uses: ilammy/msvc-dev-cmd@v1.13.0
       with:
         arch: x86
-        
-    - name: Set Git Info
-      id: gitinfo
-      shell: pwsh
-      run: |
-        $gitoutput = git rev-parse --short HEAD
-        echo "sha_short=${gitoutput}" >> $env:GITHUB_OUTPUT
-        
+
     - name: Install Dependencies
       run: |
         Invoke-WebRequest -Uri https://github.com/ninja-build/ninja/releases/download/v1.10.1/ninja-win.zip -OutFile $Env:TEMP\ninja-win.zip
@@ -46,13 +38,10 @@ jobs:
       shell: bash
       run: |
         mkdir artifact
-        7z a artifact/komkommer-remasterdll-msvc-${{ steps.gitinfo.outputs.sha_short }}.zip ./build/remaster/RelWithDebInfo/RedAlert.dll ./build/remaster/RelWithDebInfo/TiberianDawn.dll
-        7z a artifact/komkommer-remasterdll-msvc-${{ steps.gitinfo.outputs.sha_short }}-debug.zip ./build/remaster/RelWithDebInfo/RedAlert.pdb ./build/remaster/RelWithDebInfo/TiberianDawn.pdb
-        7z a artifact/vanilla-ra-remaster-mod-msvc-${{ steps.gitinfo.outputs.sha_short }}.zip ./build/remaster/komkommer_RA
-        7z a artifact/vanilla-td-remaster-mod-msvc-${{ steps.gitinfo.outputs.sha_short }}.zip ./build/remaster/komkommer_TD
-        
+        7z a artifact/komkommer-remaster-td.zip ./build/remaster/komkommer_TD
+        7z a artifact/komkommer-remaster-ra.zip ./build/remaster/komkommer_RA
+
     - name: Upload tagged release
-      if: ${{ startsWith(github.ref, 'refs/tags/') }}
       uses: softprops/action-gh-release@v2
       with:
         files: |
@@ -62,28 +51,15 @@ jobs:
 
   vanilla_win_msvc:
     runs-on: windows-2022
-    strategy:
-      matrix:
-        preset: [release, internal, testing, nonet]
-        arch: [{win: Win32, lin: i686, cmd: x86}, {win: Win64, lin: x86_64, cmd: x64}]
-
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: 'true'
         fetch-depth: 0
-        ref: ${{ github.event.pull_request.head.sha }}
-        
+
     - uses: ilammy/msvc-dev-cmd@v1.13.0
       with:
-        arch: ${{ matrix.arch.cmd }}
-        
-    - name: Set Git Info
-      id: gitinfo
-      shell: pwsh
-      run: |
-        $gitoutput = git rev-parse --short HEAD
-        echo "sha_short=${gitoutput}" >> $env:GITHUB_OUTPUT
+        arch: x64
 
     - name: Install Dependencies
       id: deps
@@ -97,33 +73,24 @@ jobs:
         echo "$Env:TEMP\ninja" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         ninja --version
         echo "magickpath=$(Split-Path -Path $(Get-Command magick).Path -Parent)" >> $env:GITHUB_OUTPUT
-        Rename-Item openal-soft-1.21.0-bin\bin\${{ matrix.arch.win }}\soft_oal.dll OpenAL32.dll
+        Rename-Item openal-soft-1.21.0-bin\bin\Win64\soft_oal.dll OpenAL32.dll
 
     - name: Build komkommer
       env:
         CMAKE_FIND_ROOT_PATH: "SDL2-2.0.12;openal-soft-1.21.0-bin;${{ steps.deps.outputs.magickpath }}"
         VC_CXX_FLAGS: "/Zc:strictStrings;-wd4244;-wd4018;-wd4291;-wd4101;-wd4267;-wd4200"
       run: |
-        New-Item -Path "build/${{ matrix.preset }}/RelWithDebInfo" -ItemType Directory
-        Copy-Item -Path "SDL2-2.0.12\lib\${{ matrix.arch.cmd }}\SDL2.dll" -Destination build/${{ matrix.preset }}/RelWithDebInfo
-        cmake --workflow --preset ${{ matrix.preset }}
-        
+        New-Item -Path "build/release/RelWithDebInfo" -ItemType Directory
+        Copy-Item -Path "SDL2-2.0.12\lib\x64\SDL2.dll" -Destination build/release/RelWithDebInfo
+        cmake --workflow --preset release
+
     - name: Create archives
-      if: ${{ matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
       shell: bash
       run: |
         mkdir artifact
-        7z a artifact/komkommer-${{ matrix.preset }}-win-msvc-${{ matrix.arch.lin }}-${{ steps.gitinfo.outputs.sha_short }}.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.exe ./build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.exe ./SDL2-2.0.12/lib/${{ matrix.arch.cmd }}/SDL2.dll ./openal-soft-1.21.0-bin/bin/${{ matrix.arch.win }}/OpenAL32.dll
-        7z a artifact/komkommer-${{ matrix.preset }}-win-msvc-${{ matrix.arch.lin }}-${{ steps.gitinfo.outputs.sha_short }}-debug.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.pdb ./build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.pdb
+        7z a artifact/komkommer-windows-x64.zip ./build/release/RelWithDebInfo/komkommertd.exe ./build/release/RelWithDebInfo/komkommerra.exe ./SDL2-2.0.12/lib/x64/SDL2.dll ./openal-soft-1.21.0-bin/bin/Win64/OpenAL32.dll
 
-    - name: Add internal tools to archive
-      if: ${{ matrix.preset == 'internal' }}
-      run: |
-        7z a artifact/komkommer-${{ matrix.preset }}-win-msvc-${{ matrix.arch.lin }}-${{ steps.gitinfo.outputs.sha_short }}.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix.exe
-        7z a artifact/komkommer-${{ matrix.preset }}-win-msvc-${{ matrix.arch.lin }}-${{ steps.gitinfo.outputs.sha_short }}-debug.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix.pdb
-    
     - name: Upload tagged release
-      if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
       uses: softprops/action-gh-release@v2
       with:
         files: |

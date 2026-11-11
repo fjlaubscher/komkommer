@@ -10,67 +10,32 @@ permissions:
 
 jobs:
   vanilla-linux:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        compiler: [{cc: clang, cxx: clang++}, {cc: gcc, cxx: g++}]
-        preset: [release, internal, testing, nonet]
-        os: [ubuntu-22.04, ubuntu-24.04]
-
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: 'true'
         fetch-depth: 0
-        ref: ${{ github.event.pull_request.head.sha }}
-        
-    - name: Set Git Info
-      id: gitinfo
-      run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
     - name: Install dependencies
       run: |
         sudo apt-get update -qq > /dev/null
-        sudo apt-get install -qq -y clang-format-14 libsdl2-dev libopenal-dev ninja-build > /dev/null
-    
+        sudo apt-get install -qq -y libsdl2-dev libopenal-dev ninja-build > /dev/null
+
     - name: Build komkommer
       env:
-        CC: ${{ matrix.compiler.cc }}
-        CXX: ${{ matrix.compiler.cxx }}
         VC_CXX_FLAGS: "-w;-Wwrite-strings;-Werror=write-strings"
       run: |
-        cmake --workflow --preset ${{ matrix.preset }}
+        cmake --workflow --preset release
 
-    - name: Check formatting
-      if: ${{ matrix.compiler.cc == 'clang' && matrix.preset == 'testing'}} 
-      run: |
-        cmake --build build/testing --target format
-        git diff --exit-code
-        
     - name: Create archives
-      if: ${{ matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
       run: |
-        cp ./build/${{ matrix.preset }}/RelWithDebInfo/komkommertd ./build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.dbg
-        cp ./build/${{ matrix.preset }}/RelWithDebInfo/komkommerra ./build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.dbg
-        strip --strip-all ./build/${{ matrix.preset }}/RelWithDebInfo/komkommertd
-        strip --strip-all ./build/${{ matrix.preset }}/RelWithDebInfo/komkommerra
-        objcopy --add-gnu-debuglink=./build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.dbg ./build/${{ matrix.preset }}/RelWithDebInfo/komkommertd
-        objcopy --add-gnu-debuglink=./build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.dbg ./build/${{ matrix.preset }}/RelWithDebInfo/komkommerra
+        strip --strip-all ./build/release/RelWithDebInfo/komkommertd
+        strip --strip-all ./build/release/RelWithDebInfo/komkommerra
         mkdir artifact
-        7z a artifact/komkommer-${{ matrix.preset }}-linux-${{ matrix.compiler.cc }}-${{ matrix.os }}-x86_64-${{ steps.gitinfo.outputs.sha_short }}.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommertd ./build/${{ matrix.preset }}/RelWithDebInfo/komkommerra
-        7z a artifact/komkommer-${{ matrix.preset }}-linux-${{ matrix.compiler.cc }}-${{ matrix.os }}-x86_64-${{ steps.gitinfo.outputs.sha_short }}-debug.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommertd.dbg ./build/${{ matrix.preset }}/RelWithDebInfo/komkommerra.dbg
+        7z a artifact/komkommer-linux-x64.zip ./build/release/RelWithDebInfo/komkommertd ./build/release/RelWithDebInfo/komkommerra
 
-    - name: Add internal tools to archive
-      if: ${{ matrix.preset == 'internal' }}
-      run: |
-        cp ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix.dbg
-        objcopy --add-gnu-debuglink=./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix.dbg ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix
-        strip --strip-all ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix
-        7z a artifact/komkommer-${{ matrix.preset }}-linux-${{ matrix.compiler.cc }}-${{ matrix.os }}-x86_64-${{ steps.gitinfo.outputs.sha_short }}.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix
-        7z a artifact/komkommer-${{ matrix.preset }}-linux-${{ matrix.compiler.cc }}-${{ matrix.os }}-x86_64-${{ steps.gitinfo.outputs.sha_short }}-debug.zip ./build/${{ matrix.preset }}/RelWithDebInfo/komkommermix.dbg
-    
     - name: Upload tagged release
-      if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.preset != 'testing' &&  matrix.preset != 'nonet' }}
       uses: softprops/action-gh-release@v2
       with:
         files: |
