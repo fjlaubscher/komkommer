@@ -18,7 +18,7 @@ jobs:
         fetch-depth: 0
 
     - name: Setting up Cache-Key
-      run: echo "DEP_CACHE_KEY=$(curl 'https://ports.macports.org/api/v1/ports/dylibbundler/?format=json' | grep -ioE '("version":).[^,]*')-$(curl 'https://ports.macports.org/api/v1/ports/libsdl2/?format=json' | grep -ioE '("version":).[^,]*')-$(curl 'https://ports.macports.org/api/v1/ports/openal-soft/?format=json' | grep -ioE '("version":).[^,]*')" >> $GITHUB_ENV
+      run: echo "DEP_CACHE_KEY=arm64-$(curl 'https://ports.macports.org/api/v1/ports/dylibbundler/?format=json' | grep -ioE '("version":).[^,]*')-$(curl 'https://ports.macports.org/api/v1/ports/libsdl2/?format=json' | grep -ioE '("version":).[^,]*')-$(curl 'https://ports.macports.org/api/v1/ports/openal-soft/?format=json' | grep -ioE '("version":).[^,]*')" >> $GITHUB_ENV
 
     - name: Printing Cache-Key
       run: echo $DEP_CACHE_KEY
@@ -43,8 +43,8 @@ jobs:
         sudo installer -pkg ./MacPorts-2.10.5-14-Sonoma.pkg -target /
         export PATH="/opt/local/bin:/opt/local/sbin:$PATH"
         sudo port selfupdate -N
-        sudo port install libsdl2 +universal -N
-        sudo port install openal-soft +universal -N
+        sudo port install libsdl2 -N
+        sudo port install openal-soft -N
         mkdir ~/macports
         sudo cp -R /opt/local ~/macports
         sudo chown -R $USER:staff ~/macports
@@ -56,7 +56,7 @@ jobs:
 
     - name: Build komkommer
       env:
-        CMAKE_OSX_ARCHITECTURES: "arm64;x86_64"
+        CMAKE_OSX_ARCHITECTURES: "arm64"
         VC_CXX_FLAGS: "-w;-Wwrite-strings;-Werror=write-strings"
       run: |
         export PATH="/opt/local/bin:/opt/local/sbin:$PATH"
@@ -78,7 +78,7 @@ jobs:
           build/release/RelWithDebInfo/komkommertd.app \
           build/release/RelWithDebInfo/komkommerra.app
         mkdir artifact
-        7z a artifact/komkommer-macos.zip ./build/release/RelWithDebInfo/komkommertd.app ./build/release/RelWithDebInfo/komkommerra.app
+        7z a artifact/komkommer-macos-arm64.zip ./build/release/RelWithDebInfo/komkommertd.app ./build/release/RelWithDebInfo/komkommerra.app
 
     - name: Upload tagged release
       uses: softprops/action-gh-release@v2
