@@ -1540,6 +1540,7 @@ RadioMessageType FootClass::Receive_Message(RadioClass* from, RadioMessageType m
         }
         if (Mission == MISSION_ENTER) {
             Assign_Mission(MISSION_GUARD);
+            Commence();
         }
         if (!IsRotating && !Target_Legal(NavCom)) {
             Scatter(0, true, true);
