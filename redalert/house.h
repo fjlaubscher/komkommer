@@ -769,6 +769,9 @@ public:
     bool Flag_To_Win(void);
     bool Flag_To_Lose(void);
     void Make_Ally(HousesType house);
+#ifndef REMASTER_BUILD
+    void Init_Skirmish_Allies(unsigned allies);
+#endif
     void Make_Ally(ObjectClass* object)
     {
         if (object)

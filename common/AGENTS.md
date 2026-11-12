@@ -19,6 +19,8 @@ Regression checks: native Windows/backend behavior where applicable, SDL2 (espec
 
 ## Paths and data
 
+- `skirmishroster.h` shares lobby-only slot/colour/team logic between TD (six slots) and RA (eight). `skirmishdrop.h` is a small template instantiated with each game's own native `DropListClass`. Include the dropdown helper only in standalone game code; the common library itself has no `REMASTER_BUILD` definition. Preferences, map parsing, country enums, palettes, rule limits, and startup/recording integration stay in each engine's `skirmish*` files. These helpers are not saved engine-class state.
+
 - `paths.cpp` resolves config/data paths; `paths_win.cpp` and `paths_posix.cpp` provide platform defaults. A config beside the executable can redirect `DataPath` and makes that directory the default `UserPath` unless explicitly overridden.
 - The retained `Vanilla-Conquer` / `vanillatd` / `vanillara` user-data names are not necessarily a missed rebrand. Changing them can strand existing settings and saves.
 - Use the engine file abstraction when loading game/mod assets. A loose-file check alone misses files available inside MIX archives.

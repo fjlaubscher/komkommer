@@ -110,6 +110,7 @@ set(REDALERT_SRC
     session.cpp
     shapebtn.cpp
     sidebar.cpp
+    skirmish.cpp
     slider.cpp
     smudge.cpp
     sounddlg.cpp

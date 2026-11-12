@@ -65,6 +65,9 @@
 #include "factory.h"
 #include "carry.h"
 #include "common/framelimit.h"
+#ifndef REMASTER_BUILD
+#include "skirmish.h"
+#endif
 
 extern int PreserveVQAScreen;
 
@@ -2929,6 +2932,12 @@ void Assign_Houses(void)
         housep->Assign_Handicap(difficulty);
     }
 
+#ifndef REMASTER_BUILD
+    if (Session.Type == GAME_SKIRMISH) {
+        Assign_Skirmish_Houses();
+    }
+#endif
+
     for (i = Session.Players.Count() + Session.Options.AIPlayers; i < Rule.MaxPlayers; i++) {
         house = (HousesType)(i + HOUSE_MULTI1);
         housep = HouseClass::As_Pointer(house);
@@ -3184,13 +3193,38 @@ static void Create_Units(bool official)
     // This is needed for original game behavior, for example in original game you only spawn at corner spawns
     // in 1vs1 on A Path Beyond as the corner spawns are the first 4, with the remaster logic you also spawn at
     // the other 4 spawns in 1vs1 randomly
-    for (int waycount = 0; waycount < max(4, Session.Players.Count() + Session.Options.AIPlayers); waycount++) {
+    int waypoint_limit = max(4, Session.Players.Count() + Session.Options.AIPlayers);
+    if (Session.Type == GAME_SKIRMISH) {
+        waypoint_limit = MAX_STORED_WAYPOINTS;
+    }
+    for (int waycount = 0; waycount < waypoint_limit; waycount++) {
 #endif
         if (Scen.Waypoint[waycount] != -1) {
+#ifndef REMASTER_BUILD
+            if (Session.Type == GAME_SKIRMISH) {
+                if (!Map.In_Radar(Scen.Waypoint[waycount])) {
+                    continue;
+                }
+                bool duplicate = false;
+                for (int i = 0; i < num_waypts; i++) {
+                    duplicate |= waypts[i] == Scen.Waypoint[waycount];
+                }
+                if (duplicate) {
+                    continue;
+                }
+            }
+#endif
             waypts[num_waypts] = Scen.Waypoint[waycount];
             taken[num_waypts] = false;
             num_waypts++;
 
+#ifndef REMASTER_BUILD
+            // Keep official maps' first-four/corner preference when possible,
+            // but accept sparse starting indices when needed to fill the roster.
+            if (Session.Type == GAME_SKIRMISH && official && num_waypts >= look_for) {
+                break;
+            }
+#endif
             if (num_waypts >= MAX_STORED_WAYPOINTS) {
                 break;
             }
@@ -3201,6 +3235,12 @@ static void Create_Units(bool official)
     **	If there are insufficient waypoints to account for all players, then randomly assign
     **	starting points until there is enough.
     */
+#ifndef REMASTER_BUILD
+    // A two-player map with two valid starts does not need invented positions.
+    if (Session.Type == GAME_SKIRMISH && num_waypts >= Session.Players.Count() + Session.Options.AIPlayers) {
+        look_for = num_waypts;
+    }
+#endif
     int deficiency = look_for - num_waypts;
     //	int deficiency = (Session.Players.Count() + Session.Options.AIPlayers) - num_waypts;
     if (deficiency > 0) {

@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <string>
 #include "ini.h"
+#include "common/skirmishroster.h"
 
 namespace TDSkirmish
 {
@@ -16,18 +17,12 @@ inline int Clamp(int value, int low, int high)
     return value < low ? low : (value > high ? high : value);
 }
 
-struct Slot
-{
-    int Faction; // -1 = random, 0 = GDI, 1 = Nod
-    int Color;
-    int Team; // 0 = no team; these players are NOT allied with one another
-};
+using Slot = SkirmishSlot;
 
-struct Settings
+struct Settings : SkirmishRoster<PLAYER_LIMIT>
 {
     std::string Name;
     int Scenario;
-    int Count;
     int Credits;
     int Units;
     int TechLevel;
@@ -36,12 +31,10 @@ struct Settings
     bool Tiberium;
     bool Crates;
     bool CaptureTheFlag;
-    Slot Slots[PLAYER_LIMIT];
 
     Settings()
         : Name("Noname")
         , Scenario(-1)
-        , Count(2)
         , Credits(10000)
         , Units(6)
         , TechLevel(7)
@@ -51,72 +44,15 @@ struct Settings
         , Crates(false)
         , CaptureTheFlag(false)
     {
-        for (int i = 0; i < PLAYER_LIMIT; ++i) {
-            Slots[i] = Slot{i == 0 ? 0 : -1, i, 0};
-        }
     }
 
     void Normalize(int max_tech = 7)
     {
-        Count = Clamp(Count, 1, PLAYER_LIMIT);
+        Normalize_Roster(2);
         Credits = Clamp(Credits, 0, 10000);
         Units = Clamp(Units, Bases ? 0 : 1, Bases ? 12 : 50);
         TechLevel = Clamp(TechLevel, 1, max_tech);
         Difficulty = Clamp(Difficulty, 0, 4);
-        bool used[PLAYER_LIMIT] = {};
-        for (int i = 0; i < PLAYER_LIMIT; ++i) {
-            Slots[i].Faction = Clamp(Slots[i].Faction, i == 0 ? 0 : -1, 1);
-            Slots[i].Team = Clamp(Slots[i].Team, 0, PLAYER_LIMIT);
-            int color = Clamp(Slots[i].Color, 0, PLAYER_LIMIT - 1);
-            if (used[color]) {
-                for (color = 0; used[color]; ++color) {
-                }
-            }
-            Slots[i].Color = color;
-            used[color] = true;
-        }
-    }
-
-    // Only a deliberate selection swaps colours, including with an inactive slot.
-    void Select_Color(int row, int color)
-    {
-        if (row < 0 || row >= Count || color < 0 || color >= PLAYER_LIMIT) {
-            return;
-        }
-        for (int i = 0; i < PLAYER_LIMIT; ++i) {
-            if (i != row && Slots[i].Color == color) {
-                Slots[i].Color = Slots[row].Color;
-                break;
-            }
-        }
-        Slots[row].Color = color;
-    }
-
-    void Remove(int row)
-    {
-        if (row <= 0 || row >= Count) {
-            return;
-        }
-        Slot removed = Slots[row];
-        for (int i = row; i + 1 < Count; ++i) {
-            Slots[i] = Slots[i + 1];
-        }
-        Slots[--Count] = Slot{-1, removed.Color, 0};
-    }
-
-    bool Allied(int a, int b) const
-    {
-        return a == b || (Slots[a].Team != 0 && Slots[a].Team == Slots[b].Team);
-    }
-
-    bool Has_Opponent() const
-    {
-        for (int i = 1; i < Count; ++i) {
-            if (!Allied(0, i)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     void Load(INIClass const& ini)

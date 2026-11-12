@@ -11,6 +11,7 @@
 #include "paths.h"
 #include "skirmish.h"
 #include "skirmishsettings.h"
+#include "common/skirmishdrop.h"
 
 namespace
 {
@@ -43,42 +44,7 @@ bool Save_Settings(Settings const& settings)
     return ini.Save(file) > 0;
 }
 
-// Use the existing dropdown, with a clickable read-only field and a popup wide
-// enough to include the arrow's column. Keep this behaviour local to the lobby.
-class RosterDropListClass : public DropListClass
-{
-public:
-    using DropListClass::DropListClass;
-
-    void Peer_To_Peer(unsigned flags, KeyNumType& key, ControlClass& whom) override
-    {
-        bool was_dropped = IsDropped;
-        DropListClass::Peer_To_Peer(flags, key, whom);
-        if (IsDropped) {
-            List.Width = Width + DropButton.Width;
-            if (!was_dropped) {
-                List.Set_Focus();
-            }
-        }
-    }
-
-protected:
-    int Action(unsigned flags, KeyNumType& key) override
-    {
-        if (flags & LEFTPRESS) {
-            if (IsDropped) {
-                Collapse();
-            } else {
-                Expand();
-                List.Width = Width + DropButton.Width;
-                List.Set_Focus();
-            }
-            key = KN_NONE;
-            return true;
-        }
-        return DropListClass::Action(flags, key);
-    }
-};
+using RosterDropListClass = SkirmishDropListClass<DropListClass>;
 
 enum Buttons
 {

@@ -73,6 +73,9 @@
 #include "common/vqaconfig.h"
 #include "common/winasm.h"
 #include "intro.h"
+#ifndef REMASTER_BUILD
+#include "skirmish.h"
+#endif
 
 RemapControlType SidebarScheme;
 
@@ -2742,6 +2745,10 @@ bool Save_Recording_Values(CCFileClass& file)
     file.Write(&Special, sizeof(SpecialClass));
     file.Write(&Options, sizeof(GameOptionsClass));
 
+#ifndef REMASTER_BUILD
+    Save_Skirmish_Recording(file);
+#endif
+
     return (true);
 }
 
@@ -2771,6 +2778,9 @@ bool Load_Recording_Values(CCFileClass& file)
     file.Read(&Whom, sizeof(Whom));
     file.Read(&Special, sizeof(SpecialClass));
     file.Read(&Options, sizeof(GameOptionsClass));
+#ifndef REMASTER_BUILD
+    Load_Skirmish_Recording(file);
+#endif
     return (true);
 }
 

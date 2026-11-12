@@ -41,6 +41,9 @@
 #include "framelimit.h"
 #include "statbtn.h"
 #include "textbtn.h"
+#ifndef REMASTER_BUILD
+#include "skirmish.h"
+#endif
 
 // PG
 GameType Select_Serial_Dialog(void)
@@ -1336,6 +1339,9 @@ bool Find_Local_Scenario(char* description, char* filename, unsigned int length,
  *=============================================================================================*/
 int Com_Scenario_Dialog(bool skirmish)
 {
+    if (skirmish && Session.Type == GAME_SKIRMISH) {
+        return Skirmish_Dialog();
+    }
     int factor = (SeenBuff.Get_Width() == 320) ? 1 : 2;
     /*........................................................................
     Dialog & button dimensions

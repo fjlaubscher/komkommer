@@ -8036,8 +8036,30 @@ bool HouseClass::Is_Allowed_To_Ally(HousesType house) const
  * HISTORY:                                                                                    *
  *   09/23/1996 JLB : Created.                                                                 *
  *=============================================================================================*/
+#ifndef REMASTER_BUILD
+void HouseClass::Init_Skirmish_Allies(unsigned allies)
+{
+    if (Session.Type != GAME_SKIRMISH || !ScenarioInit) {
+        return;
+    }
+    // Override map-defined player alliances, retaining neutral/non-player allies.
+    unsigned const player_mask = ((1u << MAX_PLAYERS) - 1) << HOUSE_MULTI1;
+    Allies = (Allies & ~player_mask) | (allies & player_mask) | (1u << Class->House);
+    Control.Allies = Allies;
+    if (Is_Ally(Enemy)) {
+        Enemy = HOUSE_NONE;
+    }
+}
+#endif
+
 void HouseClass::Computer_Paranoid(void)
 {
+#ifndef REMASTER_BUILD
+    // Keep the lobby's chosen teams, including human/AI alliances, after defeats.
+    if (Session.Type == GAME_SKIRMISH) {
+        return;
+    }
+#endif
     if (Session.Type != GAME_GLYPHX_MULTIPLAYER) { // Re-enable this for multiplayer if we support classic team/ally
                                                    // mode. ST - 10/29/2019
 
