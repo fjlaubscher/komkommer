@@ -126,6 +126,15 @@ static void Send_To_Rally(BuildingClass const* building, TechnoClass* unit)
     unit->Commence();
 }
 
+static bool Harvester_Carrying(RadioClass* from)
+{
+    if (from == NULL || from->What_Am_I() != RTTI_UNIT) {
+        return false;
+    }
+    UnitClass* unit = (UnitClass*)from;
+    return *unit == UNIT_HARVESTER && unit->Tiberium > 0;
+}
+
 enum SAMState
 {
     SAM_NONE = -1,   // Used for non SAM site buildings.
@@ -274,6 +283,9 @@ RadioMessageType BuildingClass::Receive_Message(RadioClass* from, RadioMessageTy
                 if (ScenarioInit) {
                     return (RADIO_ROGER);
                 }
+                if (!Harvester_Carrying(from)) {
+                    return (RADIO_NEGATIVE);
+                }
                 if (Contact_With_Whom() == from) {
                     return (RADIO_NEGATIVE);
                 }
@@ -311,6 +323,14 @@ RadioMessageType BuildingClass::Receive_Message(RadioClass* from, RadioMessageTy
             return (RADIO_ROGER);
 
         case STRUCT_REFINERY:
+            if (from->What_Am_I() == RTTI_UNIT && *((UnitClass*)from) == UNIT_HARVESTER
+                && !Harvester_Carrying(from)) {
+                Transmit_Message(RADIO_RUN_AWAY, from);
+                Transmit_Message(RADIO_OVER_OUT, from);
+                Begin_Mode(BSTATE_IDLE);
+                Dock_Advance();
+                return (RADIO_NEGATIVE);
+            }
             ScenarioInit++;
             Begin_Mode(BSTATE_ACTIVE);
             ScenarioInit--;
@@ -326,6 +346,22 @@ RadioMessageType BuildingClass::Receive_Message(RadioClass* from, RadioMessageTy
     */
     case RADIO_DOCKING:
         TechnoClass::Receive_Message(from, message, param);
+
+        /*
+        **	An empty harvester has nothing to unload. Turn it away the same way a
+        **	repair bay turns away a unit that does not need service.
+        */
+        if (*this == STRUCT_REFINERY && from != NULL && from->What_Am_I() == RTTI_UNIT
+            && *((UnitClass*)from) == UNIT_HARVESTER && !Harvester_Carrying(from)) {
+            Dock_Remove(from->As_Target());
+            if (Contact_With_Whom() == from) {
+                Transmit_Message(RADIO_RUN_AWAY, from);
+                Transmit_Message(RADIO_OVER_OUT, from);
+                Begin_Mode(BSTATE_IDLE);
+                Dock_Advance();
+            }
+            return (RADIO_NEGATIVE);
+        }
 
         /*
         **	When in radio contact for loading, the refinery starts

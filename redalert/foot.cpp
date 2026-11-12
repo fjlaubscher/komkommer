@@ -1778,6 +1778,10 @@ int FootClass::Mission_Enter(void)
     if (contact == NULL) {
         contact = As_Techno(NavCom);
     }
+    if (contact == NULL && What_Am_I() == RTTI_UNIT && ((UnitClass*)this)->Class->IsToHarvest
+        && ((UnitClass*)this)->Tiberium > 0) {
+        contact = ((UnitClass*)this)->Find_Best_Refinery();
+    }
 
     /*
     **	If in contact, then let the transporter handle the movement coordination.
@@ -1809,7 +1813,9 @@ int FootClass::Mission_Enter(void)
             */
             if (What_Am_I() == RTTI_UNIT && ((UnitClass*)this)->Class->IsToHarvest) {
                 Assign_Mission(MISSION_HARVEST);
-                Assign_Target(As_Target());
+                if (((UnitClass*)this)->Tiberium > 0) {
+                    Assign_Target(As_Target());
+                }
                 Assign_Destination(TARGET_NONE);
             } else {
                 Enter_Idle_Mode();

@@ -39,6 +39,7 @@ The current Soviet skirmish/MP commando is **Saboteur**, not the earlier Volkov 
 - Repair bays, refineries, and helipads are queueable. **Airstrip rearming is intentionally not**: it has a different landing/multi-slot workflow.
 - Dock queues store `TARGET` handles. `Dock_Advance` prunes invalid/stale heads; `RADIO_DOCKING` polling promotes the waiting head. Maintain detach/limbo/termination cleanup and queue capacity checks.
 - Repair missions must target `STRUCT_REPAIR`, not the refinery (`88acdf1`). Dock finders prefer free/shorter queues; preserve that preference when altering availability tests.
+- A harvester's `ArchiveTarget` is the last ore cell. Do not store the refinery there; the remembered dock is `TiberiumUnloadRefinery`. Refuse an empty harvester on the refinery radio path (`RADIO_CAN_LOAD`, `RADIO_DOCKING`, `RADIO_IM_IN`), the same way a repair bay turns away a unit that needs no service. `RADIO_RUN_AWAY` may skip to `FINDHOME` only while the harvester still has cargo.
 - A helipad can be physically occupied even without current radio contact. Check active, non-limbo aircraft with `Height == 0` on the docking cell before production exits (`c091c01`).
 
 ## Standalone queues and nuke balance

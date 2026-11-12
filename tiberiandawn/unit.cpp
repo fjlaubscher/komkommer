@@ -697,10 +697,10 @@ RadioMessageType UnitClass::Receive_Message(RadioClass* from, RadioMessageType m
     **	activity with this object. Basically, ... run away! Run away!
     */
     case RADIO_RUN_AWAY:
-        if (Class->IsToHarvest && In_Radio_Contact() && Mission == MISSION_ENTER) {
+        if (Class->IsToHarvest && Tiberium > 0 && In_Radio_Contact() && Mission == MISSION_ENTER) {
             TechnoClass* contact = Contact_With_Whom();
             if (contact->What_Am_I() == RTTI_BUILDING && *((BuildingClass*)contact) == STRUCT_REFINERY) {
-                // Slight hack; set a target so the harvest mission knows to skip to finding home state
+                // Still carrying ore: skip to finding a refinery. An empty harvester must leave.
                 Assign_Mission(MISSION_HARVEST);
                 TarCom = As_Target();
                 return (RADIO_ROGER);
@@ -2719,9 +2719,12 @@ int UnitClass::Mission_Harvest(void)
         */
         if (Target_Legal(TarCom)) {
             Assign_Target(TARGET_NONE);
-            Status = FINDHOME;
-            return (1);
-        } else if (Goto_Tiberium()) {
+            if (Tiberium > 0) {
+                Status = FINDHOME;
+                return (1);
+            }
+        }
+        if (Goto_Tiberium()) {
             IsHarvesting = true;
             Set_Rate(2);
             Set_Stage(0);
@@ -2743,6 +2746,10 @@ int UnitClass::Mission_Harvest(void)
                 **	solve the case where the harvester gets stuck and can't find Tiberium just because
                 **	it is greater than 32 squares away.
                 */
+                BuildingClass* archived = As_Building(ArchiveTarget);
+                if (archived != NULL && *archived == STRUCT_REFINERY) {
+                    ArchiveTarget = TARGET_NONE;
+                }
                 if (Target_Legal(ArchiveTarget)) {
                     Assign_Destination(ArchiveTarget);
                 } else {
@@ -2780,6 +2787,10 @@ int UnitClass::Mission_Harvest(void)
     **	Find and head to refinery.
     */
     case FINDHOME:
+        if (Tiberium == 0) {
+            Status = LOOKING;
+            return (1);
+        }
         if (!Target_Legal(NavCom)) {
 
             /*
@@ -2798,7 +2809,6 @@ int UnitClass::Mission_Harvest(void)
                 } else if (nearest->Is_Dock_Queueable() && nearest->Dock_Accepts(As_Target())) {
                     nearest->Dock_Add(As_Target());
                     TiberiumUnloadRefinery = nearest;
-                    ArchiveTarget = nearest->As_Target();
                     Assign_Destination(nearest->As_Target());
                     Status = HEADINGHOME;
                 } else {

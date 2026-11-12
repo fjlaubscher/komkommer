@@ -91,6 +91,7 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - **Repair bays, refineries, and helipads** are queueable in TD.
   - Harvester/unit dispatch and dock selection register and wait in queue.
   - Dock finders prefer **free or shorter queues**.
+  - An empty harvester is turned away by the refinery radio check, the same way a repair bay turns away a unit that does not need service. Waiting in the queue does not replace the harvester's last ore cell, so after a real dump it returns to the field.
 
 ### Superweapons (skirmish/multiplayer balance)
 
@@ -137,6 +138,7 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - **Repair bays, refineries, and helipads** are queueable in RA.
   - **RA airstrip rearm is intentionally left unqueued** due to its landing/multi-slot behavior.
   - Harvester/unit dispatch and dock selection register and wait in queue; dock finders prefer free or shorter queues.
+  - An empty harvester is turned away by the refinery radio check, the same way a repair bay turns away a unit that does not need service. Waiting in the queue does not replace the harvester's last ore cell, so after a real dump it returns to the field.
 
 ### RA repair mission targeting fix
 - **Vanilla/previous behavior (bug):** RA `UnitClass` repair mission could target the wrong building (refinery instead of the repair bay) in the affected path.

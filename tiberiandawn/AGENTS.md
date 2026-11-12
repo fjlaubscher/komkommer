@@ -31,6 +31,7 @@ Read the root guide first; shared gameplay concepts have a counterpart in `redal
 - Use cell flags (`IsFlagged`, `Flag_Place`/`Flag_Remove`, `ANIM_FLAG`/`FLAGFLY`) for the marker. A `CC_Draw_Line` marker became a glowing laser through the Remastered intercept. Placement checks must ignore rally markers without generally disabling real flag/occupancy rules.
 - `dllinterface.cpp` dynamic-map export must not reveal opponent flags. Test classic and Remastered graphics separately if touching that code.
 - Service queues are separate from production queues: `DockQueue` stores `TARGET` handles on the building. `Dock_Advance` prunes stale heads; the waiting unit's `RADIO_DOCKING` poll performs promotion. Preserve cleanup on detach, cancellation, departure, and building limbo.
+- A harvester's `ArchiveTarget` is the last ore cell. Do not store the refinery there; the remembered dock is `TiberiumUnloadRefinery`. Refuse an empty harvester on the refinery radio path (`RADIO_CAN_LOAD`, `RADIO_DOCKING`, `RADIO_IM_IN`), the same way a repair bay turns away a unit that needs no service. `RADIO_RUN_AWAY` may skip to `FINDHOME` only while the harvester still has cargo.
 - Helipad production cannot trust `In_Radio_Contact()` alone: check active, non-limbo aircraft physically landed on the dock cell before spawning a new helicopter (`c091c01`).
 
 ## Standalone UI and balance

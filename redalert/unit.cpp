@@ -881,10 +881,10 @@ RadioMessageType UnitClass::Receive_Message(RadioClass* from, RadioMessageType m
     **	activity with this object. Basically, ... run away! Run away!
     */
     case RADIO_RUN_AWAY:
-        if (Class->IsToHarvest && In_Radio_Contact() && Mission == MISSION_ENTER) {
+        if (Class->IsToHarvest && Tiberium > 0 && In_Radio_Contact() && Mission == MISSION_ENTER) {
             TechnoClass* contact = Contact_With_Whom();
             if (contact->What_Am_I() == RTTI_BUILDING && *((BuildingClass*)contact) == STRUCT_REFINERY) {
-                // Slight hack; set a target so the harvest mission knows to skip to finding home state
+                // Still carrying ore: skip to finding a refinery. An empty harvester must leave.
                 Assign_Mission(MISSION_HARVEST);
                 TarCom = As_Target();
                 return (RADIO_ROGER);
@@ -2494,6 +2494,11 @@ int UnitClass::Mission_Unload(void)
 
     switch (Class->Type) {
     case UNIT_HARVESTER:
+        if (Tiberium == 0 && !IsDumping) {
+            Transmit_Message(RADIO_OVER_OUT);
+            Assign_Mission(MISSION_HARVEST);
+            break;
+        }
         if (PrimaryFacing != DIR_W) {
             if (!IsRotating) {
                 Do_Turn(DIR_W);
@@ -2935,16 +2940,24 @@ int UnitClass::Mission_Harvest(void)
         */
         if (Target_Legal(TarCom)) {
             Assign_Target(TARGET_NONE);
-            Status = FINDHOME;
-            return (1);
+            if (Tiberium > 0) {
+                Status = FINDHOME;
+                return (1);
+            }
         }
 
         /*
-        ** Look for ore where we last found some - mine the same patch
+        ** Look for ore where we last found some - mine the same patch.
+        ** A refinery left in ArchiveTarget would send an empty harvester back to dock.
         */
         if (Target_Legal(ArchiveTarget)) {
-            Assign_Destination(ArchiveTarget);
-            ArchiveTarget = 0;
+            BuildingClass* archived = As_Building(ArchiveTarget);
+            if (archived != NULL && *archived == STRUCT_REFINERY) {
+                ArchiveTarget = TARGET_NONE;
+            } else {
+                Assign_Destination(ArchiveTarget);
+                ArchiveTarget = 0;
+            }
         }
         IsHarvesting = false;
         if (Goto_Tiberium(Rule.TiberiumLongScan / CELL_LEPTON_W)) {
@@ -3021,6 +3034,10 @@ int UnitClass::Mission_Harvest(void)
     **	Find and head to refinery.
     */
     case FINDHOME:
+        if (Tiberium == 0) {
+            Status = LOOKING;
+            return (1);
+        }
         if (!Target_Legal(NavCom)) {
 
             /*
@@ -3043,7 +3060,6 @@ int UnitClass::Mission_Harvest(void)
                 } else if (nearest->Is_Dock_Queueable() && nearest->Dock_Accepts(As_Target())) {
                     nearest->Dock_Add(As_Target());
                     TiberiumUnloadRefinery = nearest->As_Target();
-                    ArchiveTarget = nearest->As_Target();
                     Assign_Destination(nearest->As_Target());
                     Status = HEADINGHOME;
                     if (nearest->House == PlayerPtr && (PlayerPtr->Capacity - PlayerPtr->Tiberium) < 300

@@ -595,7 +595,7 @@ void DriveClass::Assign_Destination(TARGET target)
                     target = TARGET_NONE;
                 }
             }
-        } else if (b->Is_Dock_Queueable() && b->Dock_Accepts(As_Target())) {
+        } else if (((UnitClass*)this)->Tiberium > 0 && b->Is_Dock_Queueable() && b->Dock_Accepts(As_Target())) {
             b->Dock_Add(As_Target());
             Assign_Mission(MISSION_ENTER);
             target = TARGET_NONE;
