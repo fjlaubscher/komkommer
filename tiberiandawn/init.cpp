@@ -48,6 +48,9 @@
 #include "common/paths.h"
 #include "common/winasm.h"
 #include <time.h>
+#ifndef REMASTER_BUILD
+#include "skirmish.h"
+#endif
 
 /****************************************
 **	Function prototypes for this module **
@@ -2255,6 +2258,9 @@ void Save_Recording_Values(void)
     RecordFile.Write(&Options, sizeof(GameOptionsClass));
     RecordFile.Write(&FrameSendRate, sizeof(FrameSendRate));
     RecordFile.Write(&CommProtocol, sizeof(CommProtocol));
+#ifndef REMASTER_BUILD
+    Save_Skirmish_Recording(RecordFile);
+#endif
 
     if (SuperRecord) {
         RecordFile.Close();
@@ -2306,6 +2312,9 @@ void Load_Recording_Values(void)
     RecordFile.Read(&Options, sizeof(GameOptionsClass));
     RecordFile.Read(&FrameSendRate, sizeof(FrameSendRate));
     RecordFile.Read(&CommProtocol, sizeof(CommProtocol));
+#ifndef REMASTER_BUILD
+    Load_Skirmish_Recording(RecordFile);
+#endif
 }
 
 /***********************************************************************************************

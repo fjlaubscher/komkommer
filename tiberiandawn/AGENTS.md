@@ -12,6 +12,7 @@ Read the root guide first; shared gameplay concepts have a counterpart in `redal
 | Aircraft scouting | `aadata.cpp`, `aircraft.cpp` |
 | Nuke/Ion Cannon damage | `anim.cpp` |
 | Remastered rendering/commands | `dllinterface.cpp/.h`, `sidebarglyphx.*` |
+| Standalone skirmish lobby, preferences, roster | `skirmish.cpp`, `skirmishsettings.h`; startup in `scenarioini.cpp` |
 
 ## TD-specific traps
 
@@ -34,6 +35,8 @@ Read the root guide first; shared gameplay concepts have a counterpart in `redal
 
 ## Standalone UI and balance
 
+- The standalone skirmish lobby is separate from the legacy serial/network dialog and GlyphX UI. Preferences live in `[Skirmish]` in the explicit `UserPath/conquer.ini`; do not put lobby-only fields on saved engine classes. Keep map ids/original indices attached when sorting the local display list, and keep map-capacity validation aligned with `Create_Units`' starting-waypoint filtering.
+- Skirmish numbered teams become mutual `HouseClass` alliances during scenario initialization; team zero means free-for-all, not a shared alliance. Do not re-enable `Computer_Paranoid` in standalone skirmish: it replaces the selected teams with AI-versus-human alliances. The optional recording-header extension stores the roster/difficulty so playback never depends on the current lobby config.
 - Guard production queue declarations/state, constructor initialization, busy-factory handling, advancement after abandonment, and sidebar click behavior with `REMASTER_BUILD` boundaries. GlyphX has its own queue system. Standalone queues are **units only**, with five total per category: one active plus four waiting. Buildings retain normal hold/resume/placement without queueing. Keep the existing queue-array storage size and reserved building/special slots; changing queue policy does not require changing serialized class layout.
 - Right-clicking a non-active cameo emits `CANCEL_QUEUE` only when that type has a waiting entry; `Cancel_Queued_Production` removes the newest match without touching the active item. The active cameo retains normal hold/cancel behavior. Keep `EventLength`/`EventNames` synchronized with the event enum.
 - SDL2 screen shake is presentation-only (`Request_Video_Shake`) in both games; do not reintroduce a `Frame_Limiter` loop inside an explosion. The old snapshot/blit loop blocks simulation. Non-SDL2 backends retain their original paths.

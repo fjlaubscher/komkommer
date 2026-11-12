@@ -48,6 +48,9 @@
 #include "function.h"
 #include "common/irandom.h"
 #include "ccini.h"
+#ifndef REMASTER_BUILD
+#include "skirmish.h"
+#endif
 
 /************************************* Prototypes *********************************************/
 static void Assign_Houses(void);
@@ -1287,6 +1290,12 @@ static void Assign_Houses(void)
         }
     }
 
+#ifndef REMASTER_BUILD
+    if (GameToPlay == GAME_SKIRMISH) {
+        Assign_Skirmish_Houses();
+    }
+#endif
+
     for (int i = 0; i < MAX_PLAYERS; i++) {
 
         if (house_used[i]) {
@@ -1527,11 +1536,31 @@ static void Create_Units(void)
     ------------------------------------------------------------------------*/
     num_waypts = 0; // counts # waypoints
 
+    // Small maps need empty entries, not uninitialized cells, beyond their starts.
+    for (i = 0; i < 26; i++) {
+        sorted_waypts[i] = -1;
+    }
+
     /*........................................................................
     First, copy all valid waytpoints into my 'waypts' array
     ........................................................................*/
     for (i = 0; i < 26; i++) {
         if (Scen.Waypoint[i] != -1) {
+#ifndef REMASTER_BUILD
+            if (GameToPlay == GAME_SKIRMISH) {
+                // Match the lobby's capacity calculation: distinct, playable starts only.
+                if (!Map.In_Radar(Scen.Waypoint[i])) {
+                    continue;
+                }
+                bool duplicate = false;
+                for (int index = 0; index < num_waypts; index++) {
+                    duplicate |= waypts[index] == Scen.Waypoint[i];
+                }
+                if (duplicate) {
+                    continue;
+                }
+            }
+#endif
             waypts[num_waypts] = Scen.Waypoint[i];
             num_waypts++;
         }
@@ -1957,6 +1986,10 @@ static void Sort_Cells(CELL* cells, int numcells, CELL* outcells)
     int num_sorted = 0;
     int num_unsorted = numcells;
 
+    if (numcells <= 0) {
+        return;
+    }
+
     /*------------------------------------------------------------------------
     Pick the first cell at random
     ------------------------------------------------------------------------*/
@@ -1973,7 +2006,7 @@ static void Sort_Cells(CELL* cells, int numcells, CELL* outcells)
     After the first cell, assign the other cells based on who's furthest away
     from the chosen ones.
     ------------------------------------------------------------------------*/
-    for (i = 0; i < numcells; i++) {
+    for (i = 1; i < numcells; i++) {
         j = Furthest_Cell(outcells, num_sorted, cells, num_unsorted);
         outcells[num_sorted] = cells[j];
         num_sorted++;

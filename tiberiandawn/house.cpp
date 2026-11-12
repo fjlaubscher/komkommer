@@ -8219,6 +8219,13 @@ bool HouseClass::Is_Allowed_To_Ally(HousesType house) const
  *=============================================================================================*/
 void HouseClass::Computer_Paranoid(void)
 {
+#ifndef REMASTER_BUILD
+    // Standalone skirmish alliances belong to the lobby, not an AI-vs-human coup.
+    // This also preserves explicit alliances after loading a saved match.
+    if (GameToPlay == GAME_SKIRMISH) {
+        return;
+    }
+#endif
     if (GameToPlay != GAME_GLYPHX_MULTIPLAYER) { // Re-enable this for multiplayer if we support classic team/ally mode.
                                                  // ST - 10/29/2019
 

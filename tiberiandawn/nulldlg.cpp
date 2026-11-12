@@ -36,6 +36,9 @@
 #include "drop.h"
 #include "framelimit.h"
 #include <time.h>
+#ifndef REMASTER_BUILD
+#include "skirmish.h"
+#endif
 
 /***********************************************************************************************
  * Com_Scenario_Dialog -- Serial game scenario selection dialog                                *
@@ -83,6 +86,11 @@
 #define TXT_JOIN_INTERNET_GAME 4567 + 2
 int Com_Scenario_Dialog(void)
 {
+#ifndef REMASTER_BUILD
+    if (GameToPlay == GAME_SKIRMISH) {
+        return Skirmish_Dialog();
+    }
+#endif
     int factor = (SeenBuff.Get_Width() == 320) ? 1 : 2;
     /*........................................................................
     Dialog & button dimensions

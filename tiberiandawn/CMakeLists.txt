@@ -98,6 +98,7 @@ set(TIBDAWN_SRC
     sdata.cpp
     shapebtn.cpp
     sidebar.cpp
+    skirmish.cpp
     slider.cpp
     smudge.cpp
     sounddlg.cpp
