@@ -126,6 +126,10 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 ### Chronosphere targeting
 - The Chronosphere can target eligible **non-friendly units**, rather than only friendly/allied units. Existing unit-type, deployment, and transport restrictions still apply.
 
+### Engineer capture
+- **Vanilla RA:** An engineer chips an enemy building (about a third of its strength per entry) until health is at or below `EngineerCaptureLevel` (red), then captures it. The cursor is the damage cursor until then.
+- **Komkommer:** Entering a capturable enemy building captures it at any health, matching Tiberian Dawn, in campaign and skirmish/multiplayer. The cursor is the capture cursor immediately. Friendly repair is unchanged. A building that cannot be captured still takes the chip damage. `EngineerCaptureLevel` no longer affects the outcome.
+
 ### Soviet commando: Saboteur (skirmish/multiplayer)
 - **Vanilla RA:** Tanya is the commando; commando behavior is tied to Tanya-specific handling in several places.
 - **Komkommer (non-singleplayer / skirmish & multiplayer):** Commandos are split by side:

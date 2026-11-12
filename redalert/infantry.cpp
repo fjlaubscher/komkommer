@@ -636,10 +636,8 @@ void InfantryClass::Per_Cell_Process(PCPType why)
                 if (*this == INFANTRY_RENOVATOR) {
 
                     /*
-                    **	An engineer will either mega-repair a friendly or allied
-                    **	building or it will damage/capture an enemy building. Whether
-                    **	it damages or captures depends on how badly damaged the
-                    **	enemy building is.
+                    **	An engineer mega-repairs a friendly building, captures a
+                    **	capturable enemy building immediately, or damages anything else.
                     */
 #ifdef FIXIT_ENGINEER_CAPTURE
                     if (House->Is_Ally(tech)) {
@@ -655,11 +653,7 @@ void InfantryClass::Per_Cell_Process(PCPType why)
                         if (tech->What_Am_I() == RTTI_BUILDING) {
                             iscapturable = tech->Can_Capture();
                         }
-#ifdef FIXIT_ENGINEER //	checked - ajw 9/28/98
-                        if (tech->Health_Ratio() <= EngineerCaptureLevel && iscapturable) {
-#else
-                        if (tech->Health_Ratio() <= Rule.ConditionRed && iscapturable) {
-#endif
+                        if (iscapturable) {
                             if (tech->Trigger.Is_Valid()) {
                                 tech->Trigger->Spring(TEVENT_PLAYER_ENTERED, this);
                             }
@@ -2973,14 +2967,7 @@ ActionType InfantryClass::What_Action(ObjectClass const* object) const
             } else {
 
                 if (bldg->Can_Capture()) {
-#ifdef FIXIT_ENGINEER //	checked - ajw 9/28/98
-                    if (bldg->Health_Ratio() <= EngineerCaptureLevel) {
-#else
-                    if (bldg->Health_Ratio() <= Rule.ConditionRed) {
-#endif
-                        return (ACTION_CAPTURE);
-                    }
-                    return (ACTION_DAMAGE);
+                    return (ACTION_CAPTURE);
                 }
 
                 //				if (bldg->Health_Ratio() <= Rule.ConditionRed && bldg->Can_Capture()) {
