@@ -4879,7 +4879,14 @@ int BuildingClass::Mission_Repair(void)
                     Dock_Advance();
                     Begin_Mode(BSTATE_IDLE);
                     Status = IDLE;
-                } else if (!House->IsHuman) {
+                } else {
+                    /*
+                    **	Repair refused (usually no cash). Kick humans too so the
+                    **	pad does not stay blocked until the player intervenes.
+                    */
+                    if (IsOwnedByPlayer) {
+                        Speak(VOX_NO_CASH, House);
+                    }
                     Transmit_Message(RADIO_RUN_AWAY);
                     Transmit_Message(RADIO_OVER_OUT);
                     Dock_Advance();

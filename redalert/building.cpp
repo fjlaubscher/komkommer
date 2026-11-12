@@ -4563,6 +4563,19 @@ int BuildingClass::Mission_Repair(void)
                     Dock_Advance();
                     Begin_Mode(BSTATE_IDLE);
                     Status = IDLE;
+                } else if (radio != NULL) {
+                    /*
+                    **	Still needs service but RADIO_REPAIR was refused (no cash).
+                    **	Clear the pad so the queue is not blocked.
+                    */
+                    if (IsOwnedByPlayer) {
+                        Speak(VOX_NO_CASH, House);
+                    }
+                    Transmit_Message(RADIO_RUN_AWAY);
+                    Transmit_Message(RADIO_OVER_OUT);
+                    Dock_Advance();
+                    Begin_Mode(BSTATE_IDLE);
+                    Status = IDLE;
                 }
             }
             break;

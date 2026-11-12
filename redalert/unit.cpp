@@ -2345,8 +2345,9 @@ static bool Tiberium_Cell_Claimed(UnitClass const* self, CELL cell)
 }
 
 /*
-**	Pick the richest harvestable cell in the radius, then the nearest. Skip cells
-**	another friendly harvester is already driving to. Does not assign NavCom.
+**	Walk rings outward like vanilla and stop at the first ring that has ore.
+**	On that ring keep the richest unclaimed cell. Skip cells another friendly
+**	harvester is already driving to. Does not assign NavCom.
 */
 CELL UnitClass::Search_For_Tiberium(int rad)
 {
@@ -2358,10 +2359,9 @@ CELL UnitClass::Search_For_Tiberium(int rad)
         return (center);
     }
 
-    CELL bestcell = 0;
-    int besttiberium = 0;
-    int bestdist = -1;
     for (int radius = 1; radius < rad; radius++) {
+        CELL bestcell = 0;
+        int besttiberium = 0;
         for (int x = -radius; x <= radius; x++) {
             int offsets[4][2] = {{x, -radius}, {x, +radius}, {-radius, x}, {+radius, x}};
             for (int edge = 0; edge < 4; edge++) {
@@ -2377,16 +2377,17 @@ CELL UnitClass::Search_For_Tiberium(int rad)
                 if (tiberium <= 0 || Tiberium_Cell_Claimed(this, cell)) {
                     continue;
                 }
-                int dist = Harvester_Cell_Distance(center, cell);
-                if (tiberium > besttiberium || (tiberium == besttiberium && (bestdist == -1 || dist < bestdist))) {
+                if (tiberium > besttiberium) {
                     bestcell = cell;
                     besttiberium = tiberium;
-                    bestdist = dist;
                 }
             }
         }
+        if (bestcell) {
+            return (bestcell);
+        }
     }
-    return (bestcell);
+    return (0);
 }
 
 bool UnitClass::Goto_Tiberium(int rad)

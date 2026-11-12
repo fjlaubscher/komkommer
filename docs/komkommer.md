@@ -66,7 +66,7 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 ### Harvester destination choice
 - **Vanilla:** Autonomous harvesters stop at the first ore ring that contains any cell, return after a dump to the cell they just emptied, and stick to the last refinery they used even when another dock is closer or freer.
 - **Komkommer:** When a harvester chooses for itself (a player click on a field still wins while that destination is set):
-  - It scans its existing search radius and picks the **richest** harvestable cell, then the nearest; it skips a cell another friendly harvester is already driving to.
+  - It still walks rings outward and stops at the **nearest ring that has ore**, then picks the **richest** cell on that ring. It skips a cell another friendly harvester is already driving to.
   - When the hold fills, it stores a nearby cell that **still has ore** as the return point (TD short scan is 6 cells; RA uses `OreNearScan` / `TiberiumShortScan`).
   - It picks a refinery by **distance plus a fixed wait per other harvester already bound there** (13 cells per load in TD, 6 in RA). A truck already within 5 cells of its current refinery discounts that dock's wait so it does not U-turn over a one-load swing. The dock service queue itself remains FIFO.
 
@@ -100,6 +100,7 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - Dock finders prefer **free or shorter queues**.
   - An empty harvester is turned away by the refinery radio check, the same way a repair bay turns away a unit that does not need service. Waiting in the queue does not replace the harvester's last ore cell, so after a real dump it returns to the field.
   - When a repair bay kicks a unit off (`RADIO_RUN_AWAY`), the unit picks a scored exit cell around the plus-shaped pad (prefer clear, then temporarily blocked) and asks allied blockers to scatter if needed, instead of only scattering into whatever is adjacent.
+  - A human unit that cannot start repair (typically no cash) is kicked off the pad the same way AI units already were, so a broke queue does not sit on the bay forever.
 
 ### Superweapons (skirmish/multiplayer balance)
 
@@ -148,6 +149,7 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - Harvester/unit dispatch and dock selection register and wait in queue; dock finders prefer free or shorter queues.
   - An empty harvester is turned away by the refinery radio check, the same way a repair bay turns away a unit that does not need service. Waiting in the queue does not replace the harvester's last ore cell, so after a real dump it returns to the field.
   - When a repair bay kicks a unit off (`RADIO_RUN_AWAY`), the unit picks a scored exit cell around the plus-shaped pad (prefer clear, then temporarily blocked) and asks allied blockers to scatter if needed, instead of only scattering into whatever is adjacent.
+  - A unit that cannot start repair (typically no cash) is kicked off the pad in IDLE as well as mid-repair, so the bay does not stay blocked.
 
 ### RA repair mission targeting fix
 - **Vanilla/previous behavior (bug):** RA `UnitClass` repair mission could target the wrong building (refinery instead of the repair bay) in the affected path.
