@@ -493,7 +493,7 @@ int Skirmish_Dialog()
         Session.PrefColor = Session.ColorIdx = static_cast<PlayerColorType>(settings.Slots[0].Color);
         std::snprintf(Session.Handle, sizeof(Session.Handle), "%s", settings.Name.c_str());
         NodeNameType* who = new NodeNameType;
-        std::strcpy(who->Name, Session.Handle);
+        strcpy(who->Name, Session.Handle);
         who->Player.House = Session.House;
         who->Player.Color = Session.ColorIdx;
         who->Player.ProcessTime = -1;

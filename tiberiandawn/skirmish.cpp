@@ -446,7 +446,7 @@ int Skirmish_Dialog()
         MPlayerHouse = static_cast<HousesType>(HOUSE_GOOD + settings.Slots[0].Faction);
         MPlayerPrefColor = MPlayerColorIdx = static_cast<PlayerColorType>(settings.Slots[0].Color);
         std::snprintf(MPlayerName, sizeof(MPlayerName), "%s", settings.Name.c_str());
-        std::strcpy(MPlayerNames[0], MPlayerName);
+        strcpy(MPlayerNames[0], MPlayerName);
         MPlayerLocalID = MPlayerID[0] = Build_MPlayerID(MPlayerColorIdx, MPlayerHouse);
         MPlayerCredits = settings.Credits;
         MPlayerUnitCount = settings.Units;
