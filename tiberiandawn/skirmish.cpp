@@ -146,9 +146,9 @@ int Skirmish_Dialog()
 
     TextButtonClass add(ADD_AI, "Add AI", button_text, 180 * factor, 104 * factor, 60 * factor, 9 * factor);
     TextButtonClass difficulty(DIFFICULTY, "", button_text, 81 * factor, 166 * factor, 71 * factor, 10 * factor);
+    TextButtonClass back(BACK, "Back", button_text, 10 * factor, 183 * factor, 48 * factor, 10 * factor);
     TextButtonClass defaults(DEFAULTS, "Restore defaults", button_text, 111 * factor, 183 * factor, 98 * factor, 10 * factor);
-    TextButtonClass start(START, "Start", button_text, 10 * factor, 183 * factor, 48 * factor, 10 * factor);
-    TextButtonClass back(BACK, "Back", button_text, 262 * factor, 183 * factor, 48 * factor, 10 * factor);
+    TextButtonClass start(START, "Start", button_text, 262 * factor, 183 * factor, 48 * factor, 10 * factor);
     GaugeClass credits(CREDITS, 82 * factor, 128 * factor, 42 * factor, 7 * factor);
     GaugeClass units(UNITS, 82 * factor, 140 * factor, 42 * factor, 7 * factor);
     GaugeClass tech(TECH, 82 * factor, 152 * factor, 42 * factor, 7 * factor);
