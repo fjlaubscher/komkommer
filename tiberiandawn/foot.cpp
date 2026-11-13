@@ -1329,9 +1329,7 @@ void FootClass::Active_Click_With(ActionType action, CELL cell)
 
     case ACTION_NOMOVE:
         // Aircraft may be ordered to scout non-visible cells.
-        if (What_Am_I() != RTTI_AIRCRAFT || Map[cell].Is_Visible(PlayerPtr) || What_Am_I() == RTTI_AIRCRAFT) {
-            Player_Assign_Mission(MISSION_MOVE, TARGET_NONE, ::As_Target(cell));
-        }
+        Player_Assign_Mission(MISSION_MOVE, TARGET_NONE, ::As_Target(cell));
         break;
 
     case ACTION_ATTACK:
