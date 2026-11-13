@@ -110,11 +110,13 @@ void TabClass::Draw_It(bool complete)
                 LogicPage->Fill_Rect(0, 0, rightx, Tab_Height - 2, BLACK);
                 CC_Draw_Shape(TabShape, 0, 0, 0, WINDOW_MAIN, SHAPE_NORMAL);
                 CC_Draw_Shape(TabShape, 0, width - Eva_Width, 0, WINDOW_MAIN, SHAPE_NORMAL);
-                Draw_Credits_Tab();
                 LogicPage->Draw_Line(0, Tab_Height - 1, rightx, Tab_Height - 1, BLACK);
 
+                /*
+                **	The credit counter renders on the sidebar toggle tab (drawn by
+                **	CreditClass::Graphic_Logic) instead of on a separate credits tab.
+                */
                 Fancy_Text_Print(TXT_TAB_BUTTON_CONTROLS, Eva_Width / 2, 0, fore, TBLACK, flags);
-                Fancy_Text_Print(TXT_TAB_SIDEBAR, width - (Eva_Width / 2), 0, fore, TBLACK, flags);
             }
             LogicPage->Unlock();
         }
@@ -127,7 +129,11 @@ void TabClass::Draw_It(bool complete)
 
 void TabClass::Draw_Credits_Tab(void)
 {
-    unsigned x = Get_Resolution_Factor() ? 320 : 160;
+    /*
+    **	The credit counter renders on the sidebar toggle tab at the right edge
+    **	of the top bar rather than on a separate credits tab.
+    */
+    unsigned x = SeenBuff.Get_Width() - (80 << Get_Resolution_Factor());
     CC_Draw_Shape(TabShape, 0, x, 0, WINDOW_MAIN, SHAPE_NORMAL);
 }
 

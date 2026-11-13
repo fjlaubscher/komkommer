@@ -84,7 +84,12 @@ CreditClass::CreditClass(void)
 void CreditClass::Graphic_Logic(bool forced)
 {
     int factor = Get_Resolution_Factor();
-    int xx = SeenBuff.Get_Width() - (120 << factor);
+
+    /*
+    **	Render the credit counter on the sidebar toggle tab at the right edge
+    **	of the top bar.
+    */
+    int xx = SeenBuff.Get_Width() - (40 << factor);
     if (forced || IsToRedraw) {
 
         /*

@@ -18,6 +18,11 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - TD gains the label; RA moves its existing group-number pip below the selection box and retains the **F** suffix for formation members. Infantry, vehicles, aircraft, and RA vessels use the same convention.
 - Labels are clipped to the tactical view and hidden on deselection. Remastered rendering is unchanged.
 
+### Credits counter on the sidebar tab (standalone)
+- **Vanilla:** The top bar had a dedicated credits tab (with the scrolling credit counter) beside a separate sidebar-toggle tab labelled "Sidebar".
+- **Komkommer:** The credit count renders on the **sidebar-toggle tab** at the top-right instead of the word "Sidebar". Clicking that tab still collapses/expands the sidebar, and the counter keeps its classic tick-up/tick-down animation and money sounds. The old separate credits tab is gone, which also moves the counter out from under the macOS screen notch.
+- RA's "insufficient funds" flash now flashes that right-edge tab. RA with `AllowSidebarToggle=false` (sidebar always visible) already showed its credits tab on the right edge and is unchanged; the RA mission-timer tab keeps its position. Remastered host UI is unchanged.
+
 ### Campaign autosave (standalone)
 - Each campaign mission writes `SAVEGAME.999` when it starts. The next mission overwrites that file. Skirmish, multiplayer, the scenario editor, and loading an existing save do not.
 - The load list shows `AUTOSAVE: NOD 01` (GDI, SOVIET, or ALLIES the same way). Remastered keeps the host's own save UI.

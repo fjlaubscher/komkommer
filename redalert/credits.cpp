@@ -86,14 +86,12 @@ void CreditClass::Graphic_Logic(bool forced)
     if (forced || IsToRedraw) {
         BStart(BENCH_TABS);
 
-        int xx = SeenBuff.Get_Width() - (120 * RESFACTOR);
-
         /*
-        ** Adjust the credits display to be above the sidebar for 640x400
+        ** The credit counter renders on the right-edge tab; with the sidebar
+        ** toggle enabled that tab is the sidebar button, otherwise it is the
+        ** credits tab.
         */
-        if (!Options.ToggleSidebar) {
-            xx += 80 * RESFACTOR;
-        }
+        int xx = SeenBuff.Get_Width() - (40 * RESFACTOR);
 
         /*
         **	Play a sound effect when the money display changes, but only if a sound

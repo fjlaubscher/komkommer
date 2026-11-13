@@ -117,15 +117,11 @@ void TabClass::Draw_It(bool complete)
                          &MetalScheme,
                          TBLACK,
                          TPF_METAL12 | TPF_CENTER | TPF_USE_GRAD_PAL);
-        if (Options.ToggleSidebar) {
-            CC_Draw_Shape(TabShape, 6, width - (EVA_WIDTH * RESFACTOR), 0, WINDOW_MAIN, SHAPE_NORMAL);
-            Fancy_Text_Print(TXT_TAB_SIDEBAR,
-                             width - ((EVA_WIDTH / 2) * RESFACTOR),
-                             0,
-                             &MetalScheme,
-                             TBLACK,
-                             TPF_METAL12 | TPF_CENTER | TPF_USE_GRAD_PAL);
-        }
+        /*
+        **	The credit counter renders on the right-edge tab (the sidebar toggle
+        **	tab when the sidebar toggle is enabled). The tab art is drawn by
+        **	Draw_Credits_Tab and the number by CreditClass::Graphic_Logic.
+        */
 
         LogicPage->Unlock();
     }
@@ -137,19 +133,16 @@ void TabClass::Draw_It(bool complete)
 void TabClass::Draw_Credits_Tab(void)
 {
     /*
+    ** The credit counter renders on the right-edge tab; with the sidebar toggle
+    ** enabled that tab is the sidebar button, otherwise it is the credits tab.
     ** Use the new sidebar art for 640x400
     */
-    if (Options.ToggleSidebar) {
-        CC_Draw_Shape(TabShape,
-                      Map.MoneyFlashTimer > 1 ? 5 : 2,
-                      (320 - (EVA_WIDTH * 2)) * RESFACTOR,
-                      0,
-                      WINDOW_MAIN,
-                      SHAPE_NORMAL);
-    } else {
-        CC_Draw_Shape(
-            TabShape, Map.MoneyFlashTimer > 1 ? 8 : 6, (320 - EVA_WIDTH) * RESFACTOR, 0, WINDOW_MAIN, SHAPE_NORMAL);
-    }
+    CC_Draw_Shape(TabShape,
+                  Map.MoneyFlashTimer > 1 ? 8 : 6,
+                  SeenBuff.Get_Width() - (EVA_WIDTH * RESFACTOR),
+                  0,
+                  WINDOW_MAIN,
+                  SHAPE_NORMAL);
 
     if (Scen.MissionTimer.Is_Active()) {
         bool light = ((int)Scen.MissionTimer < TICKS_PER_MINUTE * Rule.TimerWarning) || Map.FlasherTimer > 0;
