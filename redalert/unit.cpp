@@ -2347,7 +2347,8 @@ static bool Tiberium_Cell_Claimed(UnitClass const* self, CELL cell)
 /*
 **	Walk rings outward like vanilla and stop at the first ring that has ore.
 **	On that ring keep the richest unclaimed cell. Skip cells another friendly
-**	harvester is already driving to. Does not assign NavCom.
+**	harvester is already driving to, falling back to the richest claimed cell
+**	only when no unclaimed cell exists. Does not assign NavCom.
 */
 CELL UnitClass::Search_For_Tiberium(int rad)
 {
@@ -2355,8 +2356,20 @@ CELL UnitClass::Search_For_Tiberium(int rad)
     assert(IsActive);
 
     CELL center = Coord_Cell(Center_Coord());
-    if (Map[center].Land_Type() == LAND_TIBERIUM && !Tiberium_Cell_Claimed(this, center)) {
-        return (center);
+
+    /*
+    **	Prefer an unclaimed cell. If every cell is claimed by another friendly
+    **	harvester, remember the richest claimed cell so a saturated field does
+    **	not strand the harvester in idle/guard.
+    */
+    CELL fallback = 0;
+    int fallbacktiberium = 0;
+    if (Map[center].Land_Type() == LAND_TIBERIUM) {
+        if (!Tiberium_Cell_Claimed(this, center)) {
+            return (center);
+        }
+        fallback = center;
+        fallbacktiberium = 1;
     }
 
     for (int radius = 1; radius < rad; radius++) {
@@ -2374,7 +2387,14 @@ CELL UnitClass::Search_For_Tiberium(int rad)
                 }
                 CELL cell = center;
                 int tiberium = Tiberium_Check(cell, offsets[edge][0], offsets[edge][1]);
-                if (tiberium <= 0 || Tiberium_Cell_Claimed(this, cell)) {
+                if (tiberium <= 0) {
+                    continue;
+                }
+                if (Tiberium_Cell_Claimed(this, cell)) {
+                    if (tiberium > fallbacktiberium) {
+                        fallback = cell;
+                        fallbacktiberium = tiberium;
+                    }
                     continue;
                 }
                 if (tiberium > besttiberium) {
@@ -2387,7 +2407,7 @@ CELL UnitClass::Search_For_Tiberium(int rad)
             return (bestcell);
         }
     }
-    return (0);
+    return (fallback);
 }
 
 bool UnitClass::Goto_Tiberium(int rad)
