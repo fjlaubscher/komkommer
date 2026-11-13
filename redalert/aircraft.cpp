@@ -243,6 +243,8 @@ AircraftClass::AircraftClass(AircraftType classid, HousesType house)
     , SightTimer(0)
     , AttacksRemaining(1)
 {
+    IsScouting = false;
+
     /*
     **	For two shooters, clear out the second shot flag -- it will be set the first time
     **	the object fires. For non two shooters, set the flag since it will never be cleared
@@ -1784,6 +1786,20 @@ int AircraftClass::Mission_Move(void)
             PrimaryFacing.Set_Desired(Direction(NavCom));
             distance = Distance(NavCom);
 
+            if (IsScouting && !IsALoaner) {
+                if (distance < 0x0200) {
+                    /*
+                    **	Orbit the scout point instead of flying straight at it. Steer
+                    **	perpendicular to the direction toward it so the aircraft circles
+                    **	the point (a roughly 3x3-cell footprint) rather than banking
+                    **	short of it.
+                    */
+                    PrimaryFacing.Set_Desired(DirType(Direction(NavCom) + DIR_E));
+                    SecondaryFacing = PrimaryFacing;
+                }
+                return (1);
+            }
+
             if (distance < 0x00C0) {
                 MissionType mission = MISSION_GUARD;
 
@@ -1877,13 +1893,17 @@ int AircraftClass::Mission_Move(void)
         if (!Target_Legal(NavCom)) {
             Enter_Idle_Mode();
         } else {
-            if (!Is_LZ_Clear(NavCom) || !Cell_Seems_Ok(As_Cell(NavCom))) {
-                Assign_Destination(New_LZ(NavCom));
-                if (Team.Is_Valid()) {
-                    Team->Assign_Mission_Target(NavCom);
-                }
-            } else {
+            if (IsScouting) {
                 Status = TAKE_OFF;
+            } else {
+                if (!Is_LZ_Clear(NavCom) || !Cell_Seems_Ok(As_Cell(NavCom))) {
+                    Assign_Destination(New_LZ(NavCom));
+                    if (Team.Is_Valid()) {
+                        Team->Assign_Mission_Target(NavCom);
+                    }
+                } else {
+                    Status = TAKE_OFF;
+                }
             }
         }
         break;
@@ -1915,6 +1935,27 @@ int AircraftClass::Mission_Move(void)
     **	Fly toward target.
     */
     case FLY_TO_LZ:
+        if (IsScouting) {
+            int distance = Process_Fly_To(true, NavCom);
+
+            if (distance < 0x0080) {
+                if (Target_Legal(TarCom)) {
+                    SecondaryFacing.Set_Desired(Direction(TarCom));
+                } else {
+                    SecondaryFacing.Set_Desired(Pose_Dir());
+                }
+
+                if (distance < 0x0010) {
+                    Set_Speed(0);
+                }
+                return (1);
+            }
+
+            //				SecondaryFacing.Set_Desired(::Direction(Fire_Coord(0), As_Coord(NavCom)));
+            SecondaryFacing.Set_Desired(Direction(NavCom));
+            return (1);
+        }
+
         if (Is_LZ_Clear(NavCom)) {
             int distance = Process_Fly_To(true, NavCom);
 
@@ -1949,6 +1990,10 @@ int AircraftClass::Mission_Move(void)
     **	Land on target.
     */
     case LAND:
+        if (IsScouting) {
+            Status = TAKE_OFF;
+            break;
+        }
         if (IsTakingOff) {
             Assign_Destination(New_LZ(NavCom));
             if (Team.Is_Valid()) {
@@ -1990,6 +2035,15 @@ void AircraftClass::Enter_Idle_Mode(bool)
 {
     assert(Aircraft.ID(this) == ID);
     assert(IsActive);
+
+    if (IsScouting && In_Which_Layer() != LAYER_GROUND && House->IsPlayerControl && (Mission == MISSION_MOVE || Mission == MISSION_QMOVE)) {
+        return;
+    }
+    if (!IsScouting && In_Which_Layer() != LAYER_GROUND && House->IsPlayerControl && (Mission == MISSION_MOVE || Mission == MISSION_QMOVE)
+        && Target_Legal(NavCom) && ::Is_Target_Cell(NavCom)) {
+        return;
+    }
+    IsScouting = false;
 
     MissionType mission =
         (Class->IsFixedWing && IsALoaner && Class->PrimaryWeapon != NULL) ? MISSION_HUNT : MISSION_GUARD;
@@ -2302,8 +2356,23 @@ void AircraftClass::Active_Click_With(ActionType action, ObjectClass* object)
         break;
 
     case ACTION_SELF:
-        Player_Assign_Mission(MISSION_UNLOAD, TARGET_NONE, TARGET_NONE);
-        break;
+        if (!Class->IsFixedWing) {
+            if (Height > 0) {
+                /*
+                **	Airborne helicopter: deploy lands it (a move to its own cell,
+                **	which the move mission turns into a landing).
+                */
+                TARGET here = ::As_Target(Coord_Cell(Coord));
+                Player_Assign_Mission(MISSION_MOVE, TARGET_NONE, here);
+            } else if (How_Many()) {
+                /*
+                **	Landed transport with cargo: deploy unloads it.
+                */
+                Player_Assign_Mission(MISSION_UNLOAD, TARGET_NONE, TARGET_NONE);
+            }
+        }
+        // The self action is fully handled here; FootClass would queue a spurious MISSION_UNLOAD.
+        return;
 
     default:
         break;
@@ -2396,8 +2465,19 @@ ActionType AircraftClass::What_Action(ObjectClass const* target) const
 
     ActionType action = FootClass::What_Action(target);
 
-    if (action == ACTION_SELF && (!How_Many() || (Height > 0) || IsTethered)) {
-        action = ACTION_NONE;
+    if (action == ACTION_SELF) {
+        if (!Class->IsFixedWing) {
+            if (Height > 0) {
+                TARGET here = ::As_Target(Coord_Cell(Coord));
+                action = (Is_LZ_Clear(here) && Cell_Seems_Ok(Coord_Cell(Coord))) ? ACTION_SELF : ACTION_NONE;
+            } else if (How_Many()) {
+                action = ACTION_SELF;
+            } else {
+                action = ACTION_NONE;
+            }
+        } else {
+            action = ACTION_NONE;
+        }
     }
 
     if (action == ACTION_ATTACK && Class->PrimaryWeapon == NULL) {
@@ -2415,10 +2495,6 @@ ActionType AircraftClass::What_Action(ObjectClass const* target) const
         action = ACTION_ENTER;
     }
 #endif
-
-    if (Class->IsFixedWing && action == ACTION_MOVE) {
-        action = ACTION_NOMOVE;
-    }
 
     if (action == ACTION_NONE) {
         action = What_Action(Coord_Cell(target->Center_Coord()));
@@ -2462,17 +2538,8 @@ ActionType AircraftClass::What_Action(CELL cell) const
 
     ActionType action = FootClass::What_Action(cell);
 
-    // using function for IsVisible so we have different results for different players - JAS 2019/09/30
-    if ((action == ACTION_MOVE || action == ACTION_ATTACK) && !Map[cell].Is_Visible(PlayerPtr)) {
-        action = ACTION_NOMOVE;
-    }
-
     if (action == ACTION_ATTACK && Class->PrimaryWeapon == NULL) {
         action = ACTION_NONE;
-    }
-
-    if (Class->IsFixedWing && action == ACTION_MOVE) {
-        action = ACTION_NOMOVE;
     }
 
     return (action);
@@ -3158,23 +3225,6 @@ MoveType AircraftClass::Can_Enter_Cell(CELL cell, FacingType) const
     if (!Map.In_Radar(cell))
         return (MOVE_NO);
 
-    CellClass* cellptr = &Map[cell];
-
-    ObjectClass const* occupier = cellptr->Cell_Occupier();
-
-    if (occupier == NULL || !occupier->Is_Techno() || ((TechnoClass*)occupier)->House->Is_Ally(House)
-        || (!((TechnoClass*)occupier)->Is_Cloaked(this)
-            && (ScenarioInit == 0
-                && (occupier->What_Am_I() != RTTI_BUILDING || !((BuildingClass*)occupier)->Class->IsInvisible)))) {
-
-        if (!cellptr->Is_Clear_To_Move(SPEED_TRACK, false, false))
-            return (MOVE_NO);
-    }
-
-    if (Session.Type == GAME_NORMAL && IsOwnedByPlayer && !cellptr->IsMapped) {
-        return (MOVE_NO);
-    }
-
     return (MOVE_OK);
 }
 
@@ -3226,8 +3276,7 @@ TARGET AircraftClass::Good_Fire_Location(TARGET target) const
                 CELL actualcell = Coord_Cell(Coord_Sub(newcoord, XY_Coord(0, FLIGHT_LEVEL)));
 
                 // using function for IsVisible so we have different results for different players - JAS 2019/09/30
-                if (Map.In_Radar(actualcell) && (Session.Type != GAME_NORMAL || Map[newcell].Is_Visible(PlayerPtr))
-                    && Cell_Seems_Ok(newcell, true)) {
+                if (Map.In_Radar(actualcell) && Cell_Seems_Ok(newcell, true)) {
                     int dist;
                     if (altcoord != 0) {
                         dist = ::Distance(newcoord, altcoord);
@@ -3831,6 +3880,10 @@ int AircraftClass::Mission_Guard(void)
 
         if (Class->PrimaryWeapon == NULL) {
             Assign_Destination(::As_Target(Coord_Cell(Coord)));
+            Assign_Mission(MISSION_MOVE);
+        } else if (!Is_Transport_Helicopter() && House->IsPlayerControl && Target_Legal(NavCom)
+            && ::Is_Target_Cell(NavCom)) {
+            IsScouting = true;
             Assign_Mission(MISSION_MOVE);
         } else {
             if (!Team.Is_Valid())

@@ -230,6 +230,7 @@ AircraftClass::AircraftClass(AircraftType classid, HousesType house)
     IsTakingOff = false;
     IsHovering = false;
     IsHoming = false;
+    IsScouting = false;
     Strength = Class->MaxStrength;
     NavCom = TARGET_NONE;
     SecondaryFacing = PrimaryFacing;
@@ -1757,10 +1758,14 @@ int AircraftClass::Mission_Move(void)
         if (!Target_Legal(NavCom)) {
             Enter_Idle_Mode();
         } else {
-            if (!Is_LZ_Clear(NavCom) || !Cell_Seems_Ok(As_Cell(NavCom))) {
-                Assign_Destination(New_LZ(NavCom));
-            } else {
+            if (IsScouting) {
                 Status = TAKE_OFF;
+            } else {
+                if (!Is_LZ_Clear(NavCom) || !Cell_Seems_Ok(As_Cell(NavCom))) {
+                    Assign_Destination(New_LZ(NavCom));
+                } else {
+                    Status = TAKE_OFF;
+                }
             }
         }
         break;
@@ -1791,6 +1796,26 @@ int AircraftClass::Mission_Move(void)
     **	Fly toward target.
     */
     case FLY_TO_LZ:
+        if (IsScouting) {
+            int distance = Process_Fly_To(true);
+
+            if (distance < 0x0080) {
+                if (Target_Legal(TarCom)) {
+                    SecondaryFacing.Set_Desired(Direction(TarCom));
+                } else {
+                    SecondaryFacing.Set_Desired(Pose_Dir());
+                }
+
+                if (distance < 0x0010) {
+                    Set_Speed(0);
+                }
+                return (1);
+            }
+
+            SecondaryFacing.Set_Desired(::Direction(Fire_Coord(0), As_Coord(NavCom)));
+            return (1);
+        }
+
         if (Is_LZ_Clear(NavCom)) {
             int distance = Process_Fly_To(true);
 
@@ -1820,6 +1845,10 @@ int AircraftClass::Mission_Move(void)
     **	Land on target.
     */
     case LAND:
+        if (IsScouting) {
+            Status = TAKE_OFF;
+            break;
+        }
         if (IsTakingOff) {
             Assign_Destination(New_LZ(NavCom));
             Status = TAKE_OFF;
@@ -1854,6 +1883,14 @@ int AircraftClass::Mission_Move(void)
 void AircraftClass::Enter_Idle_Mode(bool)
 {
     Validate();
+    if (IsScouting && In_Which_Layer() != LAYER_GROUND && House->IsHuman && Mission == MISSION_MOVE) {
+        return;
+    }
+    if (!IsScouting && In_Which_Layer() != LAYER_GROUND && House->IsHuman && Mission == MISSION_MOVE
+        && Target_Legal(NavCom) && ::Is_Target_Cell(NavCom)) {
+        return;
+    }
+    IsScouting = false;
     MissionType mission = MISSION_GUARD;
     if (In_Which_Layer() == LAYER_GROUND) {
         if (IsALoaner) {
@@ -2073,8 +2110,16 @@ void AircraftClass::Active_Click_With(ActionType action, ObjectClass* object)
         break;
 
     case ACTION_SELF:
-        Player_Assign_Mission(MISSION_UNLOAD, TARGET_NONE, TARGET_NONE);
-        break;
+        if (!Class->IsFixedWing) {
+            if (Altitude > 0) {
+                TARGET here = ::As_Target(Coord_Cell(Coord));
+                Player_Assign_Mission(MISSION_MOVE, TARGET_NONE, here);
+            } else if (How_Many()) {
+                Player_Assign_Mission(MISSION_UNLOAD, TARGET_NONE, TARGET_NONE);
+            }
+        }
+        // The self action is fully handled here; FootClass would queue a spurious MISSION_UNLOAD.
+        return;
 
     default:
         break;
@@ -2177,8 +2222,21 @@ ActionType AircraftClass::What_Action(ObjectClass* target) const
     Validate();
     ActionType action = FootClass::What_Action(target);
 
-    if (action == ACTION_SELF && (!How_Many() || (Altitude > 0) || IsTethered)) {
-        action = ACTION_NONE;
+    if (action == ACTION_SELF) {
+        if (!Class->IsFixedWing) {
+            if (Altitude > 0) {
+                TARGET here = ::As_Target(Coord_Cell(Coord));
+                action = (Is_LZ_Clear(here) && Cell_Seems_Ok(Coord_Cell(Coord))) ? ACTION_SELF : ACTION_NONE;
+            } else if (IsTethered) {
+                action = ACTION_NONE;
+            } else if (How_Many()) {
+                action = ACTION_SELF;
+            } else {
+                action = ACTION_NONE;
+            }
+        } else {
+            action = ACTION_NONE;
+        }
     }
 
     if (action == ACTION_ATTACK && Class->Primary == WEAPON_NONE) {
@@ -2216,11 +2274,6 @@ ActionType AircraftClass::What_Action(CELL cell) const
 {
     Validate();
     ActionType action = FootClass::What_Action(cell);
-
-    // using function for IsVisible so we have different results for different players - JAS 2019/09/30
-    if ((action == ACTION_MOVE || action == ACTION_ATTACK) && !Map[cell].Is_Visible(PlayerPtr)) {
-        action = ACTION_NOMOVE;
-    }
 
     if (action == ACTION_ATTACK && Class->Primary == WEAPON_NONE) {
         action = ACTION_NONE;
@@ -2843,14 +2896,6 @@ MoveType AircraftClass::Can_Enter_Cell(CELL cell, FacingType) const
     if (!Map.In_Radar(cell))
         return (MOVE_NO);
 
-    CellClass* cellptr = &Map[cell];
-
-    if (!cellptr->Is_Generally_Clear(true))
-        return (MOVE_NO);
-
-    if (GameToPlay == GAME_NORMAL && IsOwnedByPlayer && !cellptr->Is_Visible(PlayerPtr))
-        return (MOVE_NO);
-
     return (MOVE_OK);
 }
 
@@ -2887,8 +2932,7 @@ TARGET AircraftClass::Good_Fire_Location(TARGET target) const
                 CELL newcell = Coord_Cell(newcoord);
                 CELL actualcell = Coord_Cell(Coord_Sub(newcoord, XYPixel_Coord(0, FLIGHT_LEVEL)));
 
-                if (Map.In_Radar(actualcell) && (GameToPlay != GAME_NORMAL || Map[newcell].Is_Visible(PlayerPtr))
-                    && Cell_Seems_Ok(newcell, true)) {
+                if (Map.In_Radar(actualcell) && Cell_Seems_Ok(newcell, true)) {
                     int dist = Distance(newcoord);
                     if (bestval == -1 || dist < bestval) {
                         best2val = bestval;
@@ -3375,6 +3419,10 @@ int AircraftClass::Mission_Guard(void)
 
         if (Class->Primary == WEAPON_NONE) {
             Assign_Destination(::As_Target(Coord_Cell(Coord)));
+            Assign_Mission(MISSION_MOVE);
+        } else if (!Is_Transport_Helicopter() && House->IsHuman && Target_Legal(NavCom)
+            && ::Is_Target_Cell(NavCom)) {
+            IsScouting = true;
             Assign_Mission(MISSION_MOVE);
         } else {
             Enter_Idle_Mode();

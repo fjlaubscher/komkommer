@@ -149,6 +149,13 @@ public:
     virtual void Draw_It(int x, int y, WindowNumberType window);
     virtual void Set_Speed(int speed);
 
+    void Set_Scouting(bool value) { IsScouting = value; }
+    /*
+    **	Transport helicopters (the Chinook) keep vanilla move semantics: they fly to
+    **	their destination and land there instead of loitering to scout.
+    */
+    bool Is_Transport_Helicopter(void) const { return (!Class->IsFixedWing && Class->Max_Passengers() > 0); }
+
     /*
     **	User I/O.
     */
@@ -237,6 +244,11 @@ private:
     **	zone. When the position is over the landing zone, then this flag is set to false.
     */
     unsigned IsHovering : 1;
+
+    /*
+    **	Player-ordered scout/hold: remain airborne at the destination instead of landing on arrival.
+    */
+    unsigned IsScouting : 1;
 
     /*
     **	This is the jitter tracker to be used when the aircraft is a helicopter and

@@ -617,6 +617,27 @@ void EventClass::Execute(void)
                     object->Clicked_As_Target((HousesType)ID);
                 }
             }
+            if (techno->What_Am_I() == RTTI_AIRCRAFT) {
+                AircraftClass* air = (AircraftClass*)techno;
+                air->Set_Scouting(false);
+                if (Data.MegaMission.Mission == MISSION_MOVE) {
+                    TARGET dest = Target_Legal(Data.MegaMission.Destination) ? Data.MegaMission.Destination : TARGET_NONE;
+                    if (!Target_Legal(dest)) {
+                        dest = Target_Legal(Data.MegaMission.Target) ? Data.MegaMission.Target : TARGET_NONE;
+                    }
+                    if (Target_Legal(dest) && ::Is_Target_Cell(dest)) {
+                        CELL cell = As_Cell(dest);
+                        if (air->Altitude > 0 && cell == Coord_Cell(air->Coord)) {
+                            air->Set_Scouting(false);
+                        } else if (!air->Is_Transport_Helicopter()) {
+                            // A transport helicopter (Chinook) never loiters; it keeps its
+                            // landing move so it flies to the destination and lands.
+                            air->Set_Scouting(true);
+                        }
+                    }
+                }
+            }
+
             techno->Assign_Mission(Data.MegaMission.Mission);
 
             /*

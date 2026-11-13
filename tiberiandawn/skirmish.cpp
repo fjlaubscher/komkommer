@@ -37,11 +37,12 @@ bool Save_Settings(Settings const& settings)
 {
     INIClass ini;
     RawFileClass file(Config_Path().c_str());
-    if (file.Is_Available() && !ini.Load(file)) {
-        return false; // Do not overwrite an unreadable existing config.
+    if (file.Is_Available()) {
+        ini.Load(file);
     }
     settings.Save(ini);
-    return ini.Save(file) > 0;
+    RawFileClass out(Config_Path().c_str());
+    return ini.Save(out) != 0;
 }
 
 using RosterDropListClass = SkirmishDropListClass<DropListClass>;
