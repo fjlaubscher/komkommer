@@ -7,7 +7,7 @@ These guides keep traps the code does not state. Leave procedures, file tours, a
 ## Layout
 
 - `tiberiandawn/` and `redalert/` are separate engines. Check the counterpart when a change applies to both. Engine traps are in each directory's `AGENTS.md`.
-- `common/` is platform input, video, audio, paths, and shared utilities. `resources/remaster_mods/` is source mod content. `build*/` is generated.
+- `common/` is platform input, video, audio, paths, and shared utilities. `resources/remaster_mods/` is source mod content. `build*/` is generated. `common/AGENTS.md` and `resources/AGENTS.md` hold their traps too.
 
 ## Sharing code
 
@@ -54,6 +54,8 @@ Configure from `README.md`. The `release` preset tree defaults to `RelWithDebInf
 - Remastered deploy is `.agents/skills/remaster-mod/SKILL.md`. Do not deploy, or overwrite an install, just to see that it compiles. Restart the host after a DLL update.
 - For a local run, put `[Paths] DataPath=...` beside the build executable. Do not hard-code a data path into source.
 - CTest does not cover gameplay. Say what built and which mode.
+- `cmake --build <tree> --target format` reformats sources; it only exists when clang-format is found. Pin clang-format to 14.0.x — the build warns outside 14.0.0–14.0.6.
+- CI builds with `-Werror=write-strings` (Linux/macOS) and `/Zc:strictStrings` (MSVC), so assigning a string literal to a non-`const` `char*` fails in CI even though a local build without those flags passes. Reproduce locally by setting the `VC_CXX_FLAGS` env var before configuring (it applies to GCC/Clang too, despite the name).
 
 When a change can affect them, check click and box selection (off-screen, enemy, cloaked, aircraft), production hold/resume/cancel and placement, rally set/move/deselect/destroy, several dock customers including a cancelled one and an occupied helipad, and campaign separately from skirmish.
 
