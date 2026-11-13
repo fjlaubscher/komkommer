@@ -621,7 +621,18 @@ void EventClass::Execute(void)
                 AircraftClass* air = (AircraftClass*)techno;
                 air->Set_Scouting(false);
                 if (Data.MegaMission.Mission == MISSION_MOVE) {
-                    air->Set_Scouting(true);
+                    TARGET dest = Target_Legal(Data.MegaMission.Destination) ? Data.MegaMission.Destination : TARGET_NONE;
+                    if (!Target_Legal(dest)) {
+                        dest = Target_Legal(Data.MegaMission.Target) ? Data.MegaMission.Target : TARGET_NONE;
+                    }
+                    if (Target_Legal(dest) && ::Is_Target_Cell(dest)) {
+                        CELL cell = As_Cell(dest);
+                        if (air->Altitude > 0 && cell == Coord_Cell(air->Coord)) {
+                            air->Set_Scouting(false);
+                        } else {
+                            air->Set_Scouting(true);
+                        }
+                    }
                 }
             }
 
@@ -647,17 +658,6 @@ void EventClass::Execute(void)
             } else {
                 techno->Assign_Target(Data.MegaMission.Target);
                 techno->Assign_Destination(Data.MegaMission.Destination);
-            }
-
-            if (techno->What_Am_I() == RTTI_AIRCRAFT) {
-                AircraftClass* air = (AircraftClass*)techno;
-                if (Data.MegaMission.Mission == MISSION_GUARD && air->Altitude > 0
-                    && Target_Legal(Data.MegaMission.Destination) && ::Is_Target_Cell(Data.MegaMission.Destination)) {
-                    air->Set_Scouting(false);
-                    air->Assign_Mission(MISSION_MOVE);
-                    air->Assign_Destination(Data.MegaMission.Destination);
-                    air->Commence();
-                }
             }
 
 #ifdef NEVER

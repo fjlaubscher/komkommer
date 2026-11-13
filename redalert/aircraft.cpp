@@ -1787,8 +1787,14 @@ int AircraftClass::Mission_Move(void)
             distance = Distance(NavCom);
 
             if (IsScouting && !IsALoaner) {
-                if (distance < 0x0400) {
-                    PrimaryFacing.Set_Desired(DirType(PrimaryFacing.Current() + DIR_E));
+                if (distance < 0x0200) {
+                    /*
+                    **	Orbit the scout point instead of flying straight at it. Steer
+                    **	perpendicular to the direction toward it so the aircraft circles
+                    **	the point (a roughly 3x3-cell footprint) rather than banking
+                    **	short of it.
+                    */
+                    PrimaryFacing.Set_Desired(DirType(Direction(NavCom) + DIR_E));
                     SecondaryFacing = PrimaryFacing;
                 }
                 return (1);
@@ -2352,19 +2358,21 @@ void AircraftClass::Active_Click_With(ActionType action, ObjectClass* object)
     case ACTION_SELF:
         if (!Class->IsFixedWing) {
             if (Height > 0) {
+                /*
+                **	Airborne helicopter: deploy lands it (a move to its own cell,
+                **	which the move mission turns into a landing).
+                */
                 TARGET here = ::As_Target(Coord_Cell(Coord));
-                TARGET lz = New_LZ(here);
-                if (!Target_Legal(lz)) {
-                    lz = here;
-                }
-                Player_Assign_Mission(MISSION_GUARD, TARGET_NONE, lz);
+                Player_Assign_Mission(MISSION_MOVE, TARGET_NONE, here);
             } else if (How_Many()) {
+                /*
+                **	Landed transport with cargo: deploy unloads it.
+                */
                 Player_Assign_Mission(MISSION_UNLOAD, TARGET_NONE, TARGET_NONE);
-            } else if (!IsTethered) {
-                Player_Assign_Mission(MISSION_MOVE, TARGET_NONE, ::As_Target(Coord_Cell(Coord)));
             }
         }
-        break;
+        // The self action is fully handled here; FootClass would queue a spurious MISSION_UNLOAD.
+        return;
 
     default:
         break;
@@ -2459,7 +2467,14 @@ ActionType AircraftClass::What_Action(ObjectClass const* target) const
 
     if (action == ACTION_SELF) {
         if (!Class->IsFixedWing) {
-            action = ACTION_SELF;
+            if (Height > 0) {
+                TARGET here = ::As_Target(Coord_Cell(Coord));
+                action = (Is_LZ_Clear(here) && Cell_Seems_Ok(Coord_Cell(Coord))) ? ACTION_SELF : ACTION_NONE;
+            } else if (How_Many()) {
+                action = ACTION_SELF;
+            } else {
+                action = ACTION_NONE;
+            }
         } else {
             action = ACTION_NONE;
         }
@@ -3867,7 +3882,7 @@ int AircraftClass::Mission_Guard(void)
             Assign_Destination(::As_Target(Coord_Cell(Coord)));
             Assign_Mission(MISSION_MOVE);
         } else if (House->IsPlayerControl && Target_Legal(NavCom) && ::Is_Target_Cell(NavCom)) {
-            IsScouting = false;
+            IsScouting = true;
             Assign_Mission(MISSION_MOVE);
         } else {
             if (!Team.Is_Valid())

@@ -746,7 +746,18 @@ void EventClass::Execute(void)
                 AircraftClass* air = (AircraftClass*)techno;
                 air->Set_Scouting(false);
                 if (Data.MegaMission.Mission == MISSION_MOVE || Data.MegaMission.Mission == MISSION_QMOVE) {
-                    air->Set_Scouting(true);
+                    TARGET dest = Data.MegaMission.Destination.Is_Valid() ? Data.MegaMission.Destination.As_TARGET() : TARGET_NONE;
+                    if (!Target_Legal(dest) && Data.MegaMission.Target.Is_Valid()) {
+                        dest = Data.MegaMission.Target.As_TARGET();
+                    }
+                    if (Target_Legal(dest) && ::Is_Target_Cell(dest)) {
+                        CELL cell = As_Cell(dest);
+                        if (air->Height > 0 && cell == Coord_Cell(air->Coord)) {
+                            air->Set_Scouting(false);
+                        } else {
+                            air->Set_Scouting(true);
+                        }
+                    }
                 }
             }
 
@@ -813,19 +824,7 @@ void EventClass::Execute(void)
                 }
             }
 
-            if (techno->What_Am_I() == RTTI_AIRCRAFT) {
-                AircraftClass* air = (AircraftClass*)techno;
-                if (Data.MegaMission.Mission == MISSION_GUARD && air->Height > 0
-                    && Data.MegaMission.Destination.Is_Valid()) {
-                    TARGET dest = Data.MegaMission.Destination.As_TARGET();
-                    if (::Is_Target_Cell(dest)) {
-                        air->Set_Scouting(false);
-                        air->Assign_Mission(MISSION_MOVE);
-                        air->Assign_Destination(dest);
-                        air->Commence();
-                    }
-                }
-            }
+
 
 #ifdef NEVER
             if ((techno->What_Am_I() == RTTI_UNIT || techno->What_Am_I() == RTTI_INFANTRY)

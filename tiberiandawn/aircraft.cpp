@@ -2113,19 +2113,13 @@ void AircraftClass::Active_Click_With(ActionType action, ObjectClass* object)
         if (!Class->IsFixedWing) {
             if (Altitude > 0) {
                 TARGET here = ::As_Target(Coord_Cell(Coord));
-                TARGET lz = New_LZ(here, true);
-                if (!Target_Legal(lz)) {
-                    lz = here;
-                }
-                Player_Assign_Mission(MISSION_GUARD, TARGET_NONE, lz);
+                Player_Assign_Mission(MISSION_MOVE, TARGET_NONE, here);
             } else if (How_Many()) {
                 Player_Assign_Mission(MISSION_UNLOAD, TARGET_NONE, TARGET_NONE);
-            } else if (!IsTethered) {
-                TARGET here = ::As_Target(Coord_Cell(Coord));
-                Player_Assign_Mission(MISSION_MOVE, TARGET_NONE, here);
             }
         }
-        break;
+        // The self action is fully handled here; FootClass would queue a spurious MISSION_UNLOAD.
+        return;
 
     default:
         break;
@@ -2231,13 +2225,14 @@ ActionType AircraftClass::What_Action(ObjectClass* target) const
     if (action == ACTION_SELF) {
         if (!Class->IsFixedWing) {
             if (Altitude > 0) {
-                action = ACTION_SELF;
+                TARGET here = ::As_Target(Coord_Cell(Coord));
+                action = (Is_LZ_Clear(here) && Cell_Seems_Ok(Coord_Cell(Coord))) ? ACTION_SELF : ACTION_NONE;
             } else if (IsTethered) {
                 action = ACTION_NONE;
             } else if (How_Many()) {
                 action = ACTION_SELF;
             } else {
-                action = ACTION_SELF;
+                action = ACTION_NONE;
             }
         } else {
             action = ACTION_NONE;
@@ -3426,7 +3421,7 @@ int AircraftClass::Mission_Guard(void)
             Assign_Destination(::As_Target(Coord_Cell(Coord)));
             Assign_Mission(MISSION_MOVE);
         } else if (IsOwnedByPlayer && Target_Legal(NavCom) && ::Is_Target_Cell(NavCom)) {
-            IsScouting = false;
+            IsScouting = true;
             Assign_Mission(MISSION_MOVE);
         } else {
             Enter_Idle_Mode();
