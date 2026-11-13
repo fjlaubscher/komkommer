@@ -151,6 +151,11 @@ public:
 
     void Set_Scouting(bool value) { IsScouting = value; }
     bool Is_Scouting(void) const { return IsScouting != 0; }
+    /*
+    **	Transport helicopters (the Chinook) keep vanilla move semantics: they fly to
+    **	their destination and land there instead of loitering to scout.
+    */
+    bool Is_Transport_Helicopter(void) const { return (!Class->IsFixedWing && Class->Max_Passengers() > 0); }
 
     /*
     **	User I/O.

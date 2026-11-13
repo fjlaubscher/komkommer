@@ -3420,7 +3420,8 @@ int AircraftClass::Mission_Guard(void)
         if (Class->Primary == WEAPON_NONE) {
             Assign_Destination(::As_Target(Coord_Cell(Coord)));
             Assign_Mission(MISSION_MOVE);
-        } else if (IsOwnedByPlayer && Target_Legal(NavCom) && ::Is_Target_Cell(NavCom)) {
+        } else if (!Is_Transport_Helicopter() && IsOwnedByPlayer && Target_Legal(NavCom)
+            && ::Is_Target_Cell(NavCom)) {
             IsScouting = true;
             Assign_Mission(MISSION_MOVE);
         } else {

@@ -754,7 +754,9 @@ void EventClass::Execute(void)
                         CELL cell = As_Cell(dest);
                         if (air->Height > 0 && cell == Coord_Cell(air->Coord)) {
                             air->Set_Scouting(false);
-                        } else {
+                        } else if (!air->Is_Transport_Helicopter()) {
+                            // A transport helicopter (Chinook) never loiters; it keeps its
+                            // landing move so it flies to the destination and lands.
                             air->Set_Scouting(true);
                         }
                     }

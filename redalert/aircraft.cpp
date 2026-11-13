@@ -3881,7 +3881,8 @@ int AircraftClass::Mission_Guard(void)
         if (Class->PrimaryWeapon == NULL) {
             Assign_Destination(::As_Target(Coord_Cell(Coord)));
             Assign_Mission(MISSION_MOVE);
-        } else if (House->IsPlayerControl && Target_Legal(NavCom) && ::Is_Target_Cell(NavCom)) {
+        } else if (!Is_Transport_Helicopter() && House->IsPlayerControl && Target_Legal(NavCom)
+            && ::Is_Target_Cell(NavCom)) {
             IsScouting = true;
             Assign_Mission(MISSION_MOVE);
         } else {
