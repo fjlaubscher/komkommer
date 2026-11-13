@@ -617,6 +617,14 @@ void EventClass::Execute(void)
                     object->Clicked_As_Target((HousesType)ID);
                 }
             }
+            if (techno->What_Am_I() == RTTI_AIRCRAFT) {
+                AircraftClass* air = (AircraftClass*)techno;
+                air->Set_Scouting(false);
+                if (Data.MegaMission.Mission == MISSION_MOVE) {
+                    air->Set_Scouting(true);
+                }
+            }
+
             techno->Assign_Mission(Data.MegaMission.Mission);
 
             /*
@@ -639,6 +647,17 @@ void EventClass::Execute(void)
             } else {
                 techno->Assign_Target(Data.MegaMission.Target);
                 techno->Assign_Destination(Data.MegaMission.Destination);
+            }
+
+            if (techno->What_Am_I() == RTTI_AIRCRAFT) {
+                AircraftClass* air = (AircraftClass*)techno;
+                if (Data.MegaMission.Mission == MISSION_GUARD && air->Altitude > 0
+                    && Target_Legal(Data.MegaMission.Destination) && ::Is_Target_Cell(Data.MegaMission.Destination)) {
+                    air->Set_Scouting(false);
+                    air->Assign_Mission(MISSION_MOVE);
+                    air->Assign_Destination(Data.MegaMission.Destination);
+                    air->Commence();
+                }
             }
 
 #ifdef NEVER

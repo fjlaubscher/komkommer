@@ -22,9 +22,12 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - Each campaign mission writes `SAVEGAME.999` when it starts. The next mission overwrites that file. Skirmish, multiplayer, the scenario editor, and loading an existing save do not.
 - The load list shows `AUTOSAVE: NOD 01` (GDI, SOVIET, or ALLIES the same way). Remastered keeps the host's own save UI.
 
-### Aircraft scouting
+### Aircraft scouting and loiter
+- Aircraft can be ordered to move to or attack non-visible (fogged/shrouded) cells for scouting; reveal comes from their normal sight while airborne.
 - Aircraft sight defaults to **3 cells** in both engines. Stock RA `Sight=0` entries are raised to that baseline after rules loading, including helicopters; non-zero INI sight values still override it. The TD airstrip delivery plane (`C17`) stays at **0** so its flight does not reveal the map.
 - Terrain-reveal call sites use the type's sight range: TD ground-layer entry/firing, and RA `Look()`/firing. Grounded RA aircraft are no longer clamped to a one-cell sight range.
+- **Helicopters:** a move order to terrain flies to the destination and holds/loiters there to scout instead of auto-landing on arrival. The self-action (deploy) orders an airborne helicopter to land (seeking a valid helipad/LZ context) or, when landed and empty, to lift off; landed transports with passengers keep self-action unloading. A new move order while grounded or landing lifts off and flies to the new destination.
+- **RA Yak/MiG:** a move order to a scout point flies to and circles/loiters around that area to reveal it, without landing on terrain, until given a new order or directed to return/dock/reload. Existing airstrip docking/reload/ammo/return behavior is preserved. Scripted/non-scout fixed-wing behavior (e.g. TD A-10, RA cargo planes) is unchanged.
 
 ### Rally points for production buildings
 - **Vanilla:** Production buildings do not have a player-settable rally point workflow like this mod’s implementation.

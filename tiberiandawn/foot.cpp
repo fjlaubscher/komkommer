@@ -1328,8 +1328,8 @@ void FootClass::Active_Click_With(ActionType action, CELL cell)
         // Fall into next case.
 
     case ACTION_NOMOVE:
-        // using function for IsVisible so we have different results for different players - JAS 2019/09/30
-        if (What_Am_I() != RTTI_AIRCRAFT || Map[cell].Is_Visible(PlayerPtr)) {
+        // Aircraft may be ordered to scout non-visible cells.
+        if (What_Am_I() != RTTI_AIRCRAFT || Map[cell].Is_Visible(PlayerPtr) || What_Am_I() == RTTI_AIRCRAFT) {
             Player_Assign_Mission(MISSION_MOVE, TARGET_NONE, ::As_Target(cell));
         }
         break;

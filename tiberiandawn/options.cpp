@@ -56,8 +56,10 @@
  *   OptionsClass::Set_Tint -- Sets the tint setting.                                          *
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
+#include <string>
 #include "function.h"
 #include "options.h"
+#include "paths.h"
 #include "common/ini.h"
 
 #ifdef SDL_BUILD
@@ -556,7 +558,8 @@ void OptionsClass::Load_Settings(void)
     /*
     **	Create filename and read the file.
     */
-    CCFileClass file(CONFIG_FILE_NAME);
+    std::string config_path = PathsClass::Concatenate_Paths(Paths.User_Path(), CONFIG_FILE_NAME);
+    CCFileClass file(config_path.c_str());
     INIClass ini;
     ini.Load(file);
 
@@ -809,7 +812,8 @@ void OptionsClass::Save_Settings(void)
     /*
     **	Create filename and read the file.
     */
-    CCFileClass file(CONFIG_FILE_NAME);
+    std::string config_path = PathsClass::Concatenate_Paths(Paths.User_Path(), CONFIG_FILE_NAME);
+    CCFileClass file(config_path.c_str());
     INIClass ini;
     ini.Load(file);
 

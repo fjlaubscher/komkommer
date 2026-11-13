@@ -742,6 +742,14 @@ void EventClass::Execute(void)
             */
             bool q = (Data.MegaMission.Mission == MISSION_QMOVE);
 
+            if (techno->What_Am_I() == RTTI_AIRCRAFT) {
+                AircraftClass* air = (AircraftClass*)techno;
+                air->Set_Scouting(false);
+                if (Data.MegaMission.Mission == MISSION_MOVE || Data.MegaMission.Mission == MISSION_QMOVE) {
+                    air->Set_Scouting(true);
+                }
+            }
+
             techno->Assign_Mission(Data.MegaMission.Mission);
 
             if (techno->Is_Foot()) {
@@ -802,6 +810,20 @@ void EventClass::Execute(void)
                 } else {
                     ship->IsToSelfRepair = false;
                     ship->IsSelfRepairing = false;
+                }
+            }
+
+            if (techno->What_Am_I() == RTTI_AIRCRAFT) {
+                AircraftClass* air = (AircraftClass*)techno;
+                if (Data.MegaMission.Mission == MISSION_GUARD && air->Height > 0
+                    && Data.MegaMission.Destination.Is_Valid()) {
+                    TARGET dest = Data.MegaMission.Destination.As_TARGET();
+                    if (::Is_Target_Cell(dest)) {
+                        air->Set_Scouting(false);
+                        air->Assign_Mission(MISSION_MOVE);
+                        air->Assign_Destination(dest);
+                        air->Commence();
+                    }
                 }
             }
 

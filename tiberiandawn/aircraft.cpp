@@ -230,6 +230,7 @@ AircraftClass::AircraftClass(AircraftType classid, HousesType house)
     IsTakingOff = false;
     IsHovering = false;
     IsHoming = false;
+    IsScouting = false;
     Strength = Class->MaxStrength;
     NavCom = TARGET_NONE;
     SecondaryFacing = PrimaryFacing;
@@ -1757,10 +1758,14 @@ int AircraftClass::Mission_Move(void)
         if (!Target_Legal(NavCom)) {
             Enter_Idle_Mode();
         } else {
-            if (!Is_LZ_Clear(NavCom) || !Cell_Seems_Ok(As_Cell(NavCom))) {
-                Assign_Destination(New_LZ(NavCom));
-            } else {
+            if (IsScouting) {
                 Status = TAKE_OFF;
+            } else {
+                if (!Is_LZ_Clear(NavCom) || !Cell_Seems_Ok(As_Cell(NavCom))) {
+                    Assign_Destination(New_LZ(NavCom));
+                } else {
+                    Status = TAKE_OFF;
+                }
             }
         }
         break;
@@ -1791,6 +1796,26 @@ int AircraftClass::Mission_Move(void)
     **	Fly toward target.
     */
     case FLY_TO_LZ:
+        if (IsScouting) {
+            int distance = Process_Fly_To(true);
+
+            if (distance < 0x0080) {
+                if (Target_Legal(TarCom)) {
+                    SecondaryFacing.Set_Desired(Direction(TarCom));
+                } else {
+                    SecondaryFacing.Set_Desired(Pose_Dir());
+                }
+
+                if (distance < 0x0010) {
+                    Set_Speed(0);
+                }
+                return (1);
+            }
+
+            SecondaryFacing.Set_Desired(::Direction(Fire_Coord(0), As_Coord(NavCom)));
+            return (1);
+        }
+
         if (Is_LZ_Clear(NavCom)) {
             int distance = Process_Fly_To(true);
 
@@ -1820,6 +1845,10 @@ int AircraftClass::Mission_Move(void)
     **	Land on target.
     */
     case LAND:
+        if (IsScouting) {
+            Status = TAKE_OFF;
+            break;
+        }
         if (IsTakingOff) {
             Assign_Destination(New_LZ(NavCom));
             Status = TAKE_OFF;
@@ -1854,6 +1883,14 @@ int AircraftClass::Mission_Move(void)
 void AircraftClass::Enter_Idle_Mode(bool)
 {
     Validate();
+    if (IsScouting && In_Which_Layer() != LAYER_GROUND && IsOwnedByPlayer && Mission == MISSION_MOVE) {
+        return;
+    }
+    if (!IsScouting && In_Which_Layer() != LAYER_GROUND && IsOwnedByPlayer && Mission == MISSION_MOVE
+        && Target_Legal(NavCom) && ::Is_Target_Cell(NavCom)) {
+        return;
+    }
+    IsScouting = false;
     MissionType mission = MISSION_GUARD;
     if (In_Which_Layer() == LAYER_GROUND) {
         if (IsALoaner) {
@@ -2010,26 +2047,26 @@ void AircraftClass::Debug_Dump(MonoClass* mono) const
 {
     Validate();
     mono->Set_Cursor(0, 0);
-    mono->Print("ÚName:ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂMission:ÄÄÄÂTarCom:ÂNavCom:ÂRadio:ÂCoord:ÄÄÂAltitudeÂSt:Ä¿\n"
-                "³                   ³           ³       ³       ³      ³        ³        ³    ³\n"
-                "ÃÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂNÂYÂHealth:ÄÂFdir:ÂÄBdir:ÄÂSpeed:ÂÄÄÄÄÄÁÄÄÄÄÄÄÂCargo:ÄÄÄÄÁÄÄÄÄ´\n"
-                "³Active........³ ³ ³        ³     ³       ³      ³            ³               ³\n"
-                "³Limbo.........³ ³ ÃÄÄÄÄÄÄÄÄÁÄÄÄÄÄÁÄÄÄÄÄÄÄÁÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´\n"
-                "³Owned.........³ ³ ³Last Message:                                             ³\n"
-                "³Discovered....³ ³ ÃTimer:ÂArm:ÂÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÂFlash:ÂStage:ÂTeam:ÄÄÄÄÂArch:´\n"
-                "³Selected......³ ³ ³      ³    ³      ³         ³      ³      ³         ³     ³\n"
-                "³Teathered.....³ ³ ÃÄÄÄÄÄÄÁÄÄÄÄÁÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÁÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÙ\n"
-                "³Locked on Map.³ ³ ³                                                           \n"
-                "³              ³ ³ ³                                                           \n"
-                "³Is A Loaner...³ ³ ³                                                           \n"
-                "³Is Landing....³ ³ ³                                                           \n"
-                "³Is Taking Off.³ ³ ³                                                           \n"
-                "³              ³ ³ ³                                                           \n"
-                "³              ³ ³ ³                                                           \n"
-                "³              ³ ³ ³                                                           \n"
-                "³Recoiling.....³ ³ ³                                                           \n"
-                "³To Display....³ ³ ³                                                           \n"
-                "ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÁÄÙ                                                           \n");
+    mono->Print("ï¿½Name:ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Mission:ï¿½ï¿½ï¿½ï¿½TarCom:ï¿½NavCom:ï¿½Radio:ï¿½Coord:ï¿½ï¿½ï¿½Altitudeï¿½St:Ä¿\n"
+                "ï¿½                   ï¿½           ï¿½       ï¿½       ï¿½      ï¿½        ï¿½        ï¿½    ï¿½\n"
+                "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Nï¿½Yï¿½Health:ï¿½ï¿½Fdir:ï¿½ï¿½Bdir:ï¿½ï¿½Speed:ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Cargo:ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä´\n"
+                "ï¿½Active........ï¿½ ï¿½ ï¿½        ï¿½     ï¿½       ï¿½      ï¿½            ï¿½               ï¿½\n"
+                "ï¿½Limbo.........ï¿½ ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä´\n"
+                "ï¿½Owned.........ï¿½ ï¿½ ï¿½Last Message:                                             ï¿½\n"
+                "ï¿½Discovered....ï¿½ ï¿½ ï¿½Timer:ï¿½Arm:ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Flash:ï¿½Stage:ï¿½Team:ï¿½ï¿½ï¿½ï¿½ï¿½Arch:ï¿½\n"
+                "ï¿½Selected......ï¿½ ï¿½ ï¿½      ï¿½    ï¿½      ï¿½         ï¿½      ï¿½      ï¿½         ï¿½     ï¿½\n"
+                "ï¿½Teathered.....ï¿½ ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\n"
+                "ï¿½Locked on Map.ï¿½ ï¿½ ï¿½                                                           \n"
+                "ï¿½              ï¿½ ï¿½ ï¿½                                                           \n"
+                "ï¿½Is A Loaner...ï¿½ ï¿½ ï¿½                                                           \n"
+                "ï¿½Is Landing....ï¿½ ï¿½ ï¿½                                                           \n"
+                "ï¿½Is Taking Off.ï¿½ ï¿½ ï¿½                                                           \n"
+                "ï¿½              ï¿½ ï¿½ ï¿½                                                           \n"
+                "ï¿½              ï¿½ ï¿½ ï¿½                                                           \n"
+                "ï¿½              ï¿½ ï¿½ ï¿½                                                           \n"
+                "ï¿½Recoiling.....ï¿½ ï¿½ ï¿½                                                           \n"
+                "ï¿½To Display....ï¿½ ï¿½ ï¿½                                                           \n"
+                "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½                                                           \n");
     mono->Set_Cursor(1, 1);
     mono->Printf("%s:%s", House->Class->IniName, Class->IniName);
     mono->Set_Cursor(36, 3);
@@ -2073,7 +2110,21 @@ void AircraftClass::Active_Click_With(ActionType action, ObjectClass* object)
         break;
 
     case ACTION_SELF:
-        Player_Assign_Mission(MISSION_UNLOAD, TARGET_NONE, TARGET_NONE);
+        if (!Class->IsFixedWing) {
+            if (Altitude > 0) {
+                TARGET here = ::As_Target(Coord_Cell(Coord));
+                TARGET lz = New_LZ(here, true);
+                if (!Target_Legal(lz)) {
+                    lz = here;
+                }
+                Player_Assign_Mission(MISSION_GUARD, TARGET_NONE, lz);
+            } else if (How_Many()) {
+                Player_Assign_Mission(MISSION_UNLOAD, TARGET_NONE, TARGET_NONE);
+            } else if (!IsTethered) {
+                TARGET here = ::As_Target(Coord_Cell(Coord));
+                Player_Assign_Mission(MISSION_MOVE, TARGET_NONE, here);
+            }
+        }
         break;
 
     default:
@@ -2177,8 +2228,20 @@ ActionType AircraftClass::What_Action(ObjectClass* target) const
     Validate();
     ActionType action = FootClass::What_Action(target);
 
-    if (action == ACTION_SELF && (!How_Many() || (Altitude > 0) || IsTethered)) {
-        action = ACTION_NONE;
+    if (action == ACTION_SELF) {
+        if (!Class->IsFixedWing) {
+            if (Altitude > 0) {
+                action = ACTION_SELF;
+            } else if (IsTethered) {
+                action = ACTION_NONE;
+            } else if (How_Many()) {
+                action = ACTION_SELF;
+            } else {
+                action = ACTION_SELF;
+            }
+        } else {
+            action = ACTION_NONE;
+        }
     }
 
     if (action == ACTION_ATTACK && Class->Primary == WEAPON_NONE) {
@@ -2216,11 +2279,6 @@ ActionType AircraftClass::What_Action(CELL cell) const
 {
     Validate();
     ActionType action = FootClass::What_Action(cell);
-
-    // using function for IsVisible so we have different results for different players - JAS 2019/09/30
-    if ((action == ACTION_MOVE || action == ACTION_ATTACK) && !Map[cell].Is_Visible(PlayerPtr)) {
-        action = ACTION_NOMOVE;
-    }
 
     if (action == ACTION_ATTACK && Class->Primary == WEAPON_NONE) {
         action = ACTION_NONE;
@@ -2843,14 +2901,6 @@ MoveType AircraftClass::Can_Enter_Cell(CELL cell, FacingType) const
     if (!Map.In_Radar(cell))
         return (MOVE_NO);
 
-    CellClass* cellptr = &Map[cell];
-
-    if (!cellptr->Is_Generally_Clear(true))
-        return (MOVE_NO);
-
-    if (GameToPlay == GAME_NORMAL && IsOwnedByPlayer && !cellptr->Is_Visible(PlayerPtr))
-        return (MOVE_NO);
-
     return (MOVE_OK);
 }
 
@@ -2887,8 +2937,7 @@ TARGET AircraftClass::Good_Fire_Location(TARGET target) const
                 CELL newcell = Coord_Cell(newcoord);
                 CELL actualcell = Coord_Cell(Coord_Sub(newcoord, XYPixel_Coord(0, FLIGHT_LEVEL)));
 
-                if (Map.In_Radar(actualcell) && (GameToPlay != GAME_NORMAL || Map[newcell].Is_Visible(PlayerPtr))
-                    && Cell_Seems_Ok(newcell, true)) {
+                if (Map.In_Radar(actualcell) && Cell_Seems_Ok(newcell, true)) {
                     int dist = Distance(newcoord);
                     if (bestval == -1 || dist < bestval) {
                         best2val = bestval;
@@ -3375,6 +3424,9 @@ int AircraftClass::Mission_Guard(void)
 
         if (Class->Primary == WEAPON_NONE) {
             Assign_Destination(::As_Target(Coord_Cell(Coord)));
+            Assign_Mission(MISSION_MOVE);
+        } else if (IsOwnedByPlayer && Target_Legal(NavCom) && ::Is_Target_Cell(NavCom)) {
+            IsScouting = false;
             Assign_Mission(MISSION_MOVE);
         } else {
             Enter_Idle_Mode();
