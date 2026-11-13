@@ -2801,6 +2801,22 @@ int UnitClass::Mission_Harvest(void)
                 return (1);
             }
         }
+
+        /*
+        **	Head back to the last known ore cell before searching afresh. A refinery
+        **	left in ArchiveTarget would send an empty harvester back to dock, so drop
+        **	those.
+        */
+        if (Target_Legal(ArchiveTarget)) {
+            BuildingClass* archived = As_Building(ArchiveTarget);
+            if (archived != NULL && *archived == STRUCT_REFINERY) {
+                ArchiveTarget = TARGET_NONE;
+            } else {
+                Assign_Destination(ArchiveTarget);
+                ArchiveTarget = 0;
+            }
+        }
+
         if (Goto_Tiberium()) {
             IsHarvesting = true;
             Set_Rate(2);
@@ -2816,23 +2832,8 @@ int UnitClass::Mission_Harvest(void)
             **	searching for Tiberium.
             */
             if (!Target_Legal(NavCom)) {
-
-                /*
-                **	If the archive target is legal, then head there since it is presumed
-                **	that the archive target points to the last place it harvested at. This might
-                **	solve the case where the harvester gets stuck and can't find Tiberium just because
-                **	it is greater than 32 squares away.
-                */
-                BuildingClass* archived = As_Building(ArchiveTarget);
-                if (archived != NULL && *archived == STRUCT_REFINERY) {
-                    ArchiveTarget = TARGET_NONE;
-                }
-                if (Target_Legal(ArchiveTarget)) {
-                    Assign_Destination(ArchiveTarget);
-                } else {
-                    Status = GOINGTOIDLE;
-                    return (TICKS_PER_SECOND * 15);
-                }
+                Status = GOINGTOIDLE;
+                return (TICKS_PER_SECOND * 15);
             }
         }
         break;
