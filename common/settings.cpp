@@ -27,6 +27,7 @@ SettingsClass::SettingsClass()
     Video.Boxing = true;
     Video.BoxingAspectRatio = "16:10";
     Video.FrameLimit = 120;
+    Video.VSync = true;
     Video.InterpolationMode = 2;
     Video.HardwareCursor = false;
     Video.DOSMode = false;
@@ -63,6 +64,7 @@ void SettingsClass::Load(INIClass& ini)
     Video.Width = ini.Get_Int("Video", "Width", Video.Width);
     Video.Height = ini.Get_Int("Video", "Height", Video.Height);
     Video.FrameLimit = ini.Get_Int("Video", "FrameLimit", Video.FrameLimit);
+    Video.VSync = ini.Get_Bool("Video", "VSync", Video.VSync);
     Video.HardwareCursor = ini.Get_Bool("Video", "HardwareCursor", Video.HardwareCursor);
     Video.DOSMode = ini.Get_Bool("Video", "DOSMode", Video.DOSMode);
     Video.Scaler = ini.Get_String("Video", "Scaler", Video.Scaler);
@@ -113,6 +115,7 @@ void SettingsClass::Save(INIClass& ini)
     ini.Put_Int("Video", "Width", Video.Width);
     ini.Put_Int("Video", "Height", Video.Height);
     ini.Put_Int("Video", "FrameLimit", Video.FrameLimit);
+    ini.Put_Bool("Video", "VSync", Video.VSync);
     ini.Put_Bool("Video", "HardwareCursor", Video.HardwareCursor);
     ini.Put_Bool("Video", "DOSMode", Video.DOSMode);
     ini.Put_String("Video", "Scaler", Video.Scaler);

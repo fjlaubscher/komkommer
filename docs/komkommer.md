@@ -23,6 +23,10 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - **Komkommer:** The credit count renders on the **sidebar-toggle tab** at the top-right instead of the word "Sidebar". Clicking that tab still collapses/expands the sidebar, and the counter keeps its classic tick-up/tick-down animation and money sounds. The old separate credits tab is gone, which also moves the counter out from under the macOS screen notch.
 - RA's "insufficient funds" flash now flashes that right-edge tab. RA with `AllowSidebarToggle=false` (sidebar always visible) already showed its credits tab on the right edge and is unchanged; the RA mission-timer tab keeps its position. Remastered host UI is unchanged.
 
+### Vertical sync (standalone)
+- **Vanilla:** The SDL2 renderer presented frames unsynchronized, so fast motion could tear (notably in windowed mode on macOS).
+- **Komkommer:** The renderer is created with vsync by default, giving tear-free presentation. Set `VSync=false` under `[Video]` in `conquer.ini`/`redalert.ini` to restore uncapped presenting (the `FrameLimit` setting still applies either way). The frame limiter adapts to the blocking present, so game and movie pacing are unchanged. SDL1 and Remastered rendering are unchanged.
+
 ### Campaign autosave (standalone)
 - Each campaign mission writes `SAVEGAME.999` when it starts. The next mission overwrites that file. Skirmish, multiplayer, the scenario editor, and loading an existing save do not.
 - The load list shows `AUTOSAVE: NOD 01` (GDI, SOVIET, or ALLIES the same way). Remastered keeps the host's own save UI.

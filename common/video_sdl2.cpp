@@ -286,7 +286,18 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
         }
     }
 
-    renderer = SDL_CreateRenderer(window, renderer_index, SDL_RENDERER_TARGETTEXTURE);
+    /*
+    ** Request tear-free presentation when enabled. Fall back to a renderer
+    ** without vsync if the driver refuses the flag.
+    */
+    if (Settings.Video.VSync) {
+        renderer = SDL_CreateRenderer(window, renderer_index, SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);
+    }
+
+    if (renderer == nullptr) {
+        renderer = SDL_CreateRenderer(window, renderer_index, SDL_RENDERER_TARGETTEXTURE);
+    }
+
     if (renderer == nullptr) {
         DBG_ERROR("SDL_CreateRenderer failed: %s", SDL_GetError());
         Reset_Video_Mode();

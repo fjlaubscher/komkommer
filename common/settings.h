@@ -30,6 +30,7 @@ public:
         int Width;
         int Height;
         int FrameLimit;
+        bool VSync;
         int InterpolationMode;
         bool HardwareCursor;
         bool DOSMode;
