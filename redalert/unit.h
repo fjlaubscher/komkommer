@@ -158,6 +158,7 @@ public:
     int Tiberium_Check(CELL& center, int x, int y);
     bool Flag_Attach(HousesType house);
     bool Flag_Remove(void);
+    CELL Search_For_Tiberium(int radius);
     bool Goto_Tiberium(int radius);
     bool Harvesting(void);
     void APC_Close_Door(void);
@@ -264,7 +265,7 @@ public:
     virtual void Enter_Idle_Mode(bool initial = false);
     virtual MoveType Can_Enter_Cell(CELL cell, FacingType facing = FACING_NONE) const;
     virtual void Per_Cell_Process(PCPType why);
-    void Exit_Repair(void);
+    bool Exit_Repair(void);
     void Shroud_Regen(void);
 
     /*

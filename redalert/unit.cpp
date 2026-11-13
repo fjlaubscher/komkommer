@@ -890,6 +890,14 @@ RadioMessageType UnitClass::Receive_Message(RadioClass* from, RadioMessageType m
                 return (RADIO_ROGER);
             }
         }
+        if (In_Radio_Contact()) {
+            TechnoClass* contact = Contact_With_Whom();
+            if (contact->What_Am_I() == RTTI_BUILDING && *((BuildingClass*)contact) == STRUCT_REPAIR) {
+                if (Exit_Repair()) {
+                    return (RADIO_ROGER);
+                }
+            }
+        }
         return (DriveClass::Receive_Message(from, message, param));
 
     /*
@@ -2299,72 +2307,121 @@ int UnitClass::Tiberium_Check(CELL& center, int x, int y)
  * HISTORY:                                                                                    *
  *   09/22/1995 JLB : Created.                                                                 *
  *=============================================================================================*/
+/*
+**	Approx cell distance matching TD MapClass::Cell_Distance.
+*/
+static int Harvester_Cell_Distance(CELL cell1, CELL cell2)
+{
+    int x = Cell_X(cell1) - Cell_X(cell2);
+    int y = Cell_Y(cell1) - Cell_Y(cell2);
+    if (x < 0)
+        x = -x;
+    if (y < 0)
+        y = -y;
+    if (x > y) {
+        return (x + (y >> 1));
+    }
+    return (y + (x >> 1));
+}
+
+/*
+**	True when another friendly harvester already has this cell as its NavCom.
+*/
+static bool Tiberium_Cell_Claimed(UnitClass const* self, CELL cell)
+{
+    if (cell == 0) {
+        return false;
+    }
+    for (int index = 0; index < Units.Count(); index++) {
+        UnitClass* unit = Units.Ptr(index);
+        if (unit == NULL || unit == self || unit->House != self->House || !unit->Class->IsToHarvest) {
+            continue;
+        }
+        if (Target_Legal(unit->NavCom) && Is_Target_Cell(unit->NavCom) && As_Cell(unit->NavCom) == cell) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/*
+**	Walk rings outward like vanilla and stop at the first ring that has ore.
+**	On that ring keep the richest unclaimed cell. Skip cells another friendly
+**	harvester is already driving to, falling back to the richest claimed cell
+**	only when no unclaimed cell exists. Does not assign NavCom.
+*/
+CELL UnitClass::Search_For_Tiberium(int rad)
+{
+    assert(Units.ID(this) == ID);
+    assert(IsActive);
+
+    CELL center = Coord_Cell(Center_Coord());
+
+    /*
+    **	Prefer an unclaimed cell. If every cell is claimed by another friendly
+    **	harvester, remember the richest claimed cell so a saturated field does
+    **	not strand the harvester in idle/guard.
+    */
+    CELL fallback = 0;
+    int fallbacktiberium = 0;
+    if (Map[center].Land_Type() == LAND_TIBERIUM) {
+        if (!Tiberium_Cell_Claimed(this, center)) {
+            return (center);
+        }
+        fallback = center;
+        fallbacktiberium = 1;
+    }
+
+    for (int radius = 1; radius < rad; radius++) {
+        CELL bestcell = 0;
+        int besttiberium = 0;
+        for (int x = -radius; x <= radius; x++) {
+            int offsets[4][2] = {{x, -radius}, {x, +radius}, {-radius, x}, {+radius, x}};
+            for (int edge = 0; edge < 4; edge++) {
+                /*
+                **	Skip duplicate corners that the overlapping edge loops would
+                **	otherwise check twice.
+                */
+                if (edge >= 2 && (x == -radius || x == radius)) {
+                    continue;
+                }
+                CELL cell = center;
+                int tiberium = Tiberium_Check(cell, offsets[edge][0], offsets[edge][1]);
+                if (tiberium <= 0) {
+                    continue;
+                }
+                if (Tiberium_Cell_Claimed(this, cell)) {
+                    if (tiberium > fallbacktiberium) {
+                        fallback = cell;
+                        fallbacktiberium = tiberium;
+                    }
+                    continue;
+                }
+                if (tiberium > besttiberium) {
+                    bestcell = cell;
+                    besttiberium = tiberium;
+                }
+            }
+        }
+        if (bestcell) {
+            return (bestcell);
+        }
+    }
+    return (fallback);
+}
+
 bool UnitClass::Goto_Tiberium(int rad)
 {
     assert(Units.ID(this) == ID);
     assert(IsActive);
 
     if (!Target_Legal(NavCom)) {
-        CELL center = Coord_Cell(Center_Coord());
-        if (Map[center].Land_Type() == LAND_TIBERIUM) {
-            return (true);
-        } else {
-
-            /*
-            **	Perform a ring search outward from the center.
-            */
-            for (int radius = 1; radius < rad; radius++) {
-                CELL cell = center;
-                CELL bestcell = 0;
-                int tiberium = 0;
-                int besttiberium = 0;
-                for (int x = -radius; x <= radius; x++) {
-
-                    /*
-                    **	Randomize the corners.
-                    */
-                    int corner[2];
-                    int corners[4][2] = {{x, -radius}, {x, +radius}, {-radius, x}, {+radius, x}};
-                    for (int i = 0; i < 3; i++) {
-                        int j = i + Random_Pick(0, 0x7FFF) / (0x7FFF / (4 - i) + 1);
-                        memcpy(&corner, &corners[j], sizeof(corner));
-                        memcpy(&corners[j], &corners[i], sizeof(corner));
-                        memcpy(&corners[i], corner, sizeof(corner));
-                    }
-
-                    cell = center;
-                    tiberium = Tiberium_Check(cell, corners[0][0], corners[0][1]);
-                    if (tiberium > besttiberium) {
-                        bestcell = cell;
-                        besttiberium = tiberium;
-                    }
-
-                    cell = center;
-                    tiberium = Tiberium_Check(cell, corners[1][0], corners[1][1]);
-                    if (tiberium > besttiberium) {
-                        bestcell = cell;
-                        besttiberium = tiberium;
-                    }
-
-                    cell = center;
-                    tiberium = Tiberium_Check(cell, corners[2][0], corners[2][1]);
-                    if (tiberium > besttiberium) {
-                        bestcell = cell;
-                        besttiberium = tiberium;
-                    }
-
-                    cell = center;
-                    tiberium = Tiberium_Check(cell, corners[3][0], corners[3][1]);
-                    if (tiberium > besttiberium) {
-                        bestcell = cell;
-                        besttiberium = tiberium;
-                    }
-                }
-                if (bestcell) {
-                    Assign_Destination(::As_Target(bestcell));
-                    return (false);
-                }
+        CELL bestcell = Search_For_Tiberium(rad);
+        if (bestcell) {
+            if (bestcell == Coord_Cell(Center_Coord())) {
+                return (true);
             }
+            Assign_Destination(::As_Target(bestcell));
         }
     }
 
@@ -3013,6 +3070,11 @@ int UnitClass::Mission_Harvest(void)
         if (!Harvesting()) {
             IsHarvesting = false;
             if (Tiberium_Load() == 1) {
+                /*
+                **	Remember a nearby cell that still has ore, not the one just emptied.
+                */
+                CELL nextore = Search_For_Tiberium(Rule.TiberiumShortScan / CELL_LEPTON_W);
+                ArchiveTarget = nextore ? ::As_Target(nextore) : TARGET_NONE;
                 Status = FINDHOME;
             } else {
                 if (!Goto_Tiberium(Rule.TiberiumShortScan / CELL_LEPTON_W) && !Target_Legal(NavCom)) {
@@ -3791,49 +3853,115 @@ ActionType UnitClass::What_Action(CELL cell) const
  *                                                                                             *
  * INPUT:   none                                                                               *
  *                                                                                             *
- * OUTPUT:  none                                                                               *
+ * OUTPUT:  true if already moving off or a nearby exit cell was assigned; false if the unit   *
+ *          is not on a repair bay or no usable exit was found (caller may Scatter).           *
  *                                                                                             *
  * WARNINGS:   none                                                                            *
  *                                                                                             *
  * HISTORY:                                                                                    *
  *   04/03/1995 BWG : Created.                                                                 *
+ *   11/12/2026     : Score blocked exits and ask allies to scatter (CFE-inspired).            *
  *=============================================================================================*/
-#define XYCELL(x, y) (y * MAP_CELL_W + x)
-void UnitClass::Exit_Repair(void)
+bool UnitClass::Exit_Repair(void)
 {
     assert(Units.ID(this) == ID);
     assert(IsActive);
 
-    int i;
-    CELL cell;
-    bool found = false;
-    static short const ExitRepair[] = {XYCELL(0, -2),
-                                       XYCELL(1, -1),
-                                       XYCELL(2, 0),
-                                       XYCELL(1, 1),
-                                       XYCELL(0, 2),
-                                       XYCELL(-1, 1),
-                                       XYCELL(-2, 0),
-                                       XYCELL(-1, -1)};
+    /*
+    **	Rally or a prior leave order already set a destination.
+    */
+    if (Target_Legal(NavCom) && Mission == MISSION_MOVE) {
+        return (true);
+    }
 
-    cell = Coord_Cell(Coord) + ExitRepair[Dir_Facing(PrimaryFacing.Current())];
-    if (Can_Enter_Cell(cell) == MOVE_OK)
-        found = true;
+    BuildingClass* beneath = Map[Coord].Cell_Building();
+    if (beneath == NULL || *beneath != STRUCT_REPAIR) {
+        return (false);
+    }
 
-    if (!found)
-        for (i = 0; i < 8; i++) {
-            cell = Coord_Cell(Coord) + ExitRepair[i];
-            if (Can_Enter_Cell(cell) == MOVE_OK) {
-                found = true;
-                break;
+    CELL const mycell = Coord_Cell(Coord);
+    int bestscore = 0;
+    CELL bestcell = 0;
+    FacingType bestdirection = FACING_NONE;
+
+    /*
+    **	Repair foundation is a plus: step one extra cell on the cardinals so the
+    **	destination is off the pad, not another foundation cell.
+    */
+    for (FacingType face = FACING_N; face < FACING_COUNT; face++) {
+        CELL newcell = Adjacent_Cell(mycell, face);
+        if (!Map.In_Radar(newcell)) {
+            continue;
+        }
+        if (((int)face % 2) == 0) {
+            newcell = Adjacent_Cell(newcell, face);
+            if (!Map.In_Radar(newcell)) {
+                continue;
             }
         }
-    if (found) {
-        //		DirType	dir = Direction(cell);
 
-        Assign_Mission(MISSION_MOVE);
-        Assign_Destination(::As_Target(cell));
+        int score = 0;
+        MoveType move = Can_Enter_Cell(newcell, FACING_NONE);
+        if (move == MOVE_OK) {
+            score += 104;
+        } else if (move == MOVE_MOVING_BLOCK) {
+            score += 100;
+        } else if (move == MOVE_TEMP) {
+            score += 10;
+        }
+
+        if (score) {
+            int myface = Dir_Facing(PrimaryFacing.Current());
+            int dista = (((int)face - myface) + 8) % 8;
+            int distb = ((myface - (int)face) + 8) % 8;
+            if (dista < distb) {
+                score = score + 4 - dista;
+            } else {
+                score = score + 4 - distb;
+            }
+
+            if (score > bestscore) {
+                bestscore = score;
+                bestcell = newcell;
+                bestdirection = face;
+            }
+        }
     }
+
+    if (!bestscore) {
+        return (false);
+    }
+
+    Assign_Destination(::As_Target(bestcell));
+    Assign_Mission(MISSION_MOVE);
+
+    /*
+    **	Movement will not ask close blockers to move; nudge them ourselves.
+    */
+    if (bestscore < 100) {
+        CellClass* cellptr = &Map[bestcell];
+        TechnoClass* blockage = cellptr->Cell_Techno();
+        if (blockage != NULL && blockage->IsActive && House->Is_Ally(blockage)) {
+            cellptr->Incoming(Coord, true, true);
+        }
+        for (FacingType face = FACING_N; face < FACING_COUNT; face++) {
+            if (face != bestdirection && face != (FacingType)((bestdirection + 1) % FACING_COUNT)
+                && face != (FacingType)((bestdirection + FACING_COUNT - 1) % FACING_COUNT)) {
+                continue;
+            }
+            CELL neighbor = Adjacent_Cell(bestcell, face);
+            if (!Map.In_Radar(neighbor)) {
+                continue;
+            }
+            cellptr = &Map[neighbor];
+            blockage = cellptr->Cell_Techno();
+            if (blockage != NULL && blockage->IsActive && House->Is_Ally(blockage)) {
+                cellptr->Incoming(Coord, true, true);
+            }
+        }
+    }
+
+    return (true);
 }
 
 /***********************************************************************************************
@@ -4506,27 +4634,108 @@ fixed UnitClass::Tiberium_Load(void) const
     return (0);
 }
 
+/*
+**	Half a full unload travel distance in cells (CFE HARVY_OPTIMIZE_UNLOAD_WAIT_WEIGHT for RA).
+*/
+static int const HarvesterRefineryWaitCells = 6;
+static int const HarvesterRefineryStickyCells = 5;
+
+/*
+**	True when another harvester is already committed to this refinery.
+*/
+static bool Harvester_Bound_To_Refinery(UnitClass const* self, BuildingClass const* refinery, UnitClass const* unit)
+{
+    if (unit == NULL || unit == self || unit->House != self->House || !unit->Class->IsToHarvest) {
+        return false;
+    }
+    if (refinery->Contact_With_Whom() == unit) {
+        return true;
+    }
+    if (refinery->Is_Something_Attached() && refinery->Attached_Object() == unit) {
+        return true;
+    }
+    if (refinery->Dock_Contains(unit->As_Target())) {
+        return true;
+    }
+    if (Target_Legal(unit->TiberiumUnloadRefinery) && As_Building(unit->TiberiumUnloadRefinery) == refinery
+        && (unit->Mission == MISSION_ENTER
+            || (unit->Mission == MISSION_HARVEST && Target_Legal(unit->NavCom)))) {
+        return true;
+    }
+    return false;
+}
+
 BuildingClass* UnitClass::Find_Best_Refinery(void) const
 {
     /*
-    **	Remember our last refinery and prefer that one, if still available and valid.
+    **	Drop a remembered refinery that is gone, out of zone, or no longer ours.
     */
     if (Target_Legal(TiberiumUnloadRefinery)) {
         BuildingClass* refinery = As_Building(TiberiumUnloadRefinery);
-        if (refinery != NULL && refinery->House == House && !refinery->IsInLimbo
-            && refinery->Mission != MISSION_DECONSTRUCTION && *refinery == STRUCT_REFINERY
-            && Map[refinery->Center_Coord()].Zones[Techno_Type_Class()->MZone]
-                   == Map[Center_Coord()].Zones[Techno_Type_Class()->MZone]) {
-            return refinery;
-        } else {
+        if (refinery == NULL || refinery->House != House || refinery->IsInLimbo
+            || refinery->Mission == MISSION_DECONSTRUCTION || *refinery != STRUCT_REFINERY
+            || Map[refinery->Center_Coord()].Zones[Techno_Type_Class()->MZone]
+                   != Map[Center_Coord()].Zones[Techno_Type_Class()->MZone]) {
             TiberiumUnloadRefinery = TARGET_NONE;
         }
     }
 
-    /*
-    **	Find nearby refinery and head to it?
-    */
-    return Find_Docking_Bay(STRUCT_REFINERY, false);
+    if (House->Get_Quantity(STRUCT_REFINERY) == 0) {
+        return (NULL);
+    }
+
+    BuildingClass* best = NULL;
+    int bestscore = -1;
+    int const communalism = (HarvesterRefineryWaitCells * 9) / 4;
+    CELL here = Coord_Cell(Center_Coord());
+    BuildingClass* current = Target_Legal(TiberiumUnloadRefinery) ? As_Building(TiberiumUnloadRefinery) : NULL;
+
+    for (int index = 0; index < Buildings.Count(); index++) {
+        BuildingClass* building = Buildings.Ptr(index);
+        if (building == NULL || building->House != House || building->IsInLimbo || *building != STRUCT_REFINERY) {
+            continue;
+        }
+        if (Map[building->Center_Coord()].Zones[Techno_Type_Class()->MZone]
+            != Map[Center_Coord()].Zones[Techno_Type_Class()->MZone]) {
+            continue;
+        }
+        if (((TechnoClass*)this)->Transmit_Message(RADIO_CAN_LOAD, building) != RADIO_ROGER
+            && !(building->Is_Dock_Queueable() && building->Dock_Accepts(As_Target()))) {
+            continue;
+        }
+        if (building->IsLeader) {
+            return (building);
+        }
+
+        int loads = 0;
+        int mydist = Harvester_Cell_Distance(here, Coord_Cell(building->Center_Coord()));
+        for (int uindex = 0; uindex < Units.Count(); uindex++) {
+            UnitClass* unit = Units.Ptr(uindex);
+            if (!Harvester_Bound_To_Refinery(this, building, unit)) {
+                continue;
+            }
+            int otherdist =
+                Harvester_Cell_Distance(Coord_Cell(unit->Center_Coord()), Coord_Cell(building->Center_Coord()));
+            /*
+            **	Ignore a bound harvester this truck can dump ahead of (CFE communalism).
+            */
+            if (mydist + communalism < otherdist) {
+                continue;
+            }
+            loads++;
+        }
+
+        int penalty = HarvesterRefineryWaitCells;
+        if (building == current && mydist <= HarvesterRefineryStickyCells) {
+            penalty = (penalty * 2) / 3;
+        }
+        int score = mydist + (penalty * loads);
+        if (bestscore == -1 || score < bestscore) {
+            best = building;
+            bestscore = score;
+        }
+    }
+    return (best);
 }
 
 /***********************************************************************************************

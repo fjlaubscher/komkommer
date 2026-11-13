@@ -91,6 +91,7 @@ public:
     bool Flag_Remove(void);
     void Find_LZ(void);
     bool Unload_Hovercraft_Process(void);
+    CELL Search_For_Tiberium(int rad);
     bool Goto_Tiberium(void);
     bool Harvesting(void);
     void APC_Close_Door(void);
@@ -187,7 +188,7 @@ public:
     virtual MoveType Can_Enter_Cell(CELL cell, FacingType facing = FACING_NONE) const;
     virtual void Per_Cell_Process(bool center);
     virtual void Scatter(COORDINATE threat, bool forced = false, bool nokidding = false);
-    void Exit_Repair(void);
+    bool Exit_Repair(void);
     //		MoveType Blocking_Object(TechnoClass const *techno, CELL cell) const;
 
     /*
