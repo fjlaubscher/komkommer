@@ -13,6 +13,12 @@ The pipeline and the regression list are in `docs/double-click-select-all.md`.
 - The display fallback times with `WinTickCount`, not the simulation `Frame`. Do not restore the old frame-counter detector.
 - The 500 ms / 32 px test uses SDL window coordinates. Positions handed to the game are in game coordinates.
 
+## Media keys
+
+- The macOS claim resolves the private `MRMediaRemoteSetCanBeNowPlayingApplication` with `dlsym`; never link it directly, and leave the keys with the other app when the symbol is missing.
+- `media_keys_darwin.mm` is built into `commonv` only. Remastered and non-Apple builds take the no-op from `media_keys.cpp`, so `Media_Keys_Claim` stays callable from both games.
+- Release the claim when the window loses focus. Otherwise the game keeps the user's media keys from the app they are actually listening to.
+
 ## Paths
 
 - `skirmishroster.h` and `skirmishdrop.h` are lobby-only and are not saved engine state. Include the dropdown template only from standalone game code. Slot counts, countries, and startup stay in each game.

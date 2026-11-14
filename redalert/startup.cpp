@@ -37,6 +37,7 @@
 #include "function.h"
 #include "language.h"
 #include "settings.h"
+#include "common/media_keys.h"
 #include "common/paths.h"
 #include "common/utfargs.h"
 
@@ -299,6 +300,11 @@ int main(int argc, char* argv[])
         CCFileClass cfile(CONFIG_FILE_NAME);
 
         Keyboard = CreateWWKeyboardClass();
+
+        /*
+        **	Route the hardware media keys to the score.
+        */
+        Media_Keys_Init(Theme_Step);
 
         /*
         ** If there is loads of memory then use uncompressed shapes

@@ -60,6 +60,7 @@
 
 #include "function.h"
 #include "common/irandom.h"
+#include "common/media_keys.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -1222,6 +1223,16 @@ void Call_Back(void)
     if (SampleType) {
         Theme.AI();
         Speak_AI();
+    }
+
+    /*
+    **	While the game can play a score, let the system media keys step it.
+    */
+    {
+        ThemeType playing = Theme.What_Is_Playing();
+        Media_Keys_Claim(
+            GameInFocus && SampleType != 0 && Options.ScoreVolume != 0,
+            playing >= THEME_FIRST ? Theme.Full_Name(playing) : NULL);
     }
 
 #ifdef NETWORKING

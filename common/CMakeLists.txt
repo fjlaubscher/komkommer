@@ -56,6 +56,7 @@ set(COMMON_SRC
     linear.cpp
     link.cpp
     load.cpp
+    media_keys.cpp
     memrev.cpp
     misc.cpp
     mixfile.cpp
@@ -150,6 +151,10 @@ elseif(SDL1)
     list(APPEND COMMONV_SRC video_sdl1.cpp wwkeyboard_sdl1.cpp)
 else()
     list(APPEND COMMONV_SRC video_null.cpp)
+endif()
+
+if(APPLE)
+    list(APPEND COMMONV_SRC media_keys_darwin.mm)
 endif()
 
 if(DSOUND OR DDRAW)

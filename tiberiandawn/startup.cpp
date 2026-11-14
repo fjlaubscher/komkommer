@@ -36,6 +36,7 @@
 
 #include "function.h"
 #include "common/ini.h"
+#include "common/media_keys.h"
 #include "common/paths.h"
 #include "common/utfargs.h"
 #include "settings.h"
@@ -233,6 +234,11 @@ int main(int argc, char** argv)
         CCFileClass cfile("CONQUER.INI");
 
         Keyboard = CreateWWKeyboardClass();
+
+        /*
+        **	Route the hardware media keys to the score.
+        */
+        Media_Keys_Init(Theme_Step);
 
 #ifdef JAPANESE
         //////////////////////////////////////if(!ForceEnglish) KBLanguage = 1;

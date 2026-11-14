@@ -76,6 +76,7 @@ public:
     char const* Base_Name(ThemeType index) const;
     void AI(void);
     void Queue_Song(ThemeType index);
+    void Step(int direction);
     int Play_Song(ThemeType index);
     ThemeType What_Is_Playing(void)
     {
@@ -92,5 +93,10 @@ public:
     bool Is_Allowed(ThemeType index) const;
     static void /*_pascal*/ Scan(void);
 };
+
+/*
+**	Media key entry point, registered with common/media_keys.h at startup.
+*/
+void Theme_Step(int direction);
 
 #endif

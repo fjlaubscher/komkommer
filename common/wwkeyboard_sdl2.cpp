@@ -14,6 +14,7 @@
 // with this program. If not, see https://github.com/electronicarts/CnC_Remastered_Collection
 
 #include "macros.h"
+#include "media_keys.h"
 #include "wwkeyboard_sdl2.h"
 #include "video.h"
 #include "sdl_keymap.h"
@@ -43,9 +44,29 @@ void WWKeyboardClassSDL2::Fill_Buffer_From_System(void)
             exit(0);
             break;
         case SDL_KEYDOWN:
+            /*
+            **	Hardware media keys step the game's score instead of reaching the key table.
+            **	macOS sends them through the now playing bridge once it is claimed, so only
+            **	take the key events while the bridge does not hold the keys.
+            */
+            if (event.key.keysym.scancode == SDL_SCANCODE_AUDIONEXT
+                || event.key.keysym.scancode == SDL_SCANCODE_AUDIOPREV) {
+                if (!Media_Keys_Claimed()) {
+                    Media_Keys_Step(event.key.keysym.scancode == SDL_SCANCODE_AUDIONEXT ? 1 : -1);
+                }
+                break;
+            }
             Put_Key_Message(event.key.keysym.scancode, false);
             break;
         case SDL_KEYUP:
+            /*
+            **	The media key presses above never reached the key table, so swallow their
+            **	releases as well.
+            */
+            if (event.key.keysym.scancode == SDL_SCANCODE_AUDIONEXT
+                || event.key.keysym.scancode == SDL_SCANCODE_AUDIOPREV) {
+                break;
+            }
             if (event.key.keysym.scancode == SDL_SCANCODE_RETURN && Down(VK_MENU)) {
                 Toggle_Video_Fullscreen();
             } else {

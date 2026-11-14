@@ -150,6 +150,17 @@ bool Start_Scenario(char* root, bool briefing)
             Play_Movie(BriefMovie);
             Play_Movie(ActionMovie, Scen.TransitTheme);
 
+#ifndef REMASTER_BUILD
+            /*
+            **	A skirmish map plays no briefing movie, so nothing above queued a score. The
+            **	faded menu theme still reports as playing, which keeps Main_Loop from picking
+            **	one, so start the next score here.
+            */
+            if (GameToPlay != GAME_NORMAL) {
+                Theme.Queue_Song(THEME_PICK_ANOTHER);
+            }
+#endif
+
 #ifdef NEWMENU
 
             char buffer[_MAX_FNAME + _MAX_EXT + 4];

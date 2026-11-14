@@ -324,6 +324,58 @@ int ThemeClass::Play_Song(ThemeType theme)
 }
 
 /***********************************************************************************************
+ * ThemeClass::Step -- Moves to the nearest allowed score in the given direction.              *
+ *                                                                                             *
+ *    This is the interactive form of Next_Song, used by the media keys. A direction of +1     *
+ *    plays the next allowed score and -1 the previous one. Only allowed scores are visited,   *
+ *    so the walk matches what the score engine itself would pick.                             *
+ *                                                                                             *
+ * INPUT:   direction -- +1 for the next score, -1 for the previous one.                       *
+ *                                                                                             *
+ * OUTPUT:  none                                                                               *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *=============================================================================================*/
+void ThemeClass::Step(int direction)
+{
+    int count = Max_Themes();
+    if (count <= 0 || direction == 0) {
+        return;
+    }
+
+    /*
+    **	Step from the score that is playing, or from the one already queued, so quick
+    **	repeats keep moving through the list instead of restarting from the top.
+    */
+    ThemeType theme = Pending;
+    if (theme < THEME_FIRST || theme >= count) {
+        theme = Score;
+    }
+    if (theme < THEME_FIRST || theme >= count) {
+        theme = (direction > 0) ? (ThemeType)-1 : (ThemeType)count;
+    }
+
+    for (int tries = 0; tries < count; tries++) {
+        theme = (ThemeType)((theme + direction + count) % count);
+        if (!Is_Allowed(theme)) {
+            continue;
+        }
+
+        /*
+        **	Stopping first clears any pending pick so the queue accepts this one.
+        */
+        Stop();
+        Queue_Song(theme);
+        return;
+    }
+}
+
+void Theme_Step(int direction)
+{
+    Theme.Step(direction);
+}
+
+/***********************************************************************************************
  * ThemeClass::Theme_File_Name -- Constructs a filename for the specified theme.               *
  *                                                                                             *
  *    This routine will construct (into a static buffer) a filename that matches the theme     *

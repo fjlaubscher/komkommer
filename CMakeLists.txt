@@ -19,6 +19,11 @@ endif()
 
 project(komkommer C CXX)
 
+if(APPLE)
+    # The media key bridge is Objective-C++ (common/media_keys_darwin.mm).
+    enable_language(OBJCXX)
+endif()
+
 option(BUILD_REMASTERTD "Build Tiberian Dawn remaster dll." OFF)
 option(BUILD_REMASTERRA "Build Red Alert remaster dll." OFF)
 option(BUILD_VANILLATD "Build Tiberian Dawn executable." ON)
@@ -156,6 +161,11 @@ if(OPENAL)
     find_package(OpenAL REQUIRED)
     list(APPEND VANILLA_LIBS OpenAL::OpenAL)
     set(DSOUND OFF)
+endif()
+
+if(APPLE)
+    # The media key bridge claims the system's now playing slot through MediaPlayer.
+    list(APPEND VANILLA_LIBS "-framework MediaPlayer" "-framework Foundation")
 endif()
 
 if(BUILD_TESTS)

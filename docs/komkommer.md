@@ -65,6 +65,13 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 ### Sound playback (standalone)
 - **Vanilla:** At most 5 sound effects could play at once; starting a sound above that limit immediately cut off the lowest-priority one, and the OpenAL mixer could also leave a stale buffer queued after such a cut-off, glitching the replacement sound.
 - **Komkommer:** The standalone OpenAL mixer now allows up to **16** simultaneous sound effects, and stopping a sample fully unqueues its OpenAL buffers so a voice-stolen sound starts cleanly. Remastered (DirectSound) playback is unchanged.
+- **Vanilla:** Starting a skirmish map past the first score numbers left the game silent. The menu theme that fades out on the way in was still counted as playing, so the main loop never picked a new song, and music only returned after pressing **Play** in the Sound controls.
+- **Komkommer:** Skirmish starts the next score the same way campaign and the map list do, so music plays from the first frame. Campaign, multiplayer (which keeps its own score volume at zero), and Remastered are unchanged.
+
+### Media keys (standalone)
+- The hardware **next/previous track** keys step the game's score, wrapping through the same allowed scores that the normal sequential/shuffle pick uses. They work in the menus, in a mission briefing, and in game.
+- On macOS the game nominates itself for the system's now playing slot while it is focused and music is enabled (`MPRemoteCommandCenter` plus the private `MRMediaRemoteSetCanBeNowPlayingApplication`), so the keys come to the game instead of the last music app; the now playing entry names the current score. On Windows and Linux the same keys arrive as ordinary SDL media-key events.
+- Remastered playback and the Remastered host's music are unchanged.
 
 ### Pathfinding (A*)
 - **Vanilla:** `Find_Path` walked a straight line and, on hitting an impassable cell, "edge-followed" the obstacle clockwise/counterclockwise. It could route around obstacles on the long side, wander, and fail in cul-de-sacs, doughnut-shaped obstacles, and maze-like base layouts.

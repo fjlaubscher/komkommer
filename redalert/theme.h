@@ -94,8 +94,14 @@ public:
     }
     void Queue_Song(ThemeType index);
     void Set_Theme_Data(ThemeType theme, int scenario, int owners);
+    void Step(int direction);
     void Stop(void);
     void Suspend(void);
 };
+
+/*
+**	Media key entry point, registered with common/media_keys.h at startup.
+*/
+void Theme_Step(int direction);
 
 #endif
