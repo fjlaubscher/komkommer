@@ -11,6 +11,7 @@
 // with this program. If not, see https://github.com/electronicarts/CnC_Remastered_Collection
 #include "audio.h"
 #include "auduncmp.h"
+#include "debugstring.h"
 #include "endianness.h"
 #include "file.h"
 #include "memflag.h"
@@ -544,9 +545,11 @@ int File_Stream_Sample_Vol(char const* filename, int volume, bool real_time_star
         st->Volume = volume;
         st->FileHandle = fh;
         File_Stream_Preload(handle);
+        DBG_LOG("MUSIC: stream sample '%s' -> handle %d\n", filename, handle);
         return handle;
     }
 
+    DBG_LOG("MUSIC: stream sample '%s' FAILED, no free handle\n", filename);
     return INVALID_AUDIO_HANDLE;
 }
 
@@ -643,6 +646,11 @@ static void Maintenance_Callback()
                     }
                 } else {
                     if (!SoundImp_Sample_Status(st->Imp)) {
+                        if (st->IsScore) {
+                            DBG_LOG("MUSIC: score sample %d finished early (service=0, pending=%d)\n",
+                                    i,
+                                    st->FilePending);
+                        }
                         st->Service = 0;
                         Stop_Sample(i);
                     }
@@ -810,6 +818,10 @@ void Stop_Sample(int index)
         SampleTrackerType* st = &LockedData.SampleTracker[index];
 
         if (st->Active || st->Loading) {
+            if (st->IsScore) {
+                DBG_LOG("MUSIC: stop score sample handle %d (loading=%d)\n", index, (int)st->Loading);
+            }
+
             st->Active = false;
 
             if (!st->IsScore) {
@@ -855,10 +867,32 @@ bool Sample_Status(int index)
     }
 
     if (!st->Active) {
+        if (st->IsScore) {
+            DBG_LOG("MUSIC: score sample %d is not active (service=%d more=%d pending=%d queue=%d)\n",
+                    index,
+                    (int)st->Service,
+                    (int)st->MoreSource,
+                    st->FilePending,
+                    st->QueueBuffer != nullptr ? 1 : 0);
+        }
         return false;
     }
 
-    return SoundImp_Sample_Status(st->Imp);
+    bool status = SoundImp_Sample_Status(st->Imp);
+
+    if (!status && st->IsScore) {
+        DBG_LOG("MUSIC: score sample %d is no longer playing (state=%d queued=%d processed=%d service=%d more=%d pending=%d queue=%d)\n",
+                index,
+                SoundImp_Get_Sample_State(st->Imp),
+                SoundImp_Get_Sample_Queued(st->Imp),
+                SoundImp_Get_Sample_Processed(st->Imp),
+                (int)st->Service,
+                (int)st->MoreSource,
+                st->FilePending,
+                st->QueueBuffer != nullptr ? 1 : 0);
+    }
+
+    return status;
 }
 
 bool Is_Sample_Playing(const void* sample)
@@ -902,12 +936,24 @@ static int Attempt_To_Play_Buffer(int id)
     // Playback was started so we set some needed sample tracker values.
     st->Active = true;
 
+    if (st->Priority == PRIORITY_MAX) {
+        DBG_LOG("MUSIC: score sample %d started (state=%d queued=%d processed=%d free=%d)\n",
+                id,
+                SoundImp_Get_Sample_State(st->Imp),
+                SoundImp_Get_Sample_Queued(st->Imp),
+                SoundImp_Get_Sample_Processed(st->Imp),
+                SoundImp_Get_Sample_Free_Buffer_Count(st->Imp));
+    }
+
     return id;
 }
 
 static int Play_Sample_Handle(const void* sample, int priority, int volume, signed short panloc, int id)
 {
     if (Any_Locked()) {
+        if (priority == PRIORITY_MAX) {
+            DBG_LOG("MUSIC: sample start refused, the screen buffers are locked\n");
+        }
         return INVALID_AUDIO_HANDLE;
     }
 
@@ -1016,6 +1062,9 @@ static int Play_Sample_Handle(const void* sample, int priority, int volume, sign
 
         if (!Start_Primary_Sound_Buffer(false)) {
             //CCDebugString("Play_Sample_Handle - Can't start primary buffer!");
+            if (priority == PRIORITY_MAX) {
+                DBG_LOG("MUSIC: sample start refused, the primary sound buffer did not start\n");
+            }
             return INVALID_AUDIO_HANDLE;
         }
 
@@ -1045,6 +1094,10 @@ void Fade_Sample(int index, int ticks)
 {
     if (Sample_Status(index)) {
         SampleTrackerType* st = &LockedData.SampleTracker[index];
+
+        if (st->IsScore) {
+            DBG_LOG("MUSIC: fade score sample handle %d over %d ticks\n", index, ticks);
+        }
 
         if (ticks > 0 && !st->Loading) {
             st->Reducer = ((st->Volume / ticks) + 1);

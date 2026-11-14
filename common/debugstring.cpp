@@ -82,5 +82,8 @@ void Debug_String_File(const char* file)
         fclose(DebugState.File);
     }
 
-    DebugState.File = fopen(file, "w");
+    /*
+    ** Append instead of truncate so that several runs can be compared in one file.
+    */
+    DebugState.File = fopen(file, "a");
 }

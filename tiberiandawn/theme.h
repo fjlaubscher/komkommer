@@ -40,6 +40,11 @@ class ThemeClass
 private:
     static char const* Theme_File_Name(ThemeType theme);
 
+    /*
+    **	Returns a printable name for a theme index. Used by the music logging.
+    */
+    static char const* Theme_Log_Name(ThemeType theme);
+
     int Current;       // Handle to current score.
     ThemeType Score;   // Score number currently being played.
     ThemeType Pending; // Score to play next.

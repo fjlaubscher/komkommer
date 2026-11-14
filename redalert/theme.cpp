@@ -51,6 +51,34 @@
 #include "theme.h"
 
 /*
+**	Music diagnostics. These only exist in debug builds and are written to the
+**	debug log file (see Debug_String_File) as well as to stderr.
+*/
+#define MUSIC_LOG(...) DBG_LOG("MUSIC: " __VA_ARGS__)
+
+/*
+**	Returns a printable name for a theme index. THEME_NONE, THEME_QUIET and
+**	THEME_PICK_ANOTHER have no file of their own, so they get a marker instead
+**	of an out of bounds lookup.
+*/
+char const* ThemeClass::Theme_Log_Name(ThemeType theme)
+{
+    if (theme == THEME_NONE) {
+        return ("<none>");
+    }
+    if (theme == THEME_QUIET) {
+        return ("<quiet>");
+    }
+    if (theme == THEME_PICK_ANOTHER) {
+        return ("<pick another>");
+    }
+    if ((unsigned)theme < THEME_COUNT) {
+        return (_themes[theme].Name);
+    }
+    return ("<invalid>");
+}
+
+/*
 **	These are the actual filename list for the theme sample files.
 */
 ThemeClass::ThemeControl ThemeClass::_themes[THEME_COUNT] = {
@@ -200,12 +228,17 @@ void ThemeClass::AI(void)
             */
             if (Pending == THEME_PICK_ANOTHER) {
                 Pending = Next_Song(Score);
+                MUSIC_LOG("frame=%d picked next theme '%s'\n", Frame, Theme_Log_Name(Pending));
             }
 
             /*
             **	Start the song playing and then flag it so that a new song will
             **	be picked when this one ends.
             */
+            MUSIC_LOG("frame=%d theme change: '%s' -> '%s'\n",
+                      Frame,
+                      Theme_Log_Name(Score),
+                      Theme_Log_Name(Pending));
             Play_Song(Pending);
             Pending = THEME_PICK_ANOTHER;
         }
@@ -232,6 +265,8 @@ void ThemeClass::AI(void)
  *=============================================================================================*/
 ThemeType ThemeClass::Next_Song(ThemeType theme) const
 {
+    ThemeType previous = theme;
+
     if (theme == THEME_NONE || theme == THEME_PICK_ANOTHER
         || (theme != THEME_QUIET && !_themes[theme].Repeat && !Options.IsScoreRepeat)) {
         if (Options.IsScoreShuffle) {
@@ -259,6 +294,12 @@ ThemeType ThemeClass::Next_Song(ThemeType theme) const
             } while (!Is_Allowed(theme));
         }
     }
+    MUSIC_LOG("frame=%d next song after '%s' is '%s' (shuffle=%d repeat=%d)\n",
+              Frame,
+              Theme_Log_Name(previous),
+              Theme_Log_Name(theme),
+              (int)Options.IsScoreShuffle,
+              (int)Options.IsScoreRepeat);
     return (theme);
 }
 
@@ -283,32 +324,52 @@ void ThemeClass::Queue_Song(ThemeType theme)
     /*
     **	If there is no score file present, then abort.
     */
-    if (!ScoresPresent)
+    if (!ScoresPresent) {
+        MUSIC_LOG("frame=%d queue '%s' ignored (no score file)\n", Frame, Theme_Log_Name(theme));
         return;
+    }
 
     /*
     **	If there is no sound driver or sounds have been specifically
     **	turned off, then abort.
     */
-    if (SampleType == 0 || Debug_Quiet)
+    if (SampleType == 0 || Debug_Quiet) {
+        MUSIC_LOG("frame=%d queue '%s' ignored (sample=%d quiet=%d)\n",
+                  Frame,
+                  Theme_Log_Name(theme),
+                  (int)SampleType,
+                  (int)Debug_Quiet);
         return;
+    }
 
     /*
     **	If the current score volumne is set to silent, then there is no need to play the
     **	specified theme.
     */
-    if (Options.ScoreVolume == 0)
+    if (Options.ScoreVolume == 0) {
+        MUSIC_LOG("frame=%d queue '%s' ignored (music volume is zero)\n", Frame, Theme_Log_Name(theme));
         return;
+    }
 
     /*
     **	If the pending theme is available to be set and the specified theme is valid, then
     **	set the queued theme accordingly.
     */
     if (Pending == THEME_NONE || Pending == THEME_PICK_ANOTHER || theme == THEME_NONE || theme == THEME_QUIET) {
+        MUSIC_LOG("frame=%d queue '%s' accepted (playing '%s', handle=%d)\n",
+                  Frame,
+                  Theme_Log_Name(theme),
+                  Theme_Log_Name(Score),
+                  Current);
         Pending = theme;
         if (Still_Playing()) {
             Fade_Sample(Current, THEME_DELAY);
         }
+    } else {
+        MUSIC_LOG("frame=%d queue '%s' REJECTED, '%s' is already pending\n",
+                  Frame,
+                  Theme_Log_Name(theme),
+                  Theme_Log_Name(Pending));
     }
 }
 
@@ -386,9 +447,18 @@ int ThemeClass::Play_Song(ThemeType theme)
         Stop();
         Score = theme;
         if (theme != THEME_NONE && theme != THEME_QUIET) {
+            char const* filename = Theme_File_Name(theme);
+
             // PG StreamLowImpact = true;
-            Current = File_Stream_Sample_Vol(Theme_File_Name(theme), 0xFF, true);
+            Current = File_Stream_Sample_Vol(filename, 0xFF, true);
             // PG StreamLowImpact = false;
+            MUSIC_LOG("frame=%d play '%s' file='%s' handle=%d\n",
+                      Frame,
+                      Theme_Log_Name(theme),
+                      filename,
+                      Current);
+        } else {
+            MUSIC_LOG("frame=%d play '%s' (no file)\n", Frame, Theme_Log_Name(theme));
         }
     }
     return (Current);
@@ -465,6 +535,11 @@ int ThemeClass::Track_Length(ThemeType theme) const
 void ThemeClass::Stop(void)
 {
     if (ScoresPresent && SampleType && !Debug_Quiet && Current != -1) {
+        MUSIC_LOG("frame=%d stop '%s' handle=%d (pending '%s')\n",
+                  Frame,
+                  Theme_Log_Name(Score),
+                  Current,
+                  Theme_Log_Name(Pending));
         Stop_Sample(Current);
         Current = -1;
         Score = THEME_NONE;
@@ -475,6 +550,7 @@ void ThemeClass::Stop(void)
 void ThemeClass::Suspend(void)
 {
     if (ScoresPresent && SampleType && !Debug_Quiet && Current != -1) {
+        MUSIC_LOG("frame=%d suspend '%s' handle=%d\n", Frame, Theme_Log_Name(Score), Current);
         Stop_Sample(Current);
         Current = -1;
         Pending = Score;
@@ -628,6 +704,10 @@ void ThemeClass::Scan(void)
 {
     for (ThemeType theme = THEME_FIRST; theme < THEME_COUNT; theme++) {
         _themes[theme].Available = CCFileClass(Theme_File_Name(theme)).Is_Available();
+        MUSIC_LOG("scan theme '%s' available=%d normal=%d\n",
+                  Theme_Log_Name(theme),
+                  (int)_themes[theme].Available,
+                  (int)_themes[theme].Normal);
     }
 }
 

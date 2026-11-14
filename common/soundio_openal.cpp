@@ -245,3 +245,27 @@ bool SoundImp_Sample_Status(SampleTrackerTypeImp* st)
 
     return val == AL_PLAYING;
 }
+
+int SoundImp_Get_Sample_State(SampleTrackerTypeImp* st)
+{
+    ALint val;
+    alGetSourcei(st->OpenALSource, AL_SOURCE_STATE, &val);
+
+    return (int)val;
+}
+
+int SoundImp_Get_Sample_Queued(SampleTrackerTypeImp* st)
+{
+    ALint val;
+    alGetSourcei(st->OpenALSource, AL_BUFFERS_QUEUED, &val);
+
+    return (int)val;
+}
+
+int SoundImp_Get_Sample_Processed(SampleTrackerTypeImp* st)
+{
+    ALint val;
+    alGetSourcei(st->OpenALSource, AL_BUFFERS_PROCESSED, &val);
+
+    return (int)val;
+}
