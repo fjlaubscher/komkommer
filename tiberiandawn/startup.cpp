@@ -322,7 +322,7 @@ int main(int argc, char** argv)
 #ifdef REMASTER_BUILD
         video_success = true;
 #else
-        if (Set_Video_Mode(ScreenWidth, ScreenHeight, 8)) {
+        if (Set_Video_Mode(ScreenWidth, ScreenHeight, 8, "KOMKOMMER: Tiberian Dawn")) {
             video_success = true;
         }
 #endif

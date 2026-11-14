@@ -104,7 +104,7 @@ SurfaceMonitorClass& AllSurfaces = AllSurfacesDummy; // List of all direct draw 
  * HISTORY:                                                                                    *
  *   09/26/1995 PWG : Created.                                                                 *
  *=============================================================================================*/
-bool Set_Video_Mode(int w, int h, int bits_per_pixel)
+bool Set_Video_Mode(int w, int h, int bits_per_pixel, char const* title)
 {
     SDL_Init(SDL_INIT_VIDEO);
     SDL_ShowCursor(SDL_DISABLE);
@@ -126,7 +126,7 @@ bool Set_Video_Mode(int w, int h, int bits_per_pixel)
     }
 
     SDL_SetPalette(window, SDL_LOGPAL, logpal, 0, 256);
-    SDL_WM_SetCaption("Vanilla Conquer", NULL);
+    SDL_WM_SetCaption(title ? title : "KOMKOMMER", NULL);
 
     DBG_INFO("Created SDL1 %s window in %dx%d@%dbpp",
              (window->flags & SDL_FULLSCREEN ? "fullscreen" : "windowed"),

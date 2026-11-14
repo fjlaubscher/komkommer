@@ -1759,6 +1759,13 @@ int AircraftClass::Mission_Move(void)
             Enter_Idle_Mode();
         } else {
             if (IsScouting) {
+
+                /*
+                **	Claim a clear cell to hover over. Aircraft that are sent to the same
+                **	spot spread out over the cells around it instead of hovering on top
+                **	of each other.
+                */
+                Claim_Air_Station();
                 Status = TAKE_OFF;
             } else {
                 if (!Is_LZ_Clear(NavCom) || !Cell_Seems_Ok(As_Cell(NavCom))) {
@@ -1807,6 +1814,14 @@ int AircraftClass::Mission_Move(void)
                 }
 
                 if (distance < 0x0010) {
+
+                    /*
+                    **	Another aircraft may have taken this cell while this one was
+                    **	en route. Move over to a clear cell.
+                    */
+                    if (Air_Station_Taken(Coord_Cell(Coord))) {
+                        Claim_Air_Station();
+                    }
                     Set_Speed(0);
                 }
                 return (1);
@@ -2569,6 +2584,192 @@ TARGET AircraftClass::New_LZ(TARGET oldlz, bool stable) const
         }
     }
     return (oldlz);
+}
+
+/***********************************************************************************************
+ * AircraftClass::Air_Space_Parked -- Checks if another aircraft has stopped over a cell.       *
+ *                                                                                             *
+ *    This routine determines if another aircraft has come to a stop in the air over the cell   *
+ *    specified. Aircraft that are merely flying past are not counted, otherwise a hovering    *
+ *    aircraft would be pushed away every time something flew over it.                          *
+ *                                                                                             *
+ * INPUT:   cell   -- The cell to check.                                                       *
+ *                                                                                             *
+ * OUTPUT:  bool; Is another aircraft parked in the air over this cell?                         *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/14/2026 : Created.                                                                     *
+ *=============================================================================================*/
+bool AircraftClass::Air_Space_Parked(CELL cell) const
+{
+    Validate();
+    for (int index = 0; index < Aircraft.Count(); index++) {
+        AircraftClass* other = Aircraft.Ptr(index);
+
+        if (!other || other == this || !other->IsActive || other->IsInLimbo) {
+            continue;
+        }
+
+        /*
+        **  Only aircraft that are in the air and have come to a stop occupy the cell.
+        */
+        if (other->Altitude > 0 && other->Get_Speed() == 0 && Coord_Cell(other->Coord) == cell) {
+            return (true);
+        }
+    }
+    return (false);
+}
+
+/***********************************************************************************************
+ * AircraftClass::Air_Station_Taken -- Checks if a cell is already claimed by an aircraft.     *
+ *                                                                                             *
+ *    An aircraft that holds position in the air claims the cell that it hovers over. This      *
+ *    routine determines if the cell specified is already spoken for, either because another    *
+ *    aircraft has claimed it or because another aircraft is parked over it.                    *
+ *                                                                                             *
+ * INPUT:   cell   -- The cell to check.                                                       *
+ *                                                                                             *
+ * OUTPUT:  bool; Is the cell already claimed?                                                 *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/14/2026 : Created.                                                                     *
+ *=============================================================================================*/
+bool AircraftClass::Air_Station_Taken(CELL cell) const
+{
+    Validate();
+    for (int index = 0; index < Aircraft.Count(); index++) {
+        AircraftClass* other = Aircraft.Ptr(index);
+
+        if (!other || other == this || !other->IsActive || other->IsInLimbo) {
+            continue;
+        }
+
+        /*
+        **  An aircraft that is holding over this cell has claimed it.
+        */
+        if (other->IsScouting && Target_Legal(other->NavCom) && ::Is_Target_Cell(other->NavCom)
+            && ::As_Cell(other->NavCom) == cell) {
+            return (true);
+        }
+    }
+    return (Air_Space_Parked(cell));
+}
+
+/***********************************************************************************************
+ * AircraftClass::Find_Air_Station -- Finds a clear cell to hold station over.                 *
+ *                                                                                             *
+ *    This routine scans outward from the cell specified and returns the first cell that no    *
+ *    other aircraft has claimed. It is used to spread aircraft that are sent to the same spot  *
+ *    over the cells around it, so that they do not hover on top of each other.                 *
+ *                                                                                             *
+ * INPUT:   cell   -- The preferred cell to hold station over.                                 *
+ *                                                                                             *
+ * OUTPUT:  Returns with the cell to use. It is the cell passed in if no clear cell was found. *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/14/2026 : Created.                                                                     *
+ *=============================================================================================*/
+CELL AircraftClass::Find_Air_Station(CELL cell) const
+{
+    Validate();
+    int cx = Cell_X(cell);
+    int cy = Cell_Y(cell);
+
+    static int const _axis[4][2] = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
+
+    /*
+    **	Scan outward in a series of concentric rings up to a certain distance in cells.
+    **	The cells on the four axes of a ring are tried first, so that aircraft that
+    **	are sent to the same spot spread out evenly around it.
+    */
+    for (int radius = 0; radius < 8; radius++) {
+        for (int index = 0; index < 4; index++) {
+            int x = cx + (_axis[index][0] * radius);
+            int y = cy + (_axis[index][1] * radius);
+
+            if (x < 0 || y < 0 || x >= MAP_CELL_W || y >= MAP_CELL_H) {
+                continue;
+            }
+
+            CELL candidate = XY_Cell(x, y);
+
+            if (Map.In_Radar(candidate) && !Air_Station_Taken(candidate)) {
+                return (candidate);
+            }
+        }
+
+        if (!radius) {
+            continue;
+        }
+
+        /*
+        **	The rest of the ring follows the four axis cells.
+        */
+        for (int dy = -radius; dy <= radius; dy++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+
+                /*
+                **	Only the outer edge of the square belongs to this ring and the
+                **	axis cells have already been tried.
+                */
+                if (MAX(ABS(dx), ABS(dy)) != radius || dx == 0 || dy == 0) {
+                    continue;
+                }
+
+                int x = cx + dx;
+                int y = cy + dy;
+
+                if (x < 0 || y < 0 || x >= MAP_CELL_W || y >= MAP_CELL_H) {
+                    continue;
+                }
+
+                CELL candidate = XY_Cell(x, y);
+
+                if (Map.In_Radar(candidate) && !Air_Station_Taken(candidate)) {
+                    return (candidate);
+                }
+            }
+        }
+    }
+    return (cell);
+}
+
+/***********************************************************************************************
+ * AircraftClass::Claim_Air_Station -- Claims a clear cell to hold station over.               *
+ *                                                                                             *
+ *    An aircraft that is ordered to hold position in the air claims the cell that it hovers    *
+ *    over. If another aircraft already holds that cell, a clear cell nearby is claimed        *
+ *    instead. This keeps aircraft that are sent to the same spot from hovering on top of each  *
+ *    other.                                                                                    *
+ *                                                                                             *
+ * INPUT:   none                                                                               *
+ *                                                                                             *
+ * OUTPUT:  none                                                                               *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/14/2026 : Created.                                                                     *
+ *=============================================================================================*/
+void AircraftClass::Claim_Air_Station(void)
+{
+    Validate();
+    if (!Target_Legal(NavCom) || !::Is_Target_Cell(NavCom)) {
+        return;
+    }
+
+    CELL cell = ::As_Cell(NavCom);
+    CELL station = Find_Air_Station(cell);
+
+    if (station != cell) {
+        Assign_Destination(::As_Target(station));
+    }
 }
 
 /***********************************************************************************************

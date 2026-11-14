@@ -157,6 +157,16 @@ public:
     bool Is_Transport_Helicopter(void) const { return (!Class->IsFixedWing && Class->Max_Passengers() > 0); }
 
     /*
+    **	Air station support. An aircraft that holds position in the air claims the cell
+    **	that it hovers over. Aircraft that are sent to the same spot spread out over
+    **	the cells around it instead of hovering on top of each other.
+    */
+    bool Air_Space_Parked(CELL cell) const;
+    bool Air_Station_Taken(CELL cell) const;
+    CELL Find_Air_Station(CELL cell) const;
+    void Claim_Air_Station(void);
+
+    /*
     **	User I/O.
     */
     virtual void Active_Click_With(ActionType action, ObjectClass* object);

@@ -626,14 +626,11 @@ bool Init_Game(int, char*[])
     }
 
     /*
-    **	Dump a default copy of rules.ini.
+    **	Do not dump a copy of the rules next to the executable. A file called
+    **	RULES.INI there replaces the rules that come with the game data, and a
+    **	partial rules file leaves the game without its type data. Both games can
+    **	share one folder, so the copy would break the other one.
     */
-    if (!rulesIniFile.Is_Available()) {
-        Rule.Export(RuleINI);
-        CDFileClass ini_export("RULES.INI");
-        RuleINI.Save(ini_export, false);
-    }
-
     return (true);
 }
 

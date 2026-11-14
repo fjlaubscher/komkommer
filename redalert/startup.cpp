@@ -355,7 +355,7 @@ int main(int argc, char* argv[])
 #ifdef REMASTER_BUILD
         video_success = true;
 #else
-        if (Set_Video_Mode(ScreenWidth, ScreenHeight, 8)) {
+        if (Set_Video_Mode(ScreenWidth, ScreenHeight, 8, "KOMKOMMER: Red Alert")) {
             video_success = true;
         }
 #endif
@@ -542,7 +542,7 @@ bool InitDDraw(void)
 #else
     bool video_success = false;
 
-    if (Set_Video_Mode(ScreenWidth, ScreenHeight, 8)) {
+    if (Set_Video_Mode(ScreenWidth, ScreenHeight, 8, "KOMKOMMER: Red Alert")) {
         video_success = true;
     }
 

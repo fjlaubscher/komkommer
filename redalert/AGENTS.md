@@ -17,6 +17,8 @@ Read the root guide first. Do not copy TD identifiers or its `Altitude` field.
 
 - Campaign is `Session.Type == GAME_NORMAL`. A custom single-player map can still take that path.
 - Aircraft altitude is `Height`. Reveals use `SightRange`. Stock `Sight=0` becomes 3 after each INI read; a non-zero INI value wins. Do not clamp a landed aircraft to one cell of sight.
+- The type heaps are sized from the `[Maximums]` section of `RULES.INI`, and the type number is the heap index. The built-in maximums must fit every type object, or a rules file without that section leaves the higher numbered types missing.
+- A loitering aircraft claims the cell it hovers over, so several aircraft sent to one spot spread out. The claim belongs to the move-order event: the mission state machine does not restart when a unit is re-ordered, so a claim made there would be skipped.
 - Selection includes vessels, not buildings. Double-click is standalone-only. The second click on an already-selected unit can be `ACTION_NONE`.
 - Chronosphere targeting accepts eligible non-friendly units. Keep the type, deploy, and transport exclusions.
 - Saboteur reuses the GNRL body and name, so `[GNRL]` INI data can overwrite it; cameo lookup checks `[SABOTEUR]` first. `Read_INI` reapplies the skirmish/MP overrides after the initial table. `Full_Name()` returns the existing `TXT_SABOTEUR` id. Classic cameos try `SBTRICON`, `SABICON`, `GNRLICON`, then Tanya. The Remastered sidebar name falls back to `E7ICON`. One commando per house is `Can_Build`, not the sidebar. Tanya voice, laugh, and death stay Tanya-only.

@@ -236,17 +236,17 @@ RulesClass::RulesClass(void)
     , BulletMax(40)
     , FactoryMax(20)
     , InfantryMax(500)
-    , OverlayMax(1)
-    , SmudgeMax(1)
+    , OverlayMax(25)
+    , SmudgeMax(15)
     , TeamMax(60)
     , TeamTypeMax(60)
-    , TemplateMax(1)
+    , TemplateMax(401)
     , TerrainMax(500)
     , TriggerMax(60)
     , UnitMax(500)
     , VesselMax(100)
     , ProjectileMax(20)
-    , WeaponMax(20)
+    , WeaponMax(48)
     , WarheadMax(20)
     , TrigTypeMax(80)
     , CloseEnoughDistance(0x0280)
@@ -626,6 +626,16 @@ bool RulesClass::Heap_Maximums(CCINIClass& ini)
     **	Special case: double maximum animations to accomodate lots of action
     */
     AnimMax = max(AnimMax, 200);
+
+    /*
+    **	Every type object has to fit in its heap, even when the rules file does not
+    **	say how large it should be. The type heaps are indexed by the type number, so
+    **	a heap that is too small leaves the higher numbered types missing.
+    */
+    OverlayMax = max(OverlayMax, 25);
+    SmudgeMax = max(SmudgeMax, 15);
+    TemplateMax = max(TemplateMax, 401);
+    WeaponMax = max(WeaponMax, 48);
 
     /*
     **	Any heaps that use the maximums that were just loaded, must

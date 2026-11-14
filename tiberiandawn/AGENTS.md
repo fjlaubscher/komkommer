@@ -18,6 +18,8 @@ Read the root guide first. TD constants and fields are not RA's.
 
 - Campaign is `GameToPlay == GAME_NORMAL`, not RA's `Session.Type`.
 - Aircraft altitude is `Altitude`. A ground-only double-click sweep misses fliers. Sight reveals use `Class->SightRange`; the `aadata.cpp` default alone does not fix the call sites.
+- A loitering aircraft claims the cell it hovers over, so several aircraft sent to one spot spread out. The claim belongs to the move-order event: the mission state machine does not restart when a unit is re-ordered, so a claim made there would be skipped.
+- Do not write `RULES.INI` next to the executable. A loose rules file replaces the rules of the game data, and the two games can share one folder.
 - `Can_Build` checks the one-Rambo limit in more than one path. The sidebar does not enforce it.
 - Nod Guard Tower and Repair Bay need both `bdata.cpp` and the base AI in `house.cpp`. The AI repair bay accepts a War Factory or an Airstrip.
 - Placement allows a one-cell gap from a friendly building and still requires a legal radar, foundation, and proximity check.

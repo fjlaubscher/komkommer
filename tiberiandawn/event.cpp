@@ -617,6 +617,8 @@ void EventClass::Execute(void)
                     object->Clicked_As_Target((HousesType)ID);
                 }
             }
+            TARGET destination = Data.MegaMission.Destination;
+
             if (techno->What_Am_I() == RTTI_AIRCRAFT) {
                 AircraftClass* air = (AircraftClass*)techno;
                 air->Set_Scouting(false);
@@ -633,6 +635,13 @@ void EventClass::Execute(void)
                             // A transport helicopter (Chinook) never loiters; it keeps its
                             // landing move so it flies to the destination and lands.
                             air->Set_Scouting(true);
+
+                            /*
+                            **  Claim a clear cell to hover over. Aircraft that are sent to
+                            **  the same spot spread out over the cells around it instead of
+                            **  hovering on top of each other.
+                            */
+                            destination = ::As_Target(air->Find_Air_Station(cell));
                         }
                     }
                 }
@@ -659,7 +668,7 @@ void EventClass::Execute(void)
                 techno->Assign_Destination(TARGET_NONE);
             } else {
                 techno->Assign_Target(Data.MegaMission.Target);
-                techno->Assign_Destination(Data.MegaMission.Destination);
+                techno->Assign_Destination(destination);
             }
 
 #ifdef NEVER

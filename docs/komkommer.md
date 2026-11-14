@@ -4,6 +4,14 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 
 ## Both games (TD + RA)
 
+### Window title (standalone)
+- The window title is **KOMKOMMER: Tiberian Dawn** or **KOMKOMMER: Red Alert** instead of the upstream **Vanilla Conquer**.
+
+### Rules file
+- The engine reads `RULES.INI` from the working directory, the user directory, and the game data, in that order. A loose file **replaces** the rules that come with the game data instead of adding to them, so a partial file leaves the game without its weapon, unit, and building data.
+- **Komkommer:** Tiberian Dawn no longer writes a copy of its rules next to the executable. That copy shadowed the rules of the game data for the next run, and it broke Red Alert when both games were played from the same folder: the weapon heap was sized from a `[Maximums]` section that the copy did not have, so the weapon types were missing and the Red Alert campaign crashed while loading its first mission.
+- Red Alert's built-in heap maximums now fit every type object, so a rules file without `[Maximums]` can no longer leave types missing.
+
 ### Double-click selects all on-screen units of the same type (standalone)
 - **Vanilla:** Double-clicking a unit is treated as two ordinary single clicks (select, then toggle the one unit).
 - **Komkommer:** Double-clicking a selectable combat unit selects **every on-screen unit of that exact type** (infantry, vehicles, aircraft, and RA vessels; buildings are excluded).
@@ -37,6 +45,7 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - Terrain-reveal call sites use the type's sight range: TD ground-layer entry/firing, and RA `Look()`/firing. Grounded RA aircraft are no longer clamped to a one-cell sight range.
 - **Helicopters:** a move order to terrain flies to the destination and holds/loiters there to scout instead of auto-landing on arrival. The self-action (deploy) orders an airborne helicopter to land (seeking a valid helipad/LZ context); a landed transport with passengers unloads. A landed empty helicopter has no self-action — order it to move to take off. A new move order while grounded or landing lifts off and flies to the new destination. **Transport helicopters (the Chinook) do not loiter:** their move orders — including into fog — fly to the destination and land there, matching vanilla transport behavior; their sight while airborne is unchanged.
 - **RA Yak/MiG:** a move order to a scout point flies to and circles/loiters around that area to reveal it, without landing on terrain, until given a new order or directed to return/dock/reload. Existing airstrip docking/reload/ammo/return behavior is preserved. Scripted/non-scout fixed-wing behavior (e.g. TD A-10, RA cargo planes) is unchanged.
+- **Air stations:** aircraft that hold position in the air claim a cell and spread out over the cells around the spot they were sent to. Sending several aircraft to the same cell no longer stacks them on top of each other: the first takes the requested cell, the next ones take clear cells around it (north, east, south, west, then the diagonals and the cells further out). An aircraft that reaches its cell and finds another aircraft parked there moves to a clear cell. The same rule applies to the RA fixed-wing scout circle, which gets its own centre. Aircraft that merely fly past do not push a hovering aircraft away, and transport helicopters that land are unaffected. The claim is part of the move order, so it is identical on every machine in a multiplayer game.
 
 ### Rally points for production buildings
 - **Vanilla:** Production buildings do not have a player-settable rally point workflow like this mod’s implementation.

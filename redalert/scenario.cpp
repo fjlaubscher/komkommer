@@ -2226,7 +2226,15 @@ bool Read_Scenario_INI(char* fname, bool)
     //	Session.Messages.Add_Message(NULL, 0, NULL, PCOLOR_GREEN, TPF_6PT_GRAD|TPF_USE_GRAD_PAL|TPF_FULLSHADOW, 1);
     //	Session.Messages.Add_Message(NULL, 0, NULL, PCOLOR_GREEN, TPF_6PT_GRAD|TPF_USE_GRAD_PAL|TPF_FULLSHADOW, 1);
     //	Session.Messages.Add_Message(NULL, 0, NULL, PCOLOR_GREEN, TPF_6PT_GRAD|TPF_USE_GRAD_PAL|TPF_FULLSHADOW, 1);
-    WeaponTypeClass::As_Pointer(WEAPON_FLAMER)->Sound = VOC_NONE;
+    /*
+    **  The weapon types only exist when the rules file was read. A rules file
+    **  without a [Maximums] section leaves the weapon heap too small for all of
+    **  them, so the type may be missing here.
+    */
+    WeaponTypeClass* flamer = WeaponTypeClass::As_Pointer(WEAPON_FLAMER);
+    if (flamer != NULL) {
+        flamer->Sound = VOC_NONE;
+    }
     InfantryTypeClass::As_Reference(INFANTRY_THIEF).IsDoubleOwned = false;
     InfantryTypeClass::As_Reference(INFANTRY_E4).IsDoubleOwned = false;
     InfantryTypeClass::As_Reference(INFANTRY_SPY).PrimaryWeapon = NULL;
