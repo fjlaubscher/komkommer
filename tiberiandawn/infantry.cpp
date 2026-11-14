@@ -776,7 +776,7 @@ void InfantryClass::Per_Cell_Process(bool center)
     /*
     **	If over Tiberium, then this infantry unit will take damage.
     */
-    if (IsActive && !IsInLimbo && center && cellptr->Land_Type() == LAND_TIBERIUM && *this != INFANTRY_E5) {
+    if (IsActive && !IsInLimbo && center && cellptr->Land_Type() == LAND_TIBERIUM && Takes_Tiberium_Damage()) {
         int damage = 2;
         Take_Damage(damage, 0, WARHEAD_FIRE);
     }
@@ -1784,6 +1784,27 @@ MoveType InfantryClass::Can_Enter_Cell(CELL cell, FacingType) const
     **	Return with the most severe reason why this cell would be impassable.
     */
     return (retval);
+}
+
+/***********************************************************************************************
+ * InfantryClass::Takes_Tiberium_Damage -- Determines if this infantry is hurt by tiberium.      *
+ *                                                                                             *
+ *    Infantry melts while it stands in a tiberium field. The chemical warrior wears a sealed   *
+ *    suit, so it walks through a field unharmed. The path finder uses this to keep the rest    *
+ *    of the infantry off the tiberium when it can.                                             *
+ *                                                                                             *
+ * INPUT:   none                                                                               *
+ *                                                                                             *
+ * OUTPUT:  bool; Does this infantry lose health while it stands in tiberium?                  *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/14/2026  Komkommer : Created.                                                          *
+ *=============================================================================================*/
+bool InfantryClass::Takes_Tiberium_Damage(void) const
+{
+    return (*this != INFANTRY_E5);
 }
 
 /***********************************************************************************************

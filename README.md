@@ -67,6 +67,14 @@ cmake --build build/release --config Debug --target KomkommerTD
 
 The binary and symbols are `build/release/Debug/komkommertd.exe` and `.pdb`. Copy the runtime DLLs into that directory and configure its data path before launching. Use target `KomkommerRA` for Red Alert.
 
+There is a helper that does the whole debug loop on Windows: it builds the debug binaries, points them at the classic game data, imports the settings from a release install, and drops stale saves.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .agents/skills/debug-loop/scripts/debug-run.ps1 -Game TD -Launch
+```
+
+See [the debug-loop skill](.agents/skills/debug-loop/SKILL.md) for the flags and the defaults it uses.
+
 The preset name `release` selects a build tree, not a compiler configuration: its default build configuration is **RelWithDebInfo**. **Debug** is unoptimized. Do not reuse a CMake build tree across different compilers or x86/x64 architectures.
 
 ### Linux

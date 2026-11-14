@@ -275,6 +275,12 @@ public:
     virtual void Fixup_Path(PathType*){};
     virtual void Set_Speed(int speed);
     virtual MoveType Can_Enter_Cell(CELL, FacingType = FACING_NONE) const;
+
+    /*
+    **	Does this object lose health while it stands in tiberium? The
+    **	path finder uses this to keep infantry off tiberium fields.
+    */
+    virtual bool Takes_Tiberium_Damage(void) const;
     int Optimize_Moves(PathType* path, MoveType threshhold);
     virtual void Override_Mission(MissionType mission, TARGET tarcom, TARGET navcom);
     virtual bool Restore_Mission(void);
@@ -290,6 +296,7 @@ public:
 
 private:
     int Passable_Cell(CELL cell, FacingType face, int threat, MoveType threshhold);
+    bool Tiberium_Avoided(CELL cell) const;
     PathType* Find_Path(CELL dest, FacingType* final_moves, int maxlen, MoveType threshhold);
     void Debug_Draw_Map(const char* txt, CELL start, CELL dest, bool pause);
     void Debug_Draw_Path(PathType* path);

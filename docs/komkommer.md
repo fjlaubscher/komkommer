@@ -81,6 +81,7 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - If the destination is unreachable, the search still returns a best-effort path to the closest reachable cell, so units make progress and re-path instead of stalling.
   - The command list is still smoothed by `Optimize_Moves`. A 90° or 135° shortcut is kept only when that cell is passable.
 - This changes only the path search itself; the `PathType` command-list contract and the movement/`drive.cpp` consumers are unchanged.
+- TD adds a tiberium cost on top of this, so infantry walk around fields. See **Infantry routes around tiberium** below.
 
 ### Harvester destination choice
 - **Vanilla:** Autonomous harvesters stop at the first ore ring that contains any cell, return after a dump to the cell they just emptied, and stick to the last refinery they used even when another dock is closer or freer.
@@ -102,6 +103,14 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 
 ### Commando limit
 - **Komkommer:** The TD commando (**Rambo / `INFANTRY_RAMBO`**) is limited to **one per house** (enforced in `HouseClass::Can_Build`).
+
+### Infantry routes around tiberium
+- **Vanilla TD:** Infantry melt while they stand in tiberium (2 damage points per cell), but the path finder treats a tiberium field like any other open ground. Squads walk straight through fields and arrive at the other side badly hurt.
+- **Komkommer:** The path finder charges infantry extra for a tiberium cell (`TIBERIUM_COST` in `findpath.cpp`), so the search walks around a field when that is not the long way round:
+  - The rule applies to every infantry type that tiberium hurts. The chemical warrior (`INFANTRY_E5`) is immune to tiberium, so it keeps crossing fields.
+  - Vehicles are unaffected; they never take damage from tiberium in TD.
+  - A field that blocks the only route is still crossed. The extra cost is small enough that infantry cross a field when going around it would be a much longer walk.
+  - The path smoother refuses a shortcut that would step into a tiberium cell, so the detour is not undone after the search.
 
 ### Building placement proximity
 - **Vanilla TD:** Base proximity/adjacency rules were stricter in ways that differed from RA.

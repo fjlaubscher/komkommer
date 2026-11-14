@@ -52,6 +52,7 @@ Configure from `README.md`. The `release` preset tree defaults to `RelWithDebInf
 - Exit `0xc0000135` is a missing SDL2 or OpenAL DLL, not a failed assertion.
 - A compile-time boundary or shared header needs both standalone games and both x86 Remastered DLLs. A standalone build misses symbols guarded by `REMASTER_BUILD`.
 - Remastered deploy is `.agents/skills/remaster-mod/SKILL.md`. Do not deploy, or overwrite an install, just to see that it compiles. Restart the host after a DLL update.
+- The standalone debug loop is `.agents/skills/debug-loop/SKILL.md`. It builds the debug binaries, points them at the classic data, and imports the settings from a release install. The release folder is only read.
 - For a local run, put `[Paths] DataPath=...` beside the build executable. Do not hard-code a data path into source.
 - CTest does not cover gameplay. Say what built and which mode.
 - `cmake --build <tree> --target format` reformats sources; it only exists when clang-format is found. Pin clang-format to 14.0.x — the build warns outside 14.0.0–14.0.6.

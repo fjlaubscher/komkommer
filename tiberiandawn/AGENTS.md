@@ -30,6 +30,7 @@ Read the root guide first. TD constants and fields are not RA's.
 - Standalone production queues are units only: one active plus four waiting. Buildings are not queued. Do not resize the saved queue arrays to change that policy. `CANCEL_QUEUE` removes the newest waiting match and leaves the active item. Queue code stays outside `REMASTER_BUILD`.
 - SDL2 shake is `Request_Video_Shake`. Do not put a `Frame_Limiter` loop inside an explosion.
 - Double-click excludes buildings. An already-selected unit can report `ACTION_NONE`. The helper is standalone-only.
+- Infantry melt in tiberium here, but not in RA. `FootClass::Takes_Tiberium_Damage` is the one rule: it drives both the damage in `Per_Cell_Process` and the path cost that keeps infantry off fields. `INFANTRY_E5` is immune.
 - Ion Cannon area damage applies in every mode. Nuke campaign and non-campaign values stay separate. Numbers are in `docs/komkommer.md`.
 
 Build target: `KomkommerTD`, or `TiberianDawn` for the DLL. Building and house layout changes need a fresh game.

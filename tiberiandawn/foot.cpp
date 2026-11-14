@@ -1993,6 +1993,46 @@ MoveType FootClass::Can_Enter_Cell(CELL, FacingType) const
 }
 
 /***********************************************************************************************
+ * FootClass::Takes_Tiberium_Damage -- Determines if this object is hurt by tiberium.            *
+ *                                                                                             *
+ *    In Tiberian Dawn only infantry melt while they stand in tiberium. The path finder        *
+ *    uses this to keep infantry off a field when going around it is not the long way round.   *
+ *                                                                                             *
+ * INPUT:   none                                                                               *
+ *                                                                                             *
+ * OUTPUT:  bool; Does this object lose health while it stands in tiberium?                    *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/14/2026  Komkommer : Created.                                                          *
+ *=============================================================================================*/
+bool FootClass::Takes_Tiberium_Damage(void) const
+{
+    return (false);
+}
+
+/***********************************************************************************************
+ * FootClass::Tiberium_Avoided -- Determines if the cell holds tiberium to be avoided.          *
+ *                                                                                             *
+ *    This routine is the single test used by the path finder to decide if a cell is tiberium   *
+ *    that this object would rather not walk through.                                          *
+ *                                                                                             *
+ * INPUT:   cell  -- The cell to examine.                                                      *
+ *                                                                                             *
+ * OUTPUT:  bool; True if the cell holds tiberium that hurts this object.                      *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/14/2026  Komkommer : Created.                                                          *
+ *=============================================================================================*/
+bool FootClass::Tiberium_Avoided(CELL cell) const
+{
+    return (Takes_Tiberium_Damage() && Map[cell].Land_Type() == LAND_TIBERIUM);
+}
+
+/***********************************************************************************************
  * FootClass::Can_Demolish -- Checks to see if this object can be sold back.                   *
  *                                                                                             *
  *    This routine determines if it is legal to sell the object back. A foot class object can  *

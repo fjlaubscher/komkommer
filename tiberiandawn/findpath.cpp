@@ -31,6 +31,8 @@
  * The path is produced with an A* search over the cell grid. Each cell's                     *
  * cost and passability come from Passable_Cell, which also applies the                       *
  * caller's movement threshold and (for roundabout teams) threat avoidance.                   *
+ * Infantry that melt in tiberium pay extra for tiberium cells, so they walk                  *
+ * around a field when going around it is not the long way round.                             *
  * The search is bounded by the map itself and, when the destination is                       *
  * unreachable, still yields the closest reachable cell as a best-effort path.                *
  * The resulting command list is smoothed with Optimize_Moves.                                *
@@ -66,6 +68,14 @@
 */
 #define MAX_MLIST_SIZE   400
 #define THREAT_THRESHOLD 5
+
+/*
+**	Extra path cost for a cell that holds tiberium. Infantry that are hurt
+**	by tiberium will walk this many extra cells to step around a single
+**	tiberium cell, but they still cross a field when going around it
+**	would be the long way round.
+*/
+#define TIBERIUM_COST 4
 
 /*
 **	X/Y cell offsets for each of the eight facings (FACING_N .. FACING_NW).
@@ -456,6 +466,23 @@ PathType* FootClass::Find_Path(CELL dest, FacingType* final_moves, int maxlen, M
     */
     Optimize_Moves(&path, threshhold);
 
+    /*
+    **	Debug builds write the route of infantry that has to stay off the
+    **	tiberium to the log file, so a route can be checked after the game.
+    */
+    if (Takes_Tiberium_Damage()) {
+        int tiberium_cells = 0;
+        CELL cell = path.Start;
+
+        for (int index = 0; index < path.Length && path.Command[index] != END; index++) {
+            cell = Adjacent_Cell(cell, path.Command[index]);
+            if (Tiberium_Avoided(cell)) {
+                tiberium_cells++;
+            }
+        }
+        DBG_LOG("Infantry route: %d steps, %d tiberium cells.\n", path.Length - 1, tiberium_cells);
+    }
+
     if (Debug_Find_Path && DrawPath) {
         Debug_Draw_Map("Final Generated Path", source, dest, false);
         Debug_Draw_Path(&path);
@@ -588,7 +615,8 @@ int FootClass::Optimize_Moves(PathType* path, MoveType threshhold)
                     **	the path isn't any shorter.
                     */
                     if (ABS((int)newcmd) == 1) {
-                        if (Passable_Cell(Adjacent_Cell(cell, newdir), newdir, -1, threshhold)) {
+                        if (Passable_Cell(Adjacent_Cell(cell, newdir), newdir, -1, threshhold)
+                            && !Tiberium_Avoided(Adjacent_Cell(cell, newdir))) {
                             *cmd2 = newdir;
                             *cmd1 = newdir;
                         }
@@ -604,8 +632,11 @@ int FootClass::Optimize_Moves(PathType* path, MoveType threshhold)
                 /*
                 **	Shorten a 90° or 135° bend only when the shortcut cell is
                 **	passable. Otherwise the drive rejects the step and drops the path.
+                **	A shortcut that steps into tiberium is refused as well, or it
+                **	would undo the avoidance that the search just paid for.
                 */
-                if (!Passable_Cell(Adjacent_Cell(cell, newdir), newdir, -1, threshhold)) {
+                if (!Passable_Cell(Adjacent_Cell(cell, newdir), newdir, -1, threshhold)
+                    || Tiberium_Avoided(Adjacent_Cell(cell, newdir))) {
                     cell = Adjacent_Cell(cell, *cmd1);
                     cmd2++;
                     continue;
@@ -756,7 +787,20 @@ int FootClass::Passable_Cell(CELL cell, FacingType face, int threat, MoveType th
         10, //	MOVE_TEMP
         0   //	MOVE_NO
     };
-    return (_value[move]);
+
+    int cost = _value[move];
+
+    /*
+    **	Infantry that melt in tiberium prefer a route that stays off of it.
+    **	The extra cost makes the search walk around a field when that is
+    **	only a short detour, while a field that blocks the way is still
+    **	crossed.
+    */
+    if (Tiberium_Avoided(cell)) {
+        cost += TIBERIUM_COST;
+    }
+
+    return (cost);
 
 #ifdef NEVER
     int can;
