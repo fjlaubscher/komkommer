@@ -26,7 +26,10 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -qq -y libsdl2-dev libopenal-dev ninja-build
+          sudo apt-get install -qq -y libsdl2-dev libopenal-dev
+
+      - name: Ninja
+        run: ninja --version
 
       - name: Build Tiberian Dawn and Red Alert
         env:
@@ -51,12 +54,9 @@ jobs:
       - name: Install dependencies
         run: |
           Invoke-WebRequest -Uri https://www.libsdl.org/release/SDL2-devel-2.0.12-VC.zip -OutFile SDL2-devel.zip
-          Invoke-WebRequest -Uri https://github.com/ninja-build/ninja/releases/download/v1.10.1/ninja-win.zip -OutFile $Env:TEMP\ninja-win.zip
           Invoke-WebRequest -SkipCertificateCheck -Uri https://openal-soft.org/openal-binaries/openal-soft-1.21.0-bin.zip -OutFile openal-soft-1.21.0-bin.zip
           Expand-Archive SDL2-devel.zip -DestinationPath .
-          Expand-Archive $Env:TEMP\ninja-win.zip -DestinationPath $Env:TEMP\ninja
           Expand-Archive openal-soft-1.21.0-bin.zip -DestinationPath .
-          echo "$Env:TEMP\ninja" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           ninja --version
 
       - name: Build Tiberian Dawn and Red Alert
@@ -75,12 +75,8 @@ jobs:
         with:
           arch: x86
 
-      - name: Install Ninja
-        run: |
-          Invoke-WebRequest -Uri https://github.com/ninja-build/ninja/releases/download/v1.10.1/ninja-win.zip -OutFile $Env:TEMP\ninja-win.zip
-          Expand-Archive $Env:TEMP\ninja-win.zip -DestinationPath $Env:TEMP\ninja
-          echo "$Env:TEMP\ninja" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          ninja --version
+      - name: Ninja
+        run: ninja --version
 
       - name: Build Remastered DLLs
         env:

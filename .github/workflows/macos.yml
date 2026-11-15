@@ -34,7 +34,7 @@ jobs:
 
     - name: Install homebrew deps
       run: |
-        brew install imagemagick dylibbundler
+        brew install imagemagick dylibbundler ninja
 
     - if: ${{ steps.dep-cache.outputs.cache-hit != 'true' }}
       name: Install macport dependencies
