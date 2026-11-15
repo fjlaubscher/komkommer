@@ -11,7 +11,9 @@
 // The distance to a cell is the trip the harvester would really make and not
 // the straight line between two cells. Ore behind a cliff is not as close as
 // it looks on the map, so the walk decides which field the harvester drives
-// to.
+// to. The walk stores a negative cost for a cell it has not reached.
+// HarvestTravel_Better is the rule that lets the first real step replace
+// that, and it is the same in both engines.
 //
 // The work happens on plain numbers. The game converts to and from its own
 // cell numbering.
@@ -70,6 +72,19 @@ inline int HarvestOre_Pick(HarvestOre const* cells, int count)
         }
     }
     return (best);
+}
+
+// True when `next` is a better travel cost than the one already stored.
+//
+// A cell the walk has not reached is stored as a negative number. The first
+// real step onto that cell has to replace it. Comparing with `next >= stored`
+// treats the sentinel as already closer than every real step, so the walk
+// records nothing past the cell it started on. A harvester that has just
+// emptied a tile then sees no ore and heads for the refinery with one tile
+// of load.
+inline bool HarvestTravel_Better(int stored, int next)
+{
+    return (stored < 0 || next < stored);
 }
 
 #endif

@@ -8,7 +8,9 @@
 // list of ore cells into the one a harvester drives to is here, and these
 // checks cover it: the nearest ore wins, ore that is a few steps farther
 // along the path may be richer, and ore that is only close on the map but
-// far to drive to loses.
+// far to drive to loses. The same file also checks that the first step onto
+// an unreached cell is recorded, which is what keeps a harvester on the next
+// tile after it clears one.
 
 namespace
 {
@@ -102,6 +104,47 @@ int main()
     int const reach_amounts[2] = {1, 1};
     Make_Cells(cells, reach_costs, reach_amounts, 2);
     check(HarvestOre_Pick(cells, 2) == 0, "the cell that is closest to drive to wins");
+
+    // A cleared tile leaves the cells around the harvester marked unreached
+    // (-1). The old check `next >= stored` is true for every positive step
+    // against that sentinel, so the walk recorded nothing and the harvester
+    // turned for the refinery with one tile of load.
+    int const unreached = -1;
+    int const onto_ore = 1;
+    int const budget = 6;
+    bool const kept = onto_ore <= budget && HarvestTravel_Better(unreached, onto_ore);
+    check(kept, "the ore next to a cleared tile is recorded");
+    check(!HarvestTravel_Better(1, 1), "an equal travel cost does not replace a recorded one");
+    check(!HarvestTravel_Better(2, 5), "a longer trip does not replace a shorter one");
+    check(HarvestTravel_Better(5, 2), "a shorter trip replaces a longer one");
+    check(!HarvestTravel_Better(0, 1), "a step back onto the start does not replace it");
+
+    // Two more ore tiles past the one just cleared. Both have to be recorded,
+    // and the nearer one is the cell the harvester drives to.
+    int travel[3] = {0, unreached, unreached};
+    for (int cell = 0; cell < 2; cell++) {
+        if (travel[cell] < 0) {
+            continue;
+        }
+        int const next = travel[cell] + 1;
+        if (next <= budget && HarvestTravel_Better(travel[cell + 1], next)) {
+            travel[cell + 1] = next;
+        }
+    }
+    HarvestOre field[2];
+    int field_count = 0;
+    for (int cell = 1; cell < 3; cell++) {
+        if (travel[cell] < 0) {
+            continue;
+        }
+        field[field_count].Cell = cell;
+        field[field_count].Cost = travel[cell];
+        field[field_count].Amount = 2;
+        field_count++;
+    }
+    check(travel[1] == 1 && travel[2] == 2, "ore beyond the cleared tile stays reachable");
+    check(field_count == 2 && HarvestOre_Pick(field, field_count) == 0,
+          "the harvester takes the next ore tile instead of going home");
 
     if (failures == 0) {
         std::printf("harvest path: all checks passed\n");

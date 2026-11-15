@@ -49,6 +49,7 @@
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include "function.h"
+#include "common/harvestpath.h"
 
 /*
 **	This is the marker to signify the end of the path list.
@@ -646,7 +647,11 @@ void FootClass::Travel_Costs(CELL source, int maxcost, int unreachable)
                 continue;
 
             int next = cost + step;
-            if (next > maxcost || next >= TravelCost[nxt])
+            /*
+            **	An unreached cell is stored as a negative cost. The first real
+            **	step has to replace it, or the walk records nothing past the start.
+            */
+            if (next > maxcost || !HarvestTravel_Better(TravelCost[nxt], next))
                 continue;
 
             TravelCost[nxt] = next;
