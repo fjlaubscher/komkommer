@@ -77,6 +77,9 @@ typedef enum : unsigned short
     SHAPE_WIN_REL = 0x0010,      // Coordinates are window relative instead of absolute.
     SHAPE_CENTER = 0x0020,       // Coords are based on shape's center pt
     SHAPE_BOTTOM = 0x0040,       // Y coord is based on shape's bottom pt
+    SHAPE_TRANS = 0x0040,        // Transparent pixels of the shape are skipped
+                                 //  (this is the same bit as SHAPE_BOTTOM, which
+                                 //  the shape drawer does not use)
     SHAPE_FADING = 0x0100,       // Fading effect (void * fading_table,
                                  //  WORD fading_num)
     SHAPE_PREDATOR = 0x0200,     // Transparent warping effect

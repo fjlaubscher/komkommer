@@ -107,6 +107,9 @@
 #include "common/irandom.h"
 #include "ccini.h"
 #include "common/fixed.h"
+#ifndef REMASTER_BUILD
+#include "common/wallline.h"
+#endif
 
 /***********************************************************************************************
  * Production_Queue_Index -- Maps a production RTTI type to its queue index.                   *
@@ -3173,6 +3176,377 @@ bool HouseClass::Place_Object(RTTIType type, CELL cell)
 
     return (true);
 }
+
+#ifndef REMASTER_BUILD
+/***********************************************************************************************
+ * HouseClass::Wall_Line_Cell_Legal -- Checks if a wall segment may be laid at a cell.        *
+ *                                                                                             *
+ *    This routine checks the cell that a wall segment of a run would cover. The cell has to be  *
+ *    on the player's radar, it has to be free for the wall, and it has to touch something the   *
+ *    player owns so that the wall joins up with the rest of the base.                          *
+ *                                                                                             *
+ *    The segments of the run own their cell once they are down, so the next segment of the run *
+ *    may join up with them. The 'run' list holds the cells of the run that have been accepted  *
+ *    so far.                                                                                   *
+ *                                                                                             *
+ * INPUT:   wall       -- The wall that would be placed.                                        *
+ *                                                                                             *
+ *          cell       -- The cell the wall would cover.                                        *
+ *                                                                                             *
+ *          run        -- The cells of the run that are already accounted for.                  *
+ *                                                                                             *
+ *          run_count  -- How many cells the run list holds.                                   *
+ *                                                                                             *
+ * OUTPUT:  bool; Can the wall segment be laid at this cell?                                   *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/15/2026 JLB : Created.                                                                 *
+ *=============================================================================================*/
+bool HouseClass::Wall_Line_Cell_Legal(BuildingClass* wall, CELL cell, CELL const* run, int run_count) const
+{
+    if (!Map.In_Radar(cell)) {
+        return (false);
+    }
+
+    /*
+    **	The cell has to be free for the wall to go down on. The wall itself turns into an
+    **	overlay, and an overlay only goes down on a cell that is generally clear. A cell that
+    **	already holds a wall is therefore not free, even though the building check lets it pass.
+    */
+    if (!Wall_Cell_Free(wall, cell)) {
+        return (false);
+    }
+
+    /*
+    **	A wall has to touch something the player owns, or it stands alone in the field. This is
+    **	worked out here instead of with the building's own check, because that one lets a
+    **	computer player build anywhere and the run has to be the same on every peer of a network
+    **	game.
+    */
+    for (FacingType facing = FACING_N; facing < FACING_COUNT; facing++) {
+        CELL newcell = Adjacent_Cell(cell, facing);
+        if ((unsigned)newcell >= MAP_CELL_TOTAL) {
+            continue;
+        }
+
+        if (Map[newcell].Owner == Class->House) {
+            return (true);
+        }
+
+        TechnoClass* base = Map[newcell].Cell_Techno();
+        if (base && base->What_Am_I() == RTTI_BUILDING && base->House->Class->House == Class->House) {
+            return (true);
+        }
+
+        /*
+        **	A friendly building with a one cell gap in between counts as well.
+        */
+        for (FacingType facing2 = FACING_N; facing2 < FACING_COUNT; facing2++) {
+            CELL gapcell = Adjacent_Cell(newcell, facing2);
+            if (Map.In_Radar(gapcell)) {
+                TechnoClass* gapbase = Map[gapcell].Cell_Techno();
+                if (gapbase && gapbase->What_Am_I() == RTTI_BUILDING && gapbase->House->Class->House == Class->House) {
+                    return (true);
+                }
+            }
+        }
+    }
+
+    /*
+    **	The segments of the run that are already down own their cell, so the next segment of
+    **	the run is allowed to join up with them.
+    */
+    for (FacingType facing = FACING_N; facing < FACING_COUNT; facing++) {
+        CELL neighbour = Adjacent_Cell(cell, facing);
+        for (int index = 0; index < run_count; index++) {
+            if (run[index] == neighbour) {
+                return (true);
+            }
+        }
+    }
+    return (false);
+}
+
+/***********************************************************************************************
+ * HouseClass::Wall_Cell_Free -- Checks if a wall could go down on a cell.                        *
+ *                                                                                             *
+ *    This routine checks the cell that a wall would cover, without looking at what the player   *
+ *    owns around it. A cell that is not free cannot hold a wall, no matter what the run does.   *
+ *                                                                                             *
+ * INPUT:   wall  -- The wall that would be placed.                                             *
+ *                                                                                             *
+ *          cell  -- The cell the wall would cover.                                             *
+ *                                                                                             *
+ * OUTPUT:  bool; Is the cell free for the wall?                                               *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/15/2026 JLB : Created.                                                                 *
+ *=============================================================================================*/
+bool HouseClass::Wall_Cell_Free(BuildingClass* wall, CELL cell) const
+{
+    if (!wall || cell < 0 || cell >= MAP_CELL_TOTAL) {
+        return (false);
+    }
+
+    if (wall->Can_Enter_Cell(cell, FACING_NONE) != MOVE_OK) {
+        return (false);
+    }
+
+    /*
+    **	The wall turns into an overlay, and an overlay only goes down on a cell that is
+    **	generally clear. A cell that already holds a wall is not free, even though the
+    **	building check lets it pass.
+    */
+    return (Map[cell].Is_Generally_Clear());
+}
+
+/***********************************************************************************************
+ * HouseClass::Wall_Line_Path -- Works out the cells that a wall run covers.                      *
+ *                                                                                             *
+ *    This routine works out the cells that a run of wall segments covers. The run is a straight  *
+ *    line between the two ends, unless something stands in the way. Then the line is routed     *
+ *    around it, so that a wall can be built past a structure instead of through it.              *
+ *                                                                                             *
+ * INPUT:   wall        -- The wall that would be placed.                                       *
+ *                                                                                             *
+ *          from        -- The cell the run starts at.                                          *
+ *                                                                                             *
+ *          to          -- The cell the run ends at.                                            *
+ *                                                                                             *
+ *          out         -- The cells of the run are written here.                                *
+ *                                                                                             *
+ *          max_points  -- How many cells the out list can hold.                                *
+ *                                                                                             *
+ * OUTPUT:  int; How many cells the run covers, or zero when there is no run.                    *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/15/2026 JLB : Created.                                                                 *
+ *=============================================================================================*/
+int HouseClass::Wall_Line_Path(BuildingClass* wall, CELL from, CELL to, CELL* out, int max_points) const
+{
+    if (from < 0 || from >= MAP_CELL_TOTAL || to < 0 || to >= MAP_CELL_TOTAL) {
+        return (0);
+    }
+
+    WallLinePoint points[WALL_LINE_MAX_SEGMENTS];
+    int count = WallLine_Walk(Cell_X(from), Cell_Y(from), Cell_X(to), Cell_Y(to), points, WALL_LINE_MAX_SEGMENTS);
+    if (count < 1 || count > max_points || count > WALL_LINE_MAX_SEGMENTS) {
+        return (0);
+    }
+
+    /*
+    **	The straight line is the path as long as nothing stands in the way. The first cell is
+    **	the one the run starts on, which may already hold a wall.
+    */
+    bool blocked = false;
+    for (int index = 1; index < count; index++) {
+        if (!Wall_Cell_Free(wall, XY_Cell(points[index].X, points[index].Y))) {
+            blocked = true;
+            break;
+        }
+    }
+
+    if (!blocked) {
+        for (int index = 0; index < count; index++) {
+            out[index] = XY_Cell(points[index].X, points[index].Y);
+        }
+        return (count);
+    }
+
+    /*
+    **	Something is in the way, so the line is routed around it. When there is no way around,
+    **	the straight line is used and the cells that are in the way are skipped.
+    */
+    WallLinePoint detour[WALL_LINE_MAX_SEGMENTS];
+    int detour_count =
+        WallLine_Path(MAP_CELL_W,
+                       MAP_CELL_H,
+                       Cell_X(from),
+                       Cell_Y(from),
+                       Cell_X(to),
+                       Cell_Y(to),
+                       [this, wall](int x, int y) { return (Wall_Cell_Free(wall, XY_Cell(x, y))); },
+                       detour,
+                       WALL_LINE_MAX_SEGMENTS);
+
+    if (detour_count < 1 || detour_count > max_points) {
+        for (int index = 0; index < count; index++) {
+            out[index] = XY_Cell(points[index].X, points[index].Y);
+        }
+        return (count);
+    }
+
+    for (int index = 0; index < detour_count; index++) {
+        out[index] = XY_Cell(detour[index].X, detour[index].Y);
+    }
+    return (detour_count);
+}
+
+/***********************************************************************************************
+ * HouseClass::Place_Line_Object -- Places a run of wall segments between two cells.           *
+ *                                                                                             *
+ *    This routine lays a whole run of wall segments between two cells. The first segment is   *
+ *    the wall that the construction yard has already built and that the player has already     *
+ *    paid for. Every other segment of the run is bought and laid down as the run is built.     *
+ *                                                                                             *
+ *    The run is refused as a whole when the player cannot pay for all of it. Cells that cannot *
+ *    take a wall are skipped, so a run can cross a small gap.                                  *
+ *                                                                                             *
+ * INPUT:   type  -- The type of object that is being placed.                                  *
+ *                                                                                             *
+ *          from  -- The cell the run starts at.                                               *
+ *                                                                                             *
+ *          to    -- The cell the run ends at.                                                 *
+ *                                                                                             *
+ * OUTPUT:  bool; Was the run laid down?                                                      *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/15/2026 JLB : Created.                                                                 *
+ *=============================================================================================*/
+bool HouseClass::Place_Line_Object(RTTIType type, CELL from, CELL to)
+{
+    Validate();
+
+    if (type != RTTI_BUILDING || BuildingFactory == -1) {
+        return (false);
+    }
+
+    if (from < 0 || from >= MAP_CELL_TOTAL || to < 0 || to >= MAP_CELL_TOTAL) {
+        return (false);
+    }
+
+    FactoryClass* factory = Factories.Raw_Ptr(BuildingFactory);
+    if (!factory || !factory->Has_Completed()) {
+        return (false);
+    }
+
+    TechnoClass* tech = factory->Get_Object();
+    if (!tech || tech->What_Am_I() != RTTI_BUILDING) {
+        return (false);
+    }
+
+    BuildingClass* wall = (BuildingClass*)tech;
+    if (!wall->Class->IsWall) {
+        return (false);
+    }
+
+    /*
+    **	Work out the cells that the run covers. The line is routed around whatever stands in
+    **	the way.
+    */
+    CELL path[WALL_LINE_MAX_SEGMENTS];
+    int count = Wall_Line_Path(wall, from, to, path, WALL_LINE_MAX_SEGMENTS);
+    if (count < 1) {
+        return (false);
+    }
+
+    /*
+    **	Find the cells of the run that can take a wall. Every segment of the run changes what
+    **	the next one is allowed to touch, so this has to be worked out in order.
+    */
+    CELL run[WALL_LINE_MAX_SEGMENTS];
+    int run_count = 0;
+    for (int index = 0; index < count; index++) {
+        if (!Wall_Line_Cell_Legal(wall, path[index], run, run_count)) {
+            continue;
+        }
+        run[run_count++] = path[index];
+    }
+
+    if (run_count == 0) {
+        if (this == PlayerPtr) {
+            Speak(VOX_DEPLOY);
+        }
+        return (false);
+    }
+
+    /*
+    **	The first segment of the run is the wall that the construction yard built, and that
+    **	the player has already paid for. Every other segment is bought now, so the run is
+    **	refused when the player cannot pay for all of it.
+    */
+    int cost = wall->Class->Cost_Of() * CostBias;
+    if (Available_Money() < (run_count - 1) * cost) {
+        if (this == PlayerPtr) {
+            Speak(VOX_NO_CASH);
+        }
+        return (false);
+    }
+
+    /*
+    **	Lay the run down. The first segment is the wall that is already built, the rest are
+    **	bought and placed one after the other.
+    */
+    bool placed = false;
+    for (int index = 0; index < run_count; index++) {
+        if (index == 0) {
+            TechnoClass* builder = wall->Who_Can_Build_Me(false, false);
+            if (!builder) {
+                break;
+            }
+            builder->Transmit_Message(RADIO_HELLO, wall);
+            if (!wall->Unlimbo(Cell_Coord(run[0]))) {
+                builder->Transmit_Message(RADIO_OVER_OUT);
+                if (this == PlayerPtr) {
+                    Speak(VOX_DEPLOY);
+                }
+                break;
+            }
+            factory->Completed();
+            Abandon_Production(type);
+
+            if (PlayerPtr == this) {
+                Map.Set_Cursor_Shape(0);
+                Map.PendingObjectPtr = 0;
+                Map.PendingObject = 0;
+                Map.PendingHouse = HOUSE_NONE;
+            }
+        } else {
+            BuildingClass* segment = (BuildingClass*)wall->Class->Create_One_Of(this);
+            if (!segment) {
+                break;
+            }
+            if (!segment->Unlimbo(Cell_Coord(run[index]))) {
+                segment->Delete_This();
+                break;
+            }
+            Spend_Money(cost);
+        }
+        placed = true;
+    }
+
+    if (!placed) {
+        return (false);
+    }
+
+    if (PlayerPtr == this) {
+        /*
+        **	One sound for the whole run, not one for every segment of it.
+        */
+        Sound_Effect(VOC_SLAM);
+
+        /*
+        **	The run can be extended from the cell it ended at.
+        */
+        Map.WallLineAnchor = to;
+
+        /*
+        **	The map is painted over, so that the preview of the run does not stay on it.
+        */
+        Map.Flag_To_Redraw(true);
+    }
+
+    return (true);
+}
+#endif
 
 /***********************************************************************************************
  * HouseClass::Manual_Place -- Inform display system of building placement mode.               *

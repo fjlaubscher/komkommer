@@ -95,8 +95,6 @@ int Get_Resolution_Factor(void)
     return RESFACTOR - 1;
 }
 
-#define SHAPE_TRANS 0x40
-
 void* Get_Shape_Header_Data(void* ptr);
 extern bool Spawn_WChat(bool can_launch);
 
@@ -751,8 +749,20 @@ void Keyboard_Process(KeyNumType& input)
     **	Brings up the options dialog box.
     */
     if (key != 0 && (key == Options.KeyOption1 || key == Options.KeyOption2)) {
-        Map.Help_Text(TXT_NONE); // Turns off help text.
-        Queue_Options();
+        bool options = true;
+#ifndef REMASTER_BUILD
+        /*
+        **	Esc leaves the wall line mode instead of opening the options.
+        */
+        if (Map.WallLineAnchor != -1) {
+            Map.Wall_Line_Cancel();
+            options = false;
+        }
+#endif
+        if (options) {
+            Map.Help_Text(TXT_NONE); // Turns off help text.
+            Queue_Options();
+        }
         input = KN_NONE;
     }
 
@@ -4111,7 +4121,7 @@ bool Force_CD_Available(int cd)
 #endif
 
 #ifdef FRENCH
-                sprintf(buffer, "InsŠrez le %s", _cd_name[cd]);
+                sprintf(buffer, "Insï¿½rez le %s", _cd_name[cd]);
 #else
 #ifdef GERMAN
                 sprintf(buffer, "Bitte %s", _cd_name[cd]);
@@ -4122,7 +4132,7 @@ bool Force_CD_Available(int cd)
             } else {
 #ifdef DVD
 #ifdef FRENCH
-                sprintf(buffer, "InsŠrez le %s", _cd_name[4]);
+                sprintf(buffer, "Insï¿½rez le %s", _cd_name[4]);
 #else
 #ifdef GERMAN
                 sprintf(buffer, "Bitte %s", _cd_name[4]);

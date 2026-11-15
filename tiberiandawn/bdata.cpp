@@ -4408,6 +4408,47 @@ int BuildingTypeClass::Height(void) const
 }
 
 /***********************************************************************************************
+ * BuildingTypeClass::Wall_Overlay -- Determines the overlay that a wall becomes.                *
+ *                                                                                             *
+ *    A wall is built as a building, but it is an overlay once it is placed down on the map.     *
+ *    This routine maps the wall type onto that overlay.                                         *
+ *                                                                                             *
+ * INPUT:   none                                                                               *
+ *                                                                                             *
+ * OUTPUT:  Returns with the overlay type, or OVERLAY_NONE if this is not a wall.               *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/15/2026 JLB : Created.                                                                 *
+ *=============================================================================================*/
+OverlayType BuildingTypeClass::Wall_Overlay(void) const
+{
+    if (!IsWall) {
+        return (OVERLAY_NONE);
+    }
+
+    switch (Type) {
+    case STRUCT_SANDBAG_WALL:
+        return (OVERLAY_SANDBAG_WALL);
+
+    case STRUCT_CYCLONE_WALL:
+        return (OVERLAY_CYCLONE_WALL);
+
+    case STRUCT_BRICK_WALL:
+        return (OVERLAY_BRICK_WALL);
+
+    case STRUCT_BARBWIRE_WALL:
+        return (OVERLAY_BARBWIRE_WALL);
+
+    case STRUCT_WOOD_WALL:
+        return (OVERLAY_WOOD_WALL);
+    }
+
+    return (OVERLAY_NONE);
+}
+
+/***********************************************************************************************
  * BuildingTypeClass::Repair_Cost -- Determines cost per "step" of repair.                     *
  *                                                                                             *
  *    Use this routine to determine how much it will cost to repair the building one           *

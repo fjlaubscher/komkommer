@@ -71,8 +71,6 @@
 #include "common/settings.h"
 #include "common/winasm.h"
 
-#define SHAPE_TRANS 0x40
-
 void* Get_Shape_Header_Data(void* ptr);
 
 /****************************************
@@ -708,8 +706,20 @@ void Keyboard_Process(KeyNumType& input)
     **	Brings up the options dialog box.
     */
     if (key != 0 && (key == Options.KeyOption1 || key == Options.KeyOption2)) {
-        Map.Help_Text(TXT_NONE); // Turns off help text.
-        Queue_Options();
+        bool options = true;
+#ifndef REMASTER_BUILD
+        /*
+        **	Esc leaves the wall line mode instead of opening the options.
+        */
+        if (Map.WallLineAnchor != -1) {
+            Map.Wall_Line_Cancel();
+            options = false;
+        }
+#endif
+        if (options) {
+            Map.Help_Text(TXT_NONE); // Turns off help text.
+            Queue_Options();
+        }
         input = KN_NONE;
     }
 

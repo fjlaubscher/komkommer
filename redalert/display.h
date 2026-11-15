@@ -105,6 +105,25 @@ public:
     ObjectTypeClass const* PendingObject;
     HousesType PendingHouse;
 
+#ifndef REMASTER_BUILD
+    /*
+    ** This holds the cell that a run of wall segments starts from. While a wall is waiting to
+    **	be placed, the first click sets this cell and the second click lays a run of wall
+    **	segments from here to the clicked cell. It is -1 when no run is in progress.
+    **
+    ** This is display state and not saved game state, so it does not change the save game
+    **	version. The Remastered host owns its own placement UI and never lays a wall run.
+    */
+    CELL WallLineAnchor;
+
+    /*
+    ** The run of wall segments that was previewed last. Its cells are painted over before the
+    **	next preview is drawn, so that the preview does not leave marks on the map.
+    */
+    CELL WallLineLastAnchor;
+    CELL WallLineLastEnd;
+#endif
+
     static unsigned char FadingBrighten[256];
     static unsigned char FadingShade[256];
     static unsigned char FadingWayDark[256];
@@ -178,6 +197,19 @@ public:
     void Set_Cursor_Shape(short const* list);
     CELL Set_Cursor_Pos(CELL pos = -1);
     void Get_Occupy_Dimensions(int& w, int& h, short const* list) const;
+#ifndef REMASTER_BUILD
+    /*
+    **	Wall line placement. A wall run is laid down from two points: the first click sets the
+    **	cell the run starts from, the second click lays the run down.
+    */
+    bool Wall_Line_Pending(void) const;
+    CELL Wall_Line_Start(CELL cell) const;
+    bool Wall_Line_Run(CELL& from, CELL& to);
+    void Wall_Line_Click(CELL cell);
+    void Wall_Line_Flag_Cells(void);
+    void Wall_Line_Draw(void);
+    void Wall_Line_Cancel(void);
+#endif
 
     /*
     **	Tactical map only functionality.

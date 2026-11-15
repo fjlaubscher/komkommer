@@ -94,6 +94,7 @@ unsigned char EventClass::EventLength[EventClass::LAST_EVENT] = {
 #endif
     size_of(EventClass, Data.NavCom),   // RALLY
     size_of(EventClass, Data.Specific), // CANCEL_QUEUE
+    size_of(EventClass, Data.PlaceLine), // PLACE_LINE
 };
 
 const char* EventClass::EventNames[EventClass::LAST_EVENT] = {
@@ -105,7 +106,7 @@ const char* EventClass::EventNames[EventClass::LAST_EVENT] = {
 #ifdef FIXIT_VERSION_3 //	Stalemate games.
     "PROPOSE_DRAW", "RETRACT_DRAW",
 #endif
-    "RALLY", "CANCEL_QUEUE",
+    "RALLY", "CANCEL_QUEUE", "PLACE_LINE",
 };
 
 /***********************************************************************************************
@@ -394,6 +395,38 @@ EventClass::EventClass(EventType type, RTTIType object, CELL cell)
 }
 
 /***********************************************************************************************
+ * EventClass::EventClass -- Constructor for a run of wall segments.                             *
+ *                                                                                             *
+ *    This constructor is used for the event that lays a run of wall segments between two      *
+ *    cells. The engine expands the run into the cells it covers, so every peer places the same  *
+ *    wall run.                                                                                 *
+ *                                                                                             *
+ * INPUT:   type     -- The event type for this object.                                        *
+ *                                                                                             *
+ *          object   -- The object type number of the wall that is being laid.                 *
+ *                                                                                             *
+ *          from     -- The cell the run starts at.                                            *
+ *                                                                                             *
+ *          to       -- The cell the run ends at.                                              *
+ *                                                                                             *
+ * OUTPUT:  none                                                                               *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/15/2026 JLB : Created.                                                                 *
+ *=============================================================================================*/
+EventClass::EventClass(EventType type, RTTIType object, CELL from, CELL to)
+{
+    ID = PlayerPtr->ID;
+    Type = type;
+    Frame = ::Frame;
+    Data.PlaceLine.Type = object;
+    Data.PlaceLine.From = from;
+    Data.PlaceLine.To = to;
+}
+
+/***********************************************************************************************
  * EventClass::EventClass -- Construct an id and cell based event.                             *
  *                                                                                             *
  *    This constructor is used for those events that require an ID number and a cell location. *
@@ -612,6 +645,16 @@ void EventClass::Execute(void)
     */
     case PLACE:
         Houses.Raw_Ptr(ID)->Place_Object(Data.Place.Type, Data.Place.Cell);
+        break;
+
+    /*
+    **	This event lays a run of wall segments between two cells. The house expands the run
+    **	into the cells it covers, so every peer places the same wall run.
+    */
+    case PLACE_LINE:
+#ifndef REMASTER_BUILD
+        Houses.Raw_Ptr(ID)->Place_Line_Object(Data.PlaceLine.Type, Data.PlaceLine.From, Data.PlaceLine.To);
+#endif
         break;
 
     /*

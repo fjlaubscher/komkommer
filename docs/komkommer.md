@@ -67,6 +67,26 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - This is implemented in the standalone build only; the Remastered client already provides its own native production queue UI.
   - Queue fields, initialization, enqueue/advance logic, and classic sidebar click changes are excluded from `REMASTER_BUILD`; the DLL retains its original busy-factory behavior rather than adding a second queue behind GlyphX.
 
+### Wall runs (standalone)
+
+- **Vanilla:** A wall is an ordinary structure. The player picks it in the sidebar, the Construction Yard builds it, and the player clicks one cell to put it down. A wall line of twenty cells is twenty separate buy, build and place cycles.
+- **Komkommer (standalone executables only):** While a wall is waiting to be placed, the player lays down a whole run of wall segments from **two points**.
+  - The first click sets the cell the run starts from. The run is drawn from there to the mouse as a preview of the wall it will make.
+  - The second click lays the run down: every cell between the two points gets a wall segment.
+  - **A wall that is already standing next to the mouse is the start of the run.** Move the mouse next to a piece of wall and the preview shows the run that would join onto it, and a single click lays it down. There is no need to pick a start point first.
+  - The preview is drawn solid, and a cell that cannot take a wall is drawn **in red**. The preview follows the mouse and leaves no marks on the map.
+  - The first segment of the run is the wall that the Construction Yard has already built, and that the player has already paid for. Every other segment is bought when the run is laid down, at the normal price of that wall. A run of twenty segments costs twenty walls, not nineteen.
+  - The run is refused as a whole when the player cannot pay for all of it. Nothing is placed and the "insufficient funds" voice plays. Tiberium is spent before credits, as usual.
+  - Cells that cannot take a wall are skipped, so a run can cross a small gap. A cell is legal when it is on the player's radar, free for the wall, and touches something the player owns. The check is made for each segment in turn, because a segment that is down owns its cell and lets the next segment of the run join up with it.
+  - **The run is routed around what stands in the way.** When a structure sits on the line, the run goes around it instead of through it, so a wall can be built past a power plant. The detour is a shortest path over the cells that are free, so it hugs the structure it goes around. Every cell of the detour is a wall the player pays for. When there is no way around, the line stays straight and the cells in the way are skipped.
+  - A horizontal or vertical run is contiguous. A diagonal run is a **staircase**: it steps sideways and then forward, so every segment touches the one before it and the wall art joins the run into one continuous wall. A plain diagonal would leave the pieces touching at a corner only, which looks like a row of posts. A staircase is longer than the diagonal it replaces, and every cell of it is a wall the player pays for.
+  - After a run is laid down, the anchor stays at the cell the run ended at, so the next wall extends the run. **Right click** or **Esc** leaves the wall line mode and drops the anchor; the next click then places a single wall as before.
+  - **Shift** places a single wall, the way it always did, and leaves the wall line mode. This is the way to place walls one cell at a time.
+  - The run is placed through the event queue as a single event, so every peer of a network game lays down the same wall run.
+  - Each segment stays an independent overlay, so a segment that is destroyed does not take the rest of the run with it.
+  - Only wall types get this. Every other structure keeps its one at a time placement.
+  - The Remastered host owns its own placement UI and is unchanged.
+
 ### Non-blocking explosion shake (SDL2 standalone)
 - Screen shake now offsets the live rendered image over subsequent frames instead of replaying a frozen snapshot in a blocking loop. Unit simulation and input continue during building-destruction shake.
 - The visual timer is renderer-local, does not consume simulation RNG, and only schedules owner/attacker shake for the appropriate local player. Remastered and other video backends retain their existing shake paths.

@@ -102,6 +102,7 @@ public:
 
         RALLY,        // Set a production building's rally cell.
         CANCEL_QUEUE, // Cancel one matching waiting production request.
+        PLACE_LINE,   // Place a run of wall segments between two cells.
 
         LAST_EVENT, // one past the last event
     } EventType;
@@ -196,6 +197,12 @@ public:
         } Place;
         struct
         {
+            RTTIType Type;
+            CELL From;
+            CELL To;
+        } PlaceLine;
+        struct
+        {
             int ID;
             CELL Cell;
         } Special;
@@ -277,6 +284,7 @@ public:
 
     EventClass(EventType type, RTTIType object, int id);
     EventClass(EventType type, RTTIType object, CELL cell);
+    EventClass(EventType type, RTTIType object, CELL from, CELL to);
     EventClass(EventType type, int id, CELL cell);
     EventClass(AnimType anim, HousesType owner, COORDINATE coord, int visible = -1);
     EventClass(void* ptr, unsigned int size);
