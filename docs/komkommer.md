@@ -165,22 +165,23 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 ### Superweapons (skirmish/multiplayer balance)
 
 #### Temple of Nod Nuke (`ANIM_ATOM_BLAST`)
-- **Vanilla (stock):** Nuke area damage was much weaker in skirmish/multiplayer contexts (original MP damage was very low / less threatening to structures).
-- **Komkommer:** Stronger nuke in **skirmish/multiplayer** (`GameToPlay != GAME_NORMAL`), tuned for base damage while keeping radius controlled:
+- **Vanilla (stock):** Nuke area damage was much weaker in skirmish/multiplayer contexts. The stock multiplayer nuke landed 100 per cell (radius 3), which barely scratched a structure, while the campaign nuke landed 333 per cell (radius 4).
+- **Komkommer:** Stronger nuke in **skirmish/multiplayer** (`GameToPlay != GAME_NORMAL`), tuned to the same strength a structure feels from the campaign nuke:
   - Radius: **3** cells (7x7 grid)
-  - Raw damage: **720**
-  - Warhead: **`WARHEAD_AP`** (armor-piercing; better against structures)
-  - Per-cell base damage passed to `Explosion_Damage`: `720 / ((ABS(3)/2)+1) = 360`
+  - Raw damage: **664**
+  - Warhead: **`WARHEAD_FIRE`** (the stock warhead; it spreads damage over the blast far better than armor-piercing did)
+  - Per-cell base damage passed to `Explosion_Damage`: `664 / ((ABS(3)/2)+1) = 332`
   - Applies scorch smudges over the affected area (existing behavior preserved with the new parameters).
 - **Campaign (`GAME_NORMAL`) unchanged from Komkommer’s campaign path:** radius **4**, raw damage **1000**, warhead **`WARHEAD_FIRE`**, with the white flash/fade sequence.
 
 #### Ion Cannon (`ANIM_ION_CANNON`)
-- **Vanilla (stock):** Ion Cannon impact applied a single point blast: `Explosion_Damage(..., 600, ..., WARHEAD_PB)`.
-- **Komkommer:** Ion Cannon is buffed to compete with the stronger nuke by applying **particle-beam area damage** over a focused area (all modes, as implemented):
-  - Radius: **2** cells (5x5 grid)
-  - Raw damage: **700**
+- **Vanilla (stock):** Ion Cannon impact applied a single point blast: `Explosion_Damage(..., 600, ..., WARHEAD_PB)`. It hit one target hard (about 450 against a structure) and did almost nothing to the rest of a base.
+- **Komkommer:** Ion Cannon applies **particle-beam area damage** over a focused area (all modes, as implemented):
+  - Radius: **3** cells (7x7 grid)
+  - Raw damage: **474**
   - Warhead: **`WARHEAD_PB`** (keeps particle-beam identity)
-  - Per-cell base damage passed to `Explosion_Damage`: `700 / ((ABS(2)/2)+1) = 350`
+  - Per-cell base damage passed to `Explosion_Damage`: `474 / ((ABS(3)/2)+1) = 237`
+- **Balance against the nuke:** the nuke lands 332 per cell and the Ion Cannon 237 per cell. That is about 70% of the nuke's damage per cast, which matches the shorter recharge (Ion Cannon 10 minutes, nuke 14 minutes), so both land about the same damage over a match. Against armor the Ion Cannon is the better of the two; against infantry and wood the nuke is.
 - Ion Cannon recharge/availability rules remain the same (e.g. `ION_CANNON_GONE_TIME` 10 minutes, requires Advanced Comm Center/`STRUCT_EYE` for the normal superweapon, power suspension rules, targeting/firing flow unchanged).
 
 ## Red Alert (RA)

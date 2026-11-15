@@ -1102,22 +1102,20 @@ void AnimClass::Middle(void)
                 building = (BuildingClass*)backup;
         }
 
+        /*
+        **	Komkommer: stronger nuke in skirmish/multiplayer. 332 per cell over a
+        **	7x7 grid puts a structure hit at the same strength as the campaign
+        **	nuke, where the stock multiplayer nuke did almost nothing. FIRE is
+        **	kept: it spreads damage over the blast far better than the armor
+        **	piercing warhead did, which is what a nuke needs.
+        */
         int radius = 3;
-        int rawdamage = 200;
+        int rawdamage = 664;
         WarheadType warhead = WARHEAD_FIRE;
         if (GameToPlay == GAME_NORMAL) {
             radius = 4;
             rawdamage = 1000;
             Fade_Palette_To(WhitePalette, 30, NULL);
-        } else {
-            /*
-            **	Komkommer: stronger nuke in skirmish/multiplayer. Use an armor-piercing
-            **	warhead and higher damage so structures take meaningful damage, but keep
-            **	the blast radius tighter than the initial buff for balance.
-            */
-            radius = 3;
-            rawdamage = 720;
-            warhead = WARHEAD_AP;
         }
         for (int x = -radius; x <= radius; x++) {
             for (int y = -radius; y <= radius; y++) {
@@ -1234,9 +1232,12 @@ void AnimClass::Middle(void)
         /*
         **	Komkommer: buff the Ion Cannon to compete with the stronger nuke.
         **	Apply particle-beam damage over a focused area instead of a single point.
+        **	Balance: the nuke lands 332 per cell, this lands 237 per cell. That is
+        **	about 70% of the nuke's damage per cast, which matches the shorter
+        **	10 minute recharge against the nuke's 14.
         */
-        int radius = 2;
-        int rawdamage = 700;
+        int radius = 3;
+        int rawdamage = 474;
         WarheadType warhead = WARHEAD_PB;
         for (int x = -radius; x <= radius; x++) {
             for (int y = -radius; y <= radius; y++) {
