@@ -46,26 +46,52 @@ Change `DataPath` to your game-data directory. A config beside the executable al
 
 ## Build standalone
 
-Requirements: **CMake 3.25+**, a C++11 compiler, **Ninja** for the standard presets, **SDL2**, and **OpenAL**. ImageMagick is optional for generating application icons.
+Requirements: **CMake 3.25+**, a C++11 compiler, **Ninja 1.13.2 or newer**, **SDL2**, and **OpenAL**. ImageMagick is optional for generating application icons. Every preset uses the Ninja Multi-Config generator. Configure stops when `ninja --version` is older than 1.13.2.
 
 ### Windows (MSVC)
 
-Install Visual Studio C++ Build Tools and a Windows SDK. In an **x64 Native Tools** terminal, point CMake at the SDL2 and OpenAL development packages:
+Install Visual Studio 2022 C++ Build Tools, a Windows SDK, and Ninja. CI accepts Ninja 1.13.2 or newer. That release is the current winget package:
 
 ```powershell
+winget install --id Ninja-build.Ninja --version 1.13.2
+```
+
+Open a new terminal afterwards so `ninja` is on `PATH`.
+
+**Standalone games** are built from the **x64 Native Tools Command Prompt**. Point CMake at the SDL2 and OpenAL development packages:
+
+```bat
 cmake --preset release -DSDL2_ROOT_DIR="C:/deps/SDL2" -DOPENAL_ROOT="C:/deps/openal-soft"
 cmake --build --preset release
 ```
 
-This produces both executables under `build/release/RelWithDebInfo/`. Dependency libraries and runtime DLLs must match the compiler architecture.
+Both executables land in `build/release/RelWithDebInfo/`. The runtime DLLs have to be the x64 builds. The preset name `release` is that directory; the default configuration inside it is **RelWithDebInfo**. A Debug build of one game:
 
-For a development build of just TD:
-
-```powershell
-cmake --build build/release --config Debug --target KomkommerTD
+```bat
+cmake --build --preset release --config Debug --target KomkommerTD
 ```
 
 The binary and symbols are `build/release/Debug/komkommertd.exe` and `.pdb`. Copy the runtime DLLs into that directory and configure its data path before launching. Use target `KomkommerRA` for Red Alert.
+
+**Tests** use the same x64 prompt and a separate directory, `build/testing/`:
+
+```bat
+cmake --preset testing -DSDL2_ROOT_DIR="C:/deps/SDL2" -DOPENAL_ROOT="C:/deps/openal-soft"
+cmake --build --preset testing
+ctest --preset testing
+```
+
+Put the SDL2 and OpenAL runtime DLLs on `PATH` or beside the test executables in `build/testing/RelWithDebInfo/`. A successful link does not make those DLLs discoverable.
+
+**Remastered DLLs** use the **x86 Native Tools Command Prompt** and write `build/remaster/`. `build/release` stays the x64 tree, and `build/testing` stays the x64 test tree. A 64-bit compiler is rejected for `remaster`.
+
+From plain PowerShell, load the same compiler with `vcvarsall.bat` (`x64` for the games and tests, `x86` for the DLLs). Under Build Tools it is `VC\Auxiliary\Build\vcvarsall.bat`:
+
+```powershell
+cmd /c "call `"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat`" x64 && cmake --preset release -DSDL2_ROOT_DIR=C:/deps/SDL2 -DOPENAL_ROOT=C:/deps/openal-soft && cmake --build --preset release"
+```
+
+Community, Professional, and Enterprise keep that script at `C:\Program Files\Microsoft Visual Studio\2022\<edition>\VC\Auxiliary\Build\vcvarsall.bat`. The variables last for that `cmd /c` invocation. Use `x86` and `--preset remaster` for the DLLs.
 
 There is a helper that does the whole debug loop on Windows: it builds the debug binaries, points them at the classic game data, imports the settings from a release install, and drops stale saves.
 
@@ -75,19 +101,20 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .agents/skills/debug-loop/sc
 
 See [the debug-loop skill](.agents/skills/debug-loop/SKILL.md) for the flags and the defaults it uses.
 
-The preset name `release` selects a build tree, not a compiler configuration: its default build configuration is **RelWithDebInfo**. **Debug** is unoptimized. Do not reuse a CMake build tree across different compilers or x86/x64 architectures.
-
 ### Linux
 
-For Debian/Ubuntu:
+For Debian/Ubuntu, install the compilers and libraries, then Ninja 1.13.2. Ubuntu 22.04's `ninja-build` package is 1.10.1, which this tree rejects:
 
 ```sh
-sudo apt install build-essential cmake ninja-build libsdl2-dev libopenal-dev
+sudo apt install build-essential cmake unzip libsdl2-dev libopenal-dev
+curl -fsSL -o /tmp/ninja-linux.zip https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-linux.zip
+sudo unzip -o /tmp/ninja-linux.zip -d /usr/local/bin
+sudo chmod +x /usr/local/bin/ninja
 cmake --preset release
 cmake --build --preset release
 ```
 
-For Fedora, install `gcc-c++ cmake ninja-build SDL2-devel openal-soft-devel` instead. The executables are in `build/release/RelWithDebInfo/`. To keep game data separate, set `[Paths] DataPath` in `~/.config/vanilla-conquer/vanillatd/conquer.ini` or `vanillara/redalert.ini` (or under `$XDG_CONFIG_HOME` when set).
+For Fedora, install `gcc-c++ cmake SDL2-devel openal-soft-devel` and Ninja 1.13.2 or newer. The executables are in `build/release/RelWithDebInfo/`. To keep game data separate, set `[Paths] DataPath` in `~/.config/vanilla-conquer/vanillatd/conquer.ini` or `vanillara/redalert.ini` (or under `$XDG_CONFIG_HOME` when set).
 
 ### macOS
 
@@ -126,7 +153,7 @@ The tests cover low-level engine utilities, not complete gameplay. Selection, pr
 
 Remastered requires **32-bit Windows DLLs**, even on 64-bit Windows. SDL2/OpenAL are not required for DLL-only builds. GlyphX already owns double-click selection and production queue UI; Komkommer's standalone implementations are excluded from these builds.
 
-From an **x86 Native Tools** terminal, using a separate build tree:
+From the **x86 Native Tools Command Prompt** (or `vcvarsall.bat x86`, above), which configures `build/remaster` and leaves the x64 tree in `build/release`:
 
 ```powershell
 cmake --preset remaster

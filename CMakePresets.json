@@ -62,29 +62,6 @@
             "cacheVariables": {
                 "NETWORKING": "OFF"
             }
-        },
-        {
-            "name": "msvc2019-i686-remaster",
-            "inherits": "remaster",
-            "binaryDir": "${sourceDir}/build_remaster",
-            "displayName": "MSVC 2019 32bit Remaster build",
-            "generator": "Visual Studio 16 2019",
-            "architecture": "Win32"
-        },
-        {
-            "name": "msvc2019-i686-vanilla",
-            "inherits": "release",
-            "binaryDir": "${sourceDir}/build_msvc32",
-            "displayName": "MSVC 2019 32bit komkommer build",
-            "generator": "Visual Studio 16 2019",
-            "architecture": "Win32"
-        },
-        {
-            "name": "msvc2019-x86-64-vanilla",
-            "inherits": "release",
-            "binaryDir": "${sourceDir}/build_msvc64",
-            "displayName": "MSVC 2019 64bit komkommer build",
-            "architecture": "x64"
         }
     ],
     "buildPresets": [

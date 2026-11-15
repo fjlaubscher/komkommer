@@ -24,6 +24,19 @@ if(APPLE)
     enable_language(OBJCXX)
 endif()
 
+# Presets are Ninja Multi-Config. 1.13.2 is the current release, the winget package, and the Ninja on the CI images.
+if(CMAKE_GENERATOR MATCHES "Ninja")
+    execute_process(
+        COMMAND "${CMAKE_MAKE_PROGRAM}" --version
+        OUTPUT_VARIABLE KOMKOMMER_NINJA_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE KOMKOMMER_NINJA_VERSION_RESULT
+    )
+    if(NOT KOMKOMMER_NINJA_VERSION_RESULT EQUAL 0 OR KOMKOMMER_NINJA_VERSION VERSION_LESS "1.13.2")
+        message(FATAL_ERROR "Ninja 1.13.2 or newer is required (found '${KOMKOMMER_NINJA_VERSION}').")
+    endif()
+endif()
+
 option(BUILD_REMASTERTD "Build Tiberian Dawn remaster dll." OFF)
 option(BUILD_REMASTERRA "Build Red Alert remaster dll." OFF)
 option(BUILD_VANILLATD "Build Tiberian Dawn executable." ON)

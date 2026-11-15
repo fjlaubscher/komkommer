@@ -20,12 +20,13 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update -qq > /dev/null
-        sudo apt-get install -qq -y libsdl2-dev libopenal-dev ninja-build > /dev/null
+        sudo apt-get install -qq -y libsdl2-dev libopenal-dev > /dev/null
 
     - name: Build komkommer
       env:
         VC_CXX_FLAGS: "-w;-Wwrite-strings;-Werror=write-strings"
       run: |
+        ninja --version
         cmake --workflow --preset release
 
     - name: Create archives
