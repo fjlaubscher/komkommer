@@ -92,6 +92,12 @@ target_include_directories(test_selectscan PUBLIC ..)
 target_link_libraries(test_selectscan PUBLIC common)
 add_test(NAME selectscan COMMAND $<TARGET_FILE:test_selectscan>)
 
+add_executable(test_ini ini.cpp)
+target_include_directories(test_ini PUBLIC .. ../common)
+target_link_libraries(test_ini PUBLIC common)
+add_dependencies(tests test_ini)
+add_test(NAME ini COMMAND $<TARGET_FILE:test_ini>)
+
 add_executable(test_skirmish skirmish.cpp)
 target_include_directories(test_skirmish PUBLIC .. ../common)
 target_link_libraries(test_skirmish PUBLIC common)

@@ -42,6 +42,7 @@ set(REDALERT_SRC
     egos.cpp
     ending.cpp
     event.cpp
+    contract.cpp
     expand.cpp
     face.cpp
     facing.cpp

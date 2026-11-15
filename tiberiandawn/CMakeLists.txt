@@ -33,6 +33,7 @@ set(TIBDAWN_SRC
     edit.cpp
     ending.cpp
     event.cpp
+    contract.cpp
     expand.cpp
     facing.cpp
     factory.cpp
