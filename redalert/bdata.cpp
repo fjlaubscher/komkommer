@@ -3453,6 +3453,50 @@ int BuildingTypeClass::Height(bool bib) const
 }
 
 /***********************************************************************************************
+ * BuildingTypeClass::Wall_Overlay -- Determines the overlay that a wall becomes.                *
+ *                                                                                             *
+ *    A wall is built as a building, but it is an overlay once it is placed down on the map.     *
+ *    This routine maps the wall type onto that overlay.                                         *
+ *                                                                                             *
+ * INPUT:   none                                                                               *
+ *                                                                                             *
+ * OUTPUT:  Returns with the overlay type, or OVERLAY_NONE if this is not a wall.               *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/15/2026 JLB : Created.                                                                 *
+ *=============================================================================================*/
+OverlayType BuildingTypeClass::Wall_Overlay(void) const
+{
+    if (!IsWall) {
+        return (OVERLAY_NONE);
+    }
+
+    switch (Type) {
+    case STRUCT_SANDBAG_WALL:
+        return (OVERLAY_SANDBAG_WALL);
+
+    case STRUCT_CYCLONE_WALL:
+        return (OVERLAY_CYCLONE_WALL);
+
+    case STRUCT_BRICK_WALL:
+        return (OVERLAY_BRICK_WALL);
+
+    case STRUCT_BARBWIRE_WALL:
+        return (OVERLAY_BARBWIRE_WALL);
+
+    case STRUCT_WOOD_WALL:
+        return (OVERLAY_WOOD_WALL);
+
+    case STRUCT_FENCE:
+        return (OVERLAY_FENCE);
+    }
+
+    return (OVERLAY_NONE);
+}
+
+/***********************************************************************************************
  * BuildingTypeClass::Bib_And_Offset -- Determines the bib and appropriate cell offset.        *
  *                                                                                             *
  *    This routine is used to determine what (if any) bib should be used for this building     *

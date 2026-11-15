@@ -67,6 +67,27 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - This is implemented in the standalone build only; the Remastered client already provides its own native production queue UI.
   - Queue fields, initialization, enqueue/advance logic, and classic sidebar click changes are excluded from `REMASTER_BUILD`; the DLL retains its original busy-factory behavior rather than adding a second queue behind GlyphX.
 
+### Wall runs (standalone)
+
+- **Vanilla:** A wall is an ordinary structure. The player picks it in the sidebar, the Construction Yard builds it, and the player clicks one cell to put it down. A wall line of twenty cells is twenty separate buy, build and place cycles.
+- **Komkommer (standalone executables only):** While a wall is waiting to be placed, the player clicks a cell to put it down. When that cell is within **stretch range** of a wall that is already standing, the run is joined to that wall: every cell between the two gets a wall segment, so a whole run goes down with one click. Otherwise a single wall is placed, as before.
+  - **A wall that is already standing in range is the start of the run.** Move the mouse near a piece of wall and the preview shows the run that would join onto it, from that wall to the cell the mouse is over. The run joins onto **every wall of the same type that it can reach in a straight line**, so a corner clicked between two walls closes the gap on both sides at once.
+  - The preview is drawn solid, and a cell that cannot take a wall is drawn **in red**. The preview follows the mouse and leaves no marks on the map.
+  - The first segment of the run is the wall that the Construction Yard has already built, and that the player has already paid for. Every other segment is bought when the run is laid down, at the normal price of that wall. A run of twenty segments costs twenty walls, not nineteen.
+  - The run is refused as a whole when the player cannot pay for all of it. Nothing is placed and the "insufficient funds" voice plays. Tiberium is spent before credits, as usual.
+  - A run that cannot be finished goes down as far as it can. A cell can become unusable between the moment the run is planned and the moment it is laid down, when something moves into it. The segments that are already down stay down and stay paid for, and the "cannot deploy" voice plays to say that part of the run did not go down.
+  - The cell the run starts from has to be legal: on the player's radar, free for the wall, and near something the player owns, with a one cell gap allowed, exactly as for a single wall. Every other cell of the run has to be legal as well: on the player's radar, free for the wall, and touching something the player owns. The cells of the run count once they are planned, so a run can cross a gap of empty cells between the wall it starts from and the cell the player clicked.
+  - **The run only joins a wall it can reach in a straight line.** A wall on the far side of a structure is in stretch range, but it is not joined: the run is never routed around the structure, so segments are never laid where the player did not point. Build past a structure one stretch at a time. A run also leaves the wall it starts from: it is never joined at a point where it would run alongside another wall of the same type, so it cannot cut a chord across the inside of a bend.
+  - A horizontal or vertical run is contiguous. A diagonal run is a **staircase**: it steps sideways and then forward, so every segment touches the one before it and the wall art joins the run into one continuous wall. A plain diagonal would leave the pieces touching at a corner only, which looks like a row of posts. A staircase is longer than the diagonal it replaces, and every cell of it is a wall the player pays for.
+  - A staircase covers the same cells whichever end it is laid from, so a run joined onto a wall from one side is the same run as the same run joined from the other side.
+  - A run can only stretch to a wall that is already standing; a wall clicked out of range of any wall is laid down alone. This is how a wall is started: the first wall is a single cell, and the walls after it stretch out to join it.
+  - **Shift** places a single wall, the way it always did, without stretching to a nearby wall. This is the way to place walls one cell at a time. The stretch preview is hidden while Shift is held, so the preview always shows what the click will do.
+  - The run is placed through the event queue as a single event, so every peer of a network game lays down the same wall run.
+  - The peers work the run out from the map as it is when the event runs, in the same order every time, so they all lay down the same cells. The plan is not sent over the wire, so every peer has to be looking at the same map.
+  - Each segment stays an independent overlay, so a segment that is destroyed does not take the rest of the run with it.
+  - Only wall types get this. Every other structure keeps its one at a time placement.
+  - The Remastered host owns its own placement UI and is unchanged.
+
 ### Non-blocking explosion shake (SDL2 standalone)
 - Screen shake now offsets the live rendered image over subsequent frames instead of replaying a frozen snapshot in a blocking loop. Unit simulation and input continue during building-destruction shake.
 - The visual timer is renderer-local, does not consume simulation RNG, and only schedules owner/attacker shake for the appropriate local player. Remastered and other video backends retain their existing shake paths.
@@ -91,11 +112,13 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - The command list is still smoothed by `Optimize_Moves`. A 90° or 135° shortcut is kept only when that cell is passable.
 - This changes only the path search itself; the `PathType` command-list contract and the movement/`drive.cpp` consumers are unchanged.
 - TD adds a tiberium cost on top of this, so infantry walk around fields. See **Infantry routes around tiberium** below.
+- `FootClass::Travel_Costs` is a separate walk over the same rules that records the **travel distance** to every cell around a unit, so a caller can compare places by the length of the trip instead of the straight line. It is used by the harvester ore search below.
 
 ### Harvester destination choice
 - **Vanilla:** Autonomous harvesters stop at the first ore ring that contains any cell, return after a dump to the cell they just emptied, and stick to the last refinery they used even when another dock is closer or freer.
 - **Komkommer:** When a harvester chooses for itself (a player click on a field still wins while that destination is set):
-  - It still walks rings outward and stops at the **nearest ring that has ore**, then picks the **richest** cell on that ring. It skips a cell another friendly harvester is already driving to.
+  - It measures the distance to the ore **the way it would really drive there**, using the same passability rules as the path search. A field behind a cliff or a wall is no longer "closer" than one it can reach directly, because the straight line between two cells is not the length of the trip.
+  - It takes the **nearest ore it can actually reach** and then prefers the **richest** cell among those that are only a few steps farther along the path. Richer ore is worth a few extra steps of walking, but not a trip across the map. It skips a cell another friendly harvester is already driving to, and falls back to the closest such cell when every ore cell is taken.
   - When the hold fills, it stores a nearby cell that **still has ore** as the return point (TD short scan is 6 cells; RA uses `OreNearScan` / `TiberiumShortScan`).
   - It picks a refinery by **distance plus a fixed wait per other harvester already bound there** (13 cells per load in TD, 6 in RA). A truck already within 5 cells of its current refinery discounts that dock's wait so it does not U-turn over a one-load swing. The dock service queue itself remains FIFO.
 

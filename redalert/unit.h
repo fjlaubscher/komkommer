@@ -155,7 +155,7 @@ public:
     bool Try_To_Deploy(void);
     virtual void Scatter(COORDINATE threat, bool forced = false, bool nokidding = false);
 
-    int Tiberium_Check(CELL& center, int x, int y);
+    int Tiberium_Amount(CELL cell);
     bool Flag_Attach(HousesType house);
     bool Flag_Remove(void);
     CELL Search_For_Tiberium(int radius);

@@ -38,6 +38,9 @@
 #include "map.h"
 #include "gadget.h"
 #include "layer.h"
+#ifndef REMASTER_BUILD
+#include "common/wallline.h"
+#endif
 
 #define ICON_PIXEL_W  24
 #define ICON_PIXEL_H  24
@@ -104,6 +107,24 @@ public:
     ObjectClass* PendingObjectPtr;
     ObjectTypeClass const* PendingObject;
     HousesType PendingHouse;
+
+#ifndef REMASTER_BUILD
+    /*
+    ** The cells of the run of wall segments that was previewed last. They are painted over
+    **	before the next preview is drawn, so that the preview does not leave marks on the map.
+    */
+    int WallLineLastCount;
+    CELL WallLineLastCells[WALL_LINE_MAX_SEGMENTS];
+
+    /*
+    **	The cell the mouse is over, without the adjustment that keeps the placement
+    **	cursor on the map. The placement cursor is moved back when it would hang
+    **	off the edge of the tactical map, so it does not always sit on the cell
+    **	that the mouse is over. A wall run is placed on the cell the mouse is
+    **	over, so the preview has to use the same cell as the click does.
+    */
+    CELL WallLineCell;
+#endif
 
     static unsigned char FadingBrighten[256];
     static unsigned char FadingShade[256];
@@ -178,6 +199,17 @@ public:
     void Set_Cursor_Shape(short const* list);
     CELL Set_Cursor_Pos(CELL pos = -1);
     void Get_Occupy_Dimensions(int& w, int& h, short const* list) const;
+#ifndef REMASTER_BUILD
+    /*
+    **	Wall line placement. A wall run joins the cell being placed onto every wall
+    **	of the same type that is already standing within stretch range and that
+    **	the run can reach in a straight line.
+    */
+    bool Wall_Line_Pending(void) const;
+    void Wall_Line_Click(CELL cell);
+    void Wall_Line_Flag_Cells(void);
+    void Wall_Line_Draw(void);
+#endif
 
     /*
     **	Tactical map only functionality.

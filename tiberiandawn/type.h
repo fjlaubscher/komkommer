@@ -833,6 +833,13 @@ public:
     int Width(void) const;
     int Height(void) const;
 
+    /*
+    **	Returns the overlay that this building turns into when it is placed down, or
+    **	OVERLAY_NONE when it is not a wall. A wall is built as a building and becomes
+    **	an overlay once it is on the map.
+    */
+    OverlayType Wall_Overlay(void) const;
+
     virtual int Cost_Of(void) const;
     virtual int Full_Name(void) const;
     virtual COORDINATE Coord_Fixup(COORDINATE coord) const;

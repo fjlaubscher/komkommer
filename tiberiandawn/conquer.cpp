@@ -71,8 +71,6 @@
 #include "common/settings.h"
 #include "common/winasm.h"
 
-#define SHAPE_TRANS 0x40
-
 void* Get_Shape_Header_Data(void* ptr);
 
 /****************************************

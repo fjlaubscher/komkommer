@@ -95,8 +95,6 @@ int Get_Resolution_Factor(void)
     return RESFACTOR - 1;
 }
 
-#define SHAPE_TRANS 0x40
-
 void* Get_Shape_Header_Data(void* ptr);
 extern bool Spawn_WChat(bool can_launch);
 

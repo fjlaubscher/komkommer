@@ -499,6 +499,13 @@ public:
     bool Start_Next_Queued_Production(RTTIType type);
 #endif
     bool Place_Object(RTTIType type, CELL cell);
+#ifndef REMASTER_BUILD
+    bool Place_Line_Object(RTTIType type, CELL from, CELL to);
+    bool Wall_Line_Cell_Legal(BuildingClass* wall, CELL cell, CELL const* run, int run_count) const;
+    bool Wall_Cell_Free(BuildingClass* wall, CELL cell) const;
+    int Wall_Line_Path(BuildingClass* wall, CELL from, CELL to, CELL* out, int max_points) const;
+    int Wall_Line_Starts(BuildingClass* wall, CELL anchor, CELL* walls, int max_walls) const;
+#endif
     bool Manual_Place(BuildingClass* builder, BuildingClass* object);
     void Special_Weapon_AI(SpecialWeaponType id);
     bool Place_Special_Blast(SpecialWeaponType id, CELL cell);

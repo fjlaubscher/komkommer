@@ -294,9 +294,22 @@ public:
     CELL Safety_Point(CELL src, CELL dst, int start, int max);
     int Rescue_Mission(TARGET tarcom);
 
+    /*
+    **	Travel distance of the cells around this object.
+    **
+    **	Travel_Costs walks the map the way this object walks it and records
+    **	how far it would really travel to reach every cell. The result is
+    **	read with Travel_Cost. Cliffs, water and buildings block the walk, so
+    **	the distance of a cell is the length of the trip and not the straight
+    **	line between two cells.
+    */
+    void Travel_Costs(CELL source, int maxcost, int unreachable);
+    static int Travel_Cost(CELL cell);
+
 private:
     int Passable_Cell(CELL cell, FacingType face, int threat, MoveType threshhold);
     bool Tiberium_Avoided(CELL cell) const;
+    bool Blocks_Corner(CELL side, int threat, MoveType threshhold);
     PathType* Find_Path(CELL dest, FacingType* final_moves, int maxlen, MoveType threshhold);
     void Debug_Draw_Map(const char* txt, CELL start, CELL dest, bool pause);
     void Debug_Draw_Path(PathType* path);

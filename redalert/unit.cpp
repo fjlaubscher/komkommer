@@ -100,6 +100,7 @@
 #include "function.h"
 #include "keyframe.h"
 #include "common/miscasm.h"
+#include "common/harvestpath.h"
 
 extern void Logic_Switch_Player_Context(ObjectClass* object);
 extern void Logic_Switch_Player_Context(HouseClass* object);
@@ -2227,50 +2228,39 @@ void UnitClass::Draw_It(int x, int y, WindowNumberType window) const
 }
 
 /***********************************************************************************************
- * UnitClass::Tiberium_Check -- Search for and head toward nearest available Tiberium patch.   *
+ * UnitClass::Tiberium_Amount -- The ore in a cell, or zero when the cell holds none.             *
  *                                                                                             *
- *    This routine is used to move a harvester to a place where it can load up with            *
- *    Tiberium. It will return true only if it can start harvesting. Otherwise, it sets        *
- *    the navigation computer toward the nearest Tiberium and lets the unit head there         *
- *    automatically.                                                                           *
+ *    A cell that holds a building is not ore, a cell in another zone is not this harvester's     *
+ *    ore, and in a campaign only ore that the player can see counts.                             *
  *                                                                                             *
- * INPUT:   center   -- Reference to the center of the radius scan.                            *
+ * INPUT:   cell -- cell to look at.                                                           *
  *                                                                                             *
- *          x,y      -- Relative offset from the center cell to perform the check upon.        *
- *                                                                                             *
- * OUTPUT:  int; Amount of Tiberium at this location.                                          *
+ * OUTPUT:  int; amount of ore in the cell.                                                    *
  *                                                                                             *
  * WARNINGS:   none                                                                            *
  *                                                                                             *
  * HISTORY:                                                                                    *
- *   07/18/1994 JLB : Created.                                                                 *
+ *   11/15/2026  Komkommer : Renamed from Tiberium_Check and takes the cell directly.           *
  *=============================================================================================*/
-int UnitClass::Tiberium_Check(CELL& center, int x, int y)
+int UnitClass::Tiberium_Amount(CELL cell)
 {
     assert(Units.ID(this) == ID);
     assert(IsActive);
 
     /*
-    **	If the specified offset from the origin will cause it
-    **	to spill past the map edge, then abort this cell check.
+    **	A cell that holds no ore is the common case, so it is checked first.
     */
-    if (Cell_X(center) + x < Map.MapCellX)
+    if (Map[cell].Land_Type() != LAND_TIBERIUM) {
         return (0);
-    if (Cell_X(center) + x >= Map.MapCellX + Map.MapCellWidth)
-        return (0);
-    if (Cell_Y(center) + y < Map.MapCellY)
-        return (0);
-    if (Cell_Y(center) + y >= Map.MapCellY + Map.MapCellHeight)
-        return (0);
+    }
 
-    center = XY_Cell(Cell_X(center) + x, Cell_Y(center) + y);
-
-    if ((Session.Type != GAME_NORMAL || (!IsOwnedByPlayer || Map[center].Is_Mapped(PlayerPtr)))) {
-        if (Map[Coord].Zones[Class->MZone] != Map[center].Zones[Class->MZone])
+    if ((Session.Type != GAME_NORMAL || (!IsOwnedByPlayer || Map[cell].Is_Mapped(PlayerPtr)))) {
+        if (Map[Coord].Zones[Class->MZone] != Map[cell].Zones[Class->MZone]) {
             return (0);
-        if (!Map[center].Cell_Techno() && Map[center].Land_Type() == LAND_TIBERIUM) {
+        }
+        if (!Map[cell].Cell_Techno()) {
             int value = 0;
-            switch (Map[center].Overlay) {
+            switch (Map[cell].Overlay) {
             case OVERLAY_GOLD1:
             case OVERLAY_GOLD2:
             case OVERLAY_GOLD3:
@@ -2284,7 +2274,7 @@ int UnitClass::Tiberium_Check(CELL& center, int x, int y)
                 value = Rule.GemValue * 4;
                 break;
             }
-            return ((Map[center].OverlayData + 1) * value);
+            return ((Map[cell].OverlayData + 1) * value);
         }
     }
     return (0);
@@ -2345,36 +2335,15 @@ static bool Tiberium_Cell_Claimed(UnitClass const* self, CELL cell)
 }
 
 /*
-**	Walk rings outward like vanilla and stop at the first ring that has ore.
-**	On that ring keep the richest unclaimed cell. Skip cells another friendly
-**	harvester is already driving to, falling back to the richest claimed cell
-**	only when no unclaimed cell exists. Does not assign NavCom.
+**	Walk the rings around the center cell and hand every cell of the map to
+**	the test. The test returns false to stop the walk.
+**
+**	Cells that spill past the map edge are skipped.
 */
-CELL UnitClass::Search_For_Tiberium(int rad)
+template <typename Test>
+static void For_Each_Cell_Around(CELL center, int rad, Test test)
 {
-    assert(Units.ID(this) == ID);
-    assert(IsActive);
-
-    CELL center = Coord_Cell(Center_Coord());
-
-    /*
-    **	Prefer an unclaimed cell. If every cell is claimed by another friendly
-    **	harvester, remember the richest claimed cell so a saturated field does
-    **	not strand the harvester in idle/guard.
-    */
-    CELL fallback = 0;
-    int fallbacktiberium = 0;
-    if (Map[center].Land_Type() == LAND_TIBERIUM) {
-        if (!Tiberium_Cell_Claimed(this, center)) {
-            return (center);
-        }
-        fallback = center;
-        fallbacktiberium = 1;
-    }
-
     for (int radius = 1; radius < rad; radius++) {
-        CELL bestcell = 0;
-        int besttiberium = 0;
         for (int x = -radius; x <= radius; x++) {
             int offsets[4][2] = {{x, -radius}, {x, +radius}, {-radius, x}, {+radius, x}};
             for (int edge = 0; edge < 4; edge++) {
@@ -2385,29 +2354,129 @@ CELL UnitClass::Search_For_Tiberium(int rad)
                 if (edge >= 2 && (x == -radius || x == radius)) {
                     continue;
                 }
-                CELL cell = center;
-                int tiberium = Tiberium_Check(cell, offsets[edge][0], offsets[edge][1]);
-                if (tiberium <= 0) {
+                int cx = Cell_X(center) + offsets[edge][0];
+                int cy = Cell_Y(center) + offsets[edge][1];
+
+                /*
+                **	Skip the cells that spill past the map edge.
+                */
+                if (cx < Map.MapCellX || cx >= Map.MapCellX + Map.MapCellWidth
+                    || cy < Map.MapCellY || cy >= Map.MapCellY + Map.MapCellHeight) {
                     continue;
                 }
-                if (Tiberium_Cell_Claimed(this, cell)) {
-                    if (tiberium > fallbacktiberium) {
-                        fallback = cell;
-                        fallbacktiberium = tiberium;
-                    }
-                    continue;
-                }
-                if (tiberium > besttiberium) {
-                    bestcell = cell;
-                    besttiberium = tiberium;
+                if (!test(XY_Cell(cx, cy))) {
+                    return;
                 }
             }
         }
-        if (bestcell) {
-            return (bestcell);
-        }
     }
-    return (fallback);
+}
+
+/*
+**	Walk the map the way the harvester walks it and pick the ore it should
+**	drive to.
+**
+**	The distance to an ore cell is the trip the harvester would really make,
+**	so ore behind a cliff is not as close as it looks on the map. The cell is
+**	scored on that distance, and a cell with richer ore may cost a few steps
+**	more. Cells another friendly harvester is already driving to are skipped,
+**	with the closest of them kept as a fallback so a saturated field does not
+**	strand the harvester in idle/guard. Does not assign NavCom.
+*/
+CELL UnitClass::Search_For_Tiberium(int rad)
+{
+    assert(Units.ID(this) == ID);
+    assert(IsActive);
+
+    CELL center = Coord_Cell(Center_Coord());
+
+    /*
+    **	Measure how far the harvester would really walk to reach each cell.
+    */
+    Travel_Costs(center, rad, -1);
+
+    /*
+    **	Prefer an unclaimed cell. If every cell is claimed by another friendly
+    **	harvester, remember the closest one so a saturated field does not
+    **	strand the harvester in idle/guard.
+    */
+    CELL fallback = 0;
+    int fallbackcost = 0;
+    int fallbacktiberium = 0;
+    if (Map[center].Land_Type() == LAND_TIBERIUM) {
+        if (!Tiberium_Cell_Claimed(this, center)) {
+            return (center);
+        }
+        fallback = center;
+        fallbackcost = 0;
+        fallbacktiberium = 1;
+    }
+
+    /*
+    **	Nearest ore the harvester can really reach, and the closest ore that
+    **	another harvester is already driving to.
+    */
+    int nearest = -1;
+
+    For_Each_Cell_Around(center, rad, [&](CELL cell) -> bool {
+        int cost = Travel_Cost(cell);
+        if (cost < 0) {
+            return (true);
+        }
+        int tiberium = Tiberium_Amount(cell);
+        if (tiberium <= 0) {
+            return (true);
+        }
+        if (Tiberium_Cell_Claimed(this, cell)) {
+            if (fallback == 0 || cost < fallbackcost || (cost == fallbackcost && tiberium > fallbacktiberium)) {
+                fallback = cell;
+                fallbackcost = cost;
+                fallbacktiberium = tiberium;
+            }
+            return (true);
+        }
+        if (nearest < 0 || cost < nearest) {
+            nearest = cost;
+        }
+        return (true);
+    });
+
+    if (nearest < 0) {
+        return (fallback);
+    }
+
+    /*
+    **	The ore that is only a few steps farther away than the nearest. The
+    **	richest of those wins.
+    */
+    HarvestOre candidates[HARVEST_ORE_CANDIDATES];
+    int count = 0;
+    int const limit = nearest + HARVEST_ORE_TOLERANCE;
+
+    For_Each_Cell_Around(center, rad, [&](CELL cell) -> bool {
+        int cost = Travel_Cost(cell);
+        if (cost < nearest || cost > limit) {
+            return (true);
+        }
+        int tiberium = Tiberium_Amount(cell);
+        if (tiberium <= 0) {
+            return (true);
+        }
+        if (Tiberium_Cell_Claimed(this, cell)) {
+            return (true);
+        }
+        if (count < HARVEST_ORE_CANDIDATES) {
+            candidates[count].Cell = cell;
+            candidates[count].Cost = cost;
+            candidates[count].Amount = tiberium;
+            count++;
+        }
+        return (true);
+    });
+
+    int const best = HarvestOre_Pick(candidates, count);
+
+    return (best >= 0 ? candidates[best].Cell : fallback);
 }
 
 bool UnitClass::Goto_Tiberium(int rad)

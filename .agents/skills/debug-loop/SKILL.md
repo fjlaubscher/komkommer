@@ -42,6 +42,10 @@ The config keeps the release values for video, sound, mouse, hotkeys, and the
 skirmish lobby. Only the `[Paths]` section is rewritten, so the debug run reads the
 classic data and stores its saves beside the binary.
 
+The presets are Ninja Multi-Config. The configure stops with an error when the Ninja
+is older than 1.13.2, so check `ninja --version` when a fresh tree refuses to
+configure. A tree that already exists is reconfigured by the build itself.
+
 ## Flags
 
 | Flag | Effect |
@@ -49,6 +53,7 @@ classic data and stores its saves beside the binary.
 | `-Game TD\|RA\|Both` | Which game to build and stage. |
 | `-Config Debug\|RelWithDebInfo` | Build configuration. `Debug` is the default. |
 | `-BuildTree <path>` | CMake tree to use. `build/release` by default. |
+| `-Preset <name>` | CMake preset that configures the tree. Taken from the tree name, `release` for `build/release`. |
 | `-Clean` | Remove the debug binary and config of the selected games before building. |
 | `-Rebuild` | Recompile everything in the tree before building. |
 | `-KeepSaves` | Keep `savegame.*` and `hallfame.dat` in the debug folder. |
