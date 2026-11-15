@@ -567,9 +567,13 @@ void SupportPowerPanelClass::AI(void)
     **	The panel is drawn on top of the tactical map, so the map has to be
     **	drawn over it again. Flagging the cells that the panel covers is enough
     **	for that: the map draws the terrain and the objects of a flagged cell
-    **	again, and that erases the panel.
+    **	again, and that erases the panel. A cell around the panel is flagged as
+    **	well, so that nothing of it can stick out.
     */
-    Flag_Cells(PanelX, PanelY, PanelWidth, PanelHeight);
+    Flag_Cells(PanelX - CELL_PIXEL_W,
+               PanelY - CELL_PIXEL_H,
+               PanelWidth + (2 * CELL_PIXEL_W),
+               PanelHeight + (2 * CELL_PIXEL_H));
 
     for (int index = 0; index < SlotCount; index++) {
         int stage = Slots[index].Power->Anim_Stage();
@@ -604,7 +608,10 @@ void SupportPowerPanelClass::AI(void)
  *=============================================================================================*/
 void SupportPowerPanelClass::Scrolled(int dx, int dy)
 {
-    Flag_Cells(PanelX + dx, PanelY + dy, PanelWidth, PanelHeight);
+    Flag_Cells(PanelX + dx - CELL_PIXEL_W,
+               PanelY + dy - CELL_PIXEL_H,
+               PanelWidth + (2 * CELL_PIXEL_W),
+               PanelHeight + (2 * CELL_PIXEL_H));
 }
 
 /***********************************************************************************************

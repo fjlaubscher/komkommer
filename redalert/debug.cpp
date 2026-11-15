@@ -120,15 +120,6 @@ void Debug_Key(unsigned input)
             break;
 #endif
 
-        case KN_P: {
-            for (SpecialWeaponType spc = SPC_FIRST; spc < SPC_COUNT; spc++) {
-                PlayerPtr->SuperWeapon[spc].Enable(true, true);
-                PlayerPtr->SuperWeapon[spc].Forced_Charge(true);
-                Map.Add(RTTI_SPECIAL, spc);
-                Map.Column[1].Flag_To_Redraw();
-            }
-        } break;
-
         case KN_I: {
             Map.Flash_Power();
             Map.Flash_Money();

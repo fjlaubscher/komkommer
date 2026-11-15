@@ -258,6 +258,10 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - Warhead: **`WARHEAD_NUKE`**
 - **Campaign (`GAME_NORMAL`) unchanged:** radius **4**, raw damage **`Rule.AtomDamage`**, warhead **`WARHEAD_FIRE`** (and campaign palette effects as in the remaster build guards).
 
+### Debug cheat keys
+- **Vanilla (stock):** the debug mode had a **P** key that granted and fully charged every superweapon of the player.
+- **Komkommer:** that **P** key is gone. The superweapons come from the campaign or from the rules, like in a normal game.
+
 ## Notes
 - Values above reflect the current source behavior on this branch at the time of writing.
 - “Vanilla” descriptions refer to stock/original behavior as targeted by these changes; exact legacy values may differ by build/context, but the Komkommer changes listed here are the intentional deviations.
