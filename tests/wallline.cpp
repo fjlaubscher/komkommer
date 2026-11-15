@@ -5,8 +5,10 @@
 // The wall-line walk is shared by Tiberian Dawn and Red Alert. It fills the
 // cells of a run between two points. These checks cover the math that the
 // two engines rely on: the length of a run, that it starts and ends where it
-// was asked to, and that every cell of it touches the cell before it, so the
-// wall art connects the run into one wall.
+// was asked to, that every cell of it touches the cell before it, so the wall
+// art connects the run into one wall, and that the run is the same whichever
+// end it is laid from, so a player can join a run onto a wall from either
+// side and get the same result.
 
 namespace
 {
@@ -35,12 +37,10 @@ int main()
     WallLinePoint points[WALL_LINE_MAX_SEGMENTS];
 
     // A run of one cell.
-    check(WallLine_Count(4, 7, 4, 7) == 1, "a run onto the same cell is one cell");
-    check(WallLine_Walk(4, 7, 4, 7, points, WALL_LINE_MAX_SEGMENTS) == 1, "the same cell walk is one cell");
+    check(WallLine_Walk(4, 7, 4, 7, points, WALL_LINE_MAX_SEGMENTS) == 1, "a run onto the same cell is one cell");
     check(points[0].X == 4 && points[0].Y == 7, "the same cell walk stays on that cell");
 
     // A horizontal run.
-    check(WallLine_Count(2, 5, 7, 5) == 6, "a horizontal run is its length plus one");
     check(WallLine_Walk(2, 5, 7, 5, points, WALL_LINE_MAX_SEGMENTS) == 6, "the horizontal walk fills every cell");
     bool horizontal_ok = true;
     for (int index = 0; index < 6; index++) {
@@ -61,7 +61,6 @@ int main()
     check(reverse_ok, "a horizontal run walks west one cell at a time");
 
     // A vertical run.
-    check(WallLine_Count(3, 1, 3, 6) == 6, "a vertical run is its length plus one");
     check(WallLine_Walk(3, 1, 3, 6, points, WALL_LINE_MAX_SEGMENTS) == 6, "the vertical walk fills every cell");
     bool vertical_ok = true;
     for (int index = 0; index < 6; index++) {
@@ -74,7 +73,6 @@ int main()
     // A diagonal run is a staircase. It is longer than the diagonal, because
     // every cell of it is a wall the player pays for, but every cell touches
     // the cell before it so the wall art connects it.
-    check(WallLine_Count(0, 0, 5, 5) == 11, "a diagonal run is the Manhattan distance plus one");
     check(WallLine_Walk(0, 0, 5, 5, points, WALL_LINE_MAX_SEGMENTS) == 11, "the diagonal walk fills every cell");
 
     // Every run, of any shape, has to hold these properties.
@@ -107,7 +105,6 @@ int main()
         int count = WallLine_Walk(from_x, from_y, to_x, to_y, points, WALL_LINE_MAX_SEGMENTS);
 
         check(count == expected, "the run is the Manhattan distance plus one");
-        check(WallLine_Count(from_x, from_y, to_x, to_y) == expected, "the count agrees with the walk");
 
         if (count < 1 || count > WALL_LINE_MAX_SEGMENTS) {
             continue;
@@ -134,7 +131,9 @@ int main()
         check(unique, "no cell of the run is used twice");
     }
 
-    // The walk back is the walk forward, reversed.
+    // The walk back is the walk forward, reversed. A run that is laid from
+    // the other end has to cover the same cells, or a player who joins a run
+    // onto a wall from one side gets a different wall than from the other.
     check(WallLine_Walk(0, 0, 7, 4, points, WALL_LINE_MAX_SEGMENTS) == 12, "the shallow diagonal has the expected length");
     WallLinePoint back[WALL_LINE_MAX_SEGMENTS];
     WallLine_Walk(7, 4, 0, 0, back, WALL_LINE_MAX_SEGMENTS);
@@ -146,45 +145,68 @@ int main()
     }
     check(mirrored, "walking a run backwards gives the same cells in reverse");
 
+    // The same has to hold for every shape of run, not just the one above.
+    // This is a sweep over every offset, because a single case is not enough
+    // to catch a run that is only symmetric in some directions.
+    bool sweep_ok = true;
+    bool sweep_connected = true;
+    bool sweep_unique = true;
+    for (int from_x = -6; from_x <= 6; from_x++) {
+        for (int from_y = -6; from_y <= 6; from_y++) {
+            for (int span_x = 0; span_x <= 6; span_x++) {
+                for (int span_y = 0; span_y <= 6; span_y++) {
+                    int to_x = from_x + span_x;
+                    int to_y = from_y + span_y;
+                    if (from_x == to_x && from_y == to_y) {
+                        continue;
+                    }
+
+                    int expected = Step_Distance(from_x, from_y, to_x, to_y) + 1;
+                    int forward = WallLine_Walk(from_x, from_y, to_x, to_y, points, WALL_LINE_MAX_SEGMENTS);
+                    int backward = WallLine_Walk(to_x, to_y, from_x, from_y, back, WALL_LINE_MAX_SEGMENTS);
+
+                    if (forward != expected || backward != expected) {
+                        sweep_ok = false;
+                        continue;
+                    }
+                    if (points[0].X != from_x || points[0].Y != from_y ||
+                        points[forward - 1].X != to_x || points[forward - 1].Y != to_y) {
+                        sweep_ok = false;
+                    }
+                    if (back[0].X != to_x || back[0].Y != to_y ||
+                        back[backward - 1].X != from_x || back[backward - 1].Y != from_y) {
+                        sweep_ok = false;
+                    }
+                    for (int index = 0; index < forward; index++) {
+                        if (back[index].X != points[forward - 1 - index].X ||
+                            back[index].Y != points[forward - 1 - index].Y) {
+                            sweep_ok = false;
+                        }
+                    }
+                    for (int index = 1; index < forward; index++) {
+                        if (Step_Distance(points[index - 1].X, points[index - 1].Y,
+                                          points[index].X, points[index].Y) != 1) {
+                            sweep_connected = false;
+                        }
+                    }
+                    for (int index = 0; index < forward; index++) {
+                        for (int other = index + 1; other < forward; other++) {
+                            if (points[index].X == points[other].X && points[index].Y == points[other].Y) {
+                                sweep_unique = false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    check(sweep_ok, "every run is the same set of cells whichever end it is laid from");
+    check(sweep_connected, "every cell of every run touches the cell before it");
+    check(sweep_unique, "no cell of any run is used twice");
+
     // Asking for the count alone must not write anything.
     int count = WallLine_Walk(2, 2, 9, 9, 0, 0);
     check(count == 15, "the count is returned without a buffer");
-
-    // The path search routes a run around whatever stands in the way.
-    WallLinePoint path[64];
-
-    auto open = [](int, int) { return (true); };
-    count = WallLine_Path(32, 32, 2, 2, 6, 6, open, path, 64);
-    check(count == 9, "the path over open ground is the shortest one");
-    check(path[0].X == 2 && path[0].Y == 2, "the path starts where it was asked to");
-    check(path[count - 1].X == 6 && path[count - 1].Y == 6, "the path ends where it was asked to");
-    bool path_connected = true;
-    for (int index = 1; index < count; index++) {
-        if (Step_Distance(path[index - 1].X, path[index - 1].Y, path[index].X, path[index].Y) != 1) {
-            path_connected = false;
-        }
-    }
-    check(path_connected, "every cell of the path touches the cell before it");
-
-    // A wall across the straight line is routed around.
-    auto wall_in_the_way = [](int x, int y) { return (!(x == 4 && y >= 2 && y <= 6)); };
-    count = WallLine_Path(32, 32, 2, 2, 6, 6, wall_in_the_way, path, 64);
-    check(count > 9, "the path around a wall is longer than the straight line");
-    bool path_around = true;
-    for (int index = 0; index < count; index++) {
-        if (path[index].X == 4 && path[index].Y >= 2 && path[index].Y <= 6) {
-            path_around = false;
-        }
-    }
-    check(path_around, "the path goes around the wall");
-    check(path[0].X == 2 && path[0].Y == 2, "the detour starts where it was asked to");
-    check(path[count - 1].X == 6 && path[count - 1].Y == 6, "the detour ends where it was asked to");
-
-    // A goal that cannot be reached has no path.
-    auto boxed_in = [](int x, int y) { return (x < 4 || x > 6 || y < 4 || y > 6); };
-    check(WallLine_Path(32, 32, 2, 2, 6, 6, boxed_in, path, 64) == 0, "a goal that is walled off has no path");
-    check(WallLine_Path(32, 32, 2, 2, 6, 6, [](int x, int y) { return (false); }, path, 64) == 0,
-          "a goal that cannot be built on has no path");
 
     return failures != 0;
 }

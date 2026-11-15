@@ -23,9 +23,6 @@ enum
     // longest possible run is that far across and that far down, plus one.
     WALL_LINE_MAX_SEGMENTS = 257,
 
-    // The number of cells of the biggest map either engine can load.
-    WALL_LINE_MAX_CELLS = 16384,
-
     // How far, in cells, a wall run may stretch from an already standing wall
     // to the cell being placed. Within this distance the run joins the two
     // together; beyond it a wall is laid down alone.
@@ -39,219 +36,137 @@ struct WallLinePoint
     int Y;
 };
 
-// How many cells a run from (from_x, from_y) to (to_x, to_y) covers. Every
-// cell after the first is one orthogonal step, so a run is always the
-// Manhattan distance between the two ends plus one.
-inline int WallLine_Count(int from_x, int from_y, int to_x, int to_y)
+// The absolute value of a number.
+inline int WallLine_Abs(int value)
 {
-    int dx = to_x - from_x;
-    int dy = to_y - from_y;
-    if (dx < 0) {
-        dx = -dx;
-    }
-    if (dy < 0) {
-        dy = -dy;
-    }
-    return (dx + dy + 1);
+    return ((value < 0) ? -value : value);
 }
 
 // Writes the cells of the run into 'out' and returns how many there are.
 // 'out' may be null, or too small, to ask for the count only.
+//
+// The run always covers the same set of cells whichever end it is laid from:
+// walking it backwards gives the same cells in the reverse order. That is
+// what makes a run safe to plan from either side, and it is what the player
+// expects when the wall they join onto is on the other side of the diagonal.
+//
+// How that is achieved:
+//
+//   - The line between the two ends is walked in one canonical direction,
+//     which is decided by the geometry of the two ends and not by which end
+//     the caller happens to start from. A run that is asked for the other way
+//     round is walked in that canonical direction as well and then turned
+//     around.
+//   - Where the line runs diagonally, the corner cell is filled in so that
+//     the run stays connected. Which of the two corner cells is used is
+//     decided by the shape of the line and not by the direction of travel: a
+//     line that runs more sideways bulges to the south, and a line that runs
+//     more upright bulges to the east. That keeps the staircase on the same
+//     side of the line whichever end it is laid from.
 inline int WallLine_Walk(int from_x, int from_y, int to_x, int to_y, WallLinePoint* out, int max_points)
 {
     int dx = to_x - from_x;
     int dy = to_y - from_y;
-    int step_x = (dx < 0) ? -1 : 1;
-    int step_y = (dy < 0) ? -1 : 1;
-    if (dx < 0) {
-        dx = -dx;
-    }
-    if (dy < 0) {
-        dy = -dy;
+    int span_x = WallLine_Abs(dx);
+    int span_y = WallLine_Abs(dy);
+
+    /*
+    **	Walk the line in the canonical direction, so that both ends of a run
+    **	produce the same line.
+    */
+    bool reverse = false;
+    int start_x = from_x;
+    int start_y = from_y;
+    int end_x = to_x;
+    int end_y = to_y;
+
+    if (dx < 0 || (dx == 0 && dy < 0)) {
+        start_x = to_x;
+        start_y = to_y;
+        end_x = from_x;
+        end_y = from_y;
+        reverse = true;
     }
 
-    // A plain diagonal would leave the wall pieces touching at a corner only.
-    // Every diagonal step is split into two orthogonal steps instead, so the
-    // run stays connected. The half that is further west comes first, which
-    // keeps the staircase on one side of the line and makes the run between
-    // two cells the same set of cells whichever end it is laid from.
+    int step_x = (end_x >= start_x) ? 1 : -1;
+    int step_y = (end_y >= start_y) ? 1 : -1;
+    bool more_sideways = (span_x >= span_y);
 
-    int total = dx + dy + 1;
+    /*
+    **	Step along the line. Every step that runs diagonally leaves a corner
+    **	behind, and that corner is filled in so that the run stays connected.
+    */
+    int total = span_x + span_y + 1;
     int count = 0;
-    int x = from_x;
-    int y = from_y;
-    int err = dx - dy;
-    int half_x = x;
-    int half_y = y;
-    bool half_pending = false;
+    int err = span_x - span_y;
+    int x = start_x;
+    int y = start_y;
 
-    while (count < total) {
+    while (true) {
         if (out && count < max_points) {
-            out[count].X = x;
-            out[count].Y = y;
+            int cell = reverse ? (total - 1 - count) : count;
+            out[cell].X = x;
+            out[cell].Y = y;
         }
         count++;
-        if (count == total) {
+
+        if (x == end_x && y == end_y) {
             break;
         }
 
-        if (half_pending) {
-            // The second half of a split diagonal step.
-            x = half_x;
-            y = half_y;
-            half_pending = false;
-            continue;
-        }
-
         int e2 = 2 * err;
-        bool step_in_x = (e2 > -dy);
-        bool step_in_y = (e2 < dx);
+        bool step_in_x = (e2 > -span_y);
+        bool step_in_y = (e2 < span_x);
         if (step_in_x) {
-            err -= dy;
+            err -= span_y;
         }
         if (step_in_y) {
-            err += dx;
+            err += span_x;
         }
 
         if (step_in_x && step_in_y) {
-            if (step_x > 0) {
-                // The run travels east, so the southern half comes first.
-                y += step_y;
-                half_x = x + step_x;
-                half_y = y;
+            /*
+            **	The line runs diagonally here. The corner cell is filled in so
+            **	that the run stays connected. It is the corner that lies on the
+            **	south side of a sideways line, or the east side of an upright
+            **	one, whichever end the run is laid from.
+            **
+            **	The line itself keeps stepping along its own path, so the corner
+            **	is written out but is not where the line steps to.
+            */
+            int corner_x = x + step_x;
+            int corner_y = y;
+            int other_x = x;
+            int other_y = y + step_y;
+
+            if (more_sideways) {
+                // The line runs more sideways, so it bulges to the south.
+                if (corner_y < other_y) {
+                    corner_x = other_x;
+                    corner_y = other_y;
+                }
             } else {
-                // The run travels west, so the western half comes first.
-                x += step_x;
-                half_x = x;
-                half_y = y + step_y;
+                // The line runs more upright, so it bulges to the east.
+                if (corner_x < other_x) {
+                    corner_x = other_x;
+                    corner_y = other_y;
+                }
             }
-            half_pending = true;
+
+            if (out && count < max_points) {
+                int cell = reverse ? (total - 1 - count) : count;
+                out[cell].X = corner_x;
+                out[cell].Y = corner_y;
+            }
+            count++;
+
+            x += step_x;
+            y += step_y;
         } else if (step_in_x) {
             x += step_x;
         } else if (step_in_y) {
             y += step_y;
         }
-    }
-
-    return (total);
-}
-
-// Finds a path of cells from the start to the goal that avoids the cells the
-// predicate rejects. The cells of the path are written into 'out', oldest
-// first, and the number of them is returned. Zero is returned when there is
-// no path.
-//
-// The search steps north, east, south and west, and every step costs the
-// same, so the path it finds is a shortest one. It is the same path on every
-// machine, because the map is the same on every machine.
-//
-// The predicate is called as passable(x, y) for the cells the search may
-// step on. The start is always allowed, because a run starts on the cell it
-// was anchored on, even when that cell already holds a wall.
-template <class Passable>
-int WallLine_Path(int map_width,
-                  int map_height,
-                  int start_x,
-                  int start_y,
-                  int goal_x,
-                  int goal_y,
-                  Passable passable,
-                  WallLinePoint* out,
-                  int max_points)
-{
-    // The cells the search has seen, and the direction each of them was
-    // reached from. The queue holds the cells that still have to be looked at.
-    static int queue[WALL_LINE_MAX_CELLS];
-    static unsigned char came[WALL_LINE_MAX_CELLS];
-
-    static const int step_x[4] = {0, 1, 0, -1};
-    static const int step_y[4] = {-1, 0, 1, 0};
-
-    if (map_width <= 0 || map_height <= 0 || (map_width * map_height) > WALL_LINE_MAX_CELLS) {
-        return (0);
-    }
-    if (start_x < 0 || start_x >= map_width || start_y < 0 || start_y >= map_height) {
-        return (0);
-    }
-    if (goal_x < 0 || goal_x >= map_width || goal_y < 0 || goal_y >= map_height) {
-        return (0);
-    }
-    if (!passable(goal_x, goal_y)) {
-        return (0);
-    }
-
-    for (int index = 0; index < (map_width * map_height); index++) {
-        came[index] = 0;
-    }
-
-    int start = start_y * map_width + start_x;
-    int goal = goal_y * map_width + goal_x;
-
-    int head = 0;
-    int tail = 0;
-    queue[tail++] = start;
-    came[start] = 5;
-
-    while (head < tail && came[goal] == 0) {
-        int cell = queue[head++];
-        int x = cell % map_width;
-        int y = cell / map_width;
-
-        for (int direction = 0; direction < 4; direction++) {
-            int next_x = x + step_x[direction];
-            int next_y = y + step_y[direction];
-            if (next_x < 0 || next_x >= map_width || next_y < 0 || next_y >= map_height) {
-                continue;
-            }
-
-            int next = next_y * map_width + next_x;
-            if (came[next] != 0) {
-                continue;
-            }
-            if (!passable(next_x, next_y)) {
-                continue;
-            }
-
-            /*
-            **	Remember the way back to the cell the search came from.
-            */
-            came[next] = (unsigned char)(((direction + 2) & 3) + 1);
-            queue[tail++] = next;
-        }
-    }
-
-    if (came[goal] == 0) {
-        return (0);
-    }
-
-    /*
-    **	Walk the path back from the goal to the start, then turn it around.
-    */
-    int count = 0;
-    int cell = goal;
-    while (cell != start) {
-        if (count >= max_points) {
-            return (0);
-        }
-        out[count].X = cell % map_width;
-        out[count].Y = cell / map_width;
-        count++;
-
-        int direction = (came[cell] - 1) & 3;
-        cell += step_x[direction] + (step_y[direction] * map_width);
-    }
-
-    if (count >= max_points) {
-        return (0);
-    }
-    out[count].X = start_x;
-    out[count].Y = start_y;
-    count++;
-
-    for (int index = 0; index < (count / 2); index++) {
-        WallLinePoint swap = out[index];
-        out[index] = out[count - 1 - index];
-        out[count - 1 - index] = swap;
     }
 
     return (count);

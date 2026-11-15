@@ -33,6 +33,7 @@ Read the root guide first. TD constants and fields are not RA's.
 - SDL2 shake is `Request_Video_Shake`. Do not put a `Frame_Limiter` loop inside an explosion.
 - Double-click excludes buildings. An already-selected unit can report `ACTION_NONE`. The helper is standalone-only.
 - The tactical map only repaints the cells that are flagged, and the flags are cleared at the end of the frame. An overlay that is drawn every frame has to flag its cells before `Redraw_Icons` runs, or it leaves marks on the map.
+- `Set_Cursor_Pos` moves the placement cursor back when it would hang off the edge of the tactical map, so `ZoneCell` is not always the cell the mouse is over. Anything that has to agree with a click has to use the raw mouse cell.
 - Infantry melt in tiberium here, but not in RA. `FootClass::Takes_Tiberium_Damage` is the one rule: it drives both the damage in `Per_Cell_Process` and the path cost that keeps infantry off fields. `INFANTRY_E5` is immune.
 - Ion Cannon area damage applies in every mode. Nuke campaign and non-campaign values stay separate. Numbers are in `docs/komkommer.md`.
 

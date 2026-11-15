@@ -1179,9 +1179,6 @@ typedef struct tShapeHeaderType
     int shape_buffer; // 1 if shape is in theater buffer
 } ShapeHeaderType;
 
-// Copied from conquer.cpp
-#define SHAPE_TRANS 0x40
-
 // Used by Buffer_Frame_To_Page to flag which blit function to use for each line
 // Results are cached for subsequent draw calls.
 static void Setup_Shape_Header(int width,

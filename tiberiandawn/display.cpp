@@ -188,6 +188,7 @@ DisplayClass::DisplayClass(void)
     LastClickTime = 0;
     LastClickType = NULL;
     WallLineLastCount = 0;
+    WallLineCell = 0;
 #endif
 }
 
@@ -300,6 +301,7 @@ void DisplayClass::Init_Clear(void)
     LastClickTime = 0;
     LastClickType = NULL;
     WallLineLastCount = 0;
+    WallLineCell = 0;
 #endif
 
     /*
@@ -976,6 +978,15 @@ CELL DisplayClass::Set_Cursor_Pos(CELL pos)
     if (pos == -1) {
         pos = Click_Cell_Calc(Get_Mouse_X(), Get_Mouse_Y());
     }
+
+#ifndef REMASTER_BUILD
+    /*
+    **	Remember the cell the mouse is over before the placement cursor is moved
+    **	back to keep it on the map. A wall run goes down on the cell the mouse
+    **	is over, and the preview has to show the same run as the click.
+    */
+    WallLineCell = pos;
+#endif
 
     if (!CursorSize) {
         prevpos = ZoneCell;
@@ -4036,7 +4047,16 @@ void DisplayClass::Wall_Line_Click(CELL cell)
         return;
     }
 
-    CELL target = (CELL)(cell + ZoneOffset);
+    /*
+    **	The run is anchored on the cell the mouse is over, which is the same cell
+    **	the preview was drawn from. The placement cursor is moved back when it
+    **	would hang off the edge of the map, so it is not the same cell as the
+    **	one the mouse is over.
+    */
+    CELL target = (CELL)(WallLineCell + ZoneOffset);
+    if (target < 0 || target >= MAP_CELL_TOTAL) {
+        return;
+    }
 
     /*
     **	Shift places a single wall, the way it always did, and does not stretch to a nearby wall.
@@ -4051,6 +4071,16 @@ void DisplayClass::Wall_Line_Click(CELL cell)
     }
 
     /*
+    **	The cell has to be near something the player owns, so that the wall joins
+    **	up with the rest of the base. This is the same check that a single wall
+    **	passes, and it applies to a run as well.
+    */
+    if (!ProximityCheck) {
+        Speak(VOX_DEPLOY);
+        return;
+    }
+
+    /*
     **	A wall that is already standing within reach is joined onto. The click lays a run that
     **	joins the cell being placed to every wall it can reach in a straight line.
     */
@@ -4061,13 +4091,8 @@ void DisplayClass::Wall_Line_Click(CELL cell)
     }
 
     /*
-    **	No wall is in reach, so a single wall is placed. The cell has to be free and near
-    **	something the player owns, so the proximity check has to pass.
+    **	No wall is in reach, so a single wall is placed.
     */
-    if (!ProximityCheck) {
-        Speak(VOX_DEPLOY);
-        return;
-    }
     OutList.Add(EventClass(EventClass::PLACE, PendingObjectPtr->What_Am_I(), target));
 }
 
@@ -4139,7 +4164,12 @@ void DisplayClass::Wall_Line_Draw(void)
     */
     static FacingType const _offsets[4] = {FACING_N, FACING_E, FACING_S, FACING_W};
 
-    CELL anchor = (CELL)(ZoneCell + ZoneOffset);
+    /*
+    **	The run is anchored on the cell the mouse is over. That is the cell the
+    **	click puts the wall on, so the preview shows the run that the click lays
+    **	down.
+    */
+    CELL anchor = (CELL)(WallLineCell + ZoneOffset);
     if (anchor < 0 || anchor >= MAP_CELL_TOTAL) {
         return;
     }
@@ -4157,14 +4187,36 @@ void DisplayClass::Wall_Line_Draw(void)
     /*
     **	Work out which cells can take a wall, the anchor included. The segments of the run own
     **	their cell once they are down, so the next segment may join up with them.
+    **
+    **	The path to each wall is kept, so that it is only walked once. The preview is drawn every
+    **	frame, so the walk is worth keeping cheap.
     */
     CELL legal[WALL_LINE_MAX_SEGMENTS];
     int legal_count = 1;
     legal[0] = anchor;
 
+    /*
+    **	A wall within stretch range is at most WALL_LINE_STRETCH cells away, so a run to
+    **	it is at most that many cells long. There are at most that many walls in
+    **	range on each of the two axes around the anchor.
+    */
+    enum
+    {
+        MAX_RUN_PATHS = 2 * WALL_LINE_STRETCH * WALL_LINE_STRETCH + 2 * WALL_LINE_STRETCH,
+        MAX_RUN_PATH_CELLS = WALL_LINE_STRETCH + 1
+    };
+
+    CELL paths[MAX_RUN_PATHS][MAX_RUN_PATH_CELLS];
+    int path_counts[MAX_RUN_PATHS];
     CELL path[WALL_LINE_MAX_SEGMENTS];
+
     for (int w = 0; w < wall_count; w++) {
         int path_count = PlayerPtr->Wall_Line_Path((BuildingClass*)PendingObjectPtr, walls[w], anchor, path, WALL_LINE_MAX_SEGMENTS);
+        if (path_count > MAX_RUN_PATH_CELLS) {
+            path_count = MAX_RUN_PATH_CELLS;
+        }
+        path_counts[w] = path_count;
+
         for (int index = 0; index < path_count; index++) {
             CELL cell = path[index];
             if (cell == walls[w] || cell == anchor) {
@@ -4184,6 +4236,10 @@ void DisplayClass::Wall_Line_Draw(void)
                 legal[legal_count++] = cell;
             }
         }
+
+        for (int index = 0; index < path_count; index++) {
+            paths[w][index] = path[index];
+        }
     }
 
     OverlayTypeClass const& overlay = OverlayTypeClass::As_Reference(otype);
@@ -4197,9 +4253,8 @@ void DisplayClass::Wall_Line_Draw(void)
     int preview_count = 0;
 
     for (int w = 0; w < wall_count; w++) {
-        int path_count = PlayerPtr->Wall_Line_Path((BuildingClass*)PendingObjectPtr, walls[w], anchor, path, WALL_LINE_MAX_SEGMENTS);
-        for (int index = 0; index < path_count; index++) {
-            CELL cell = path[index];
+        for (int index = 0; index < path_counts[w]; index++) {
+            CELL cell = paths[w][index];
             if (!In_View(cell)) {
                 continue;
             }
@@ -4286,8 +4341,8 @@ void DisplayClass::Mouse_Left_Release(CELL cell,
 
 #ifndef REMASTER_BUILD
         /*
-        **	A wall is laid down as a run between two points. The first click sets the cell that
-        **	the run starts from, the second click lays the run down.
+        **	A wall is laid down as a run. The click joins the cell the mouse is
+        **	over onto every wall of the same type that stands within stretch range.
         */
         if (Wall_Line_Pending()) {
             Wall_Line_Click(cell);

@@ -117,6 +117,15 @@ public:
     */
     int WallLineLastCount;
     CELL WallLineLastCells[WALL_LINE_MAX_SEGMENTS];
+
+    /*
+    **	The cell the mouse is over, without the adjustment that keeps the placement
+    **	cursor on the map. The placement cursor is moved back when it would hang
+    **	off the edge of the tactical map, so it does not always sit on the cell
+    **	that the mouse is over. A wall run is placed on the cell the mouse is
+    **	over, so the preview has to use the same cell as the click does.
+    */
+    CELL WallLineCell;
 #endif
 
     static unsigned char FadingBrighten[256];
@@ -183,8 +192,9 @@ public:
     void Get_Occupy_Dimensions(int& w, int& h, short const* list);
 #ifndef REMASTER_BUILD
     /*
-    **	Wall line placement. A wall run is laid down from the cell being placed back to the
-    **	nearest wall that is already standing, when that wall is within stretch range.
+    **	Wall line placement. A wall run joins the cell being placed onto every wall
+    **	of the same type that is already standing within stretch range and that
+    **	the run can reach in a straight line.
     */
     bool Wall_Line_Pending(void) const;
     void Wall_Line_Click(CELL cell);

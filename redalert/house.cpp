@@ -3836,6 +3836,18 @@ bool HouseClass::Place_Line_Object(RTTIType type, CELL anchor, CELL /*to*/)
     }
 
     /*
+    **	The anchor is the wall that the construction yard built. It has to pass the
+    **	same proximity check that a single wall passes, so that a run cannot be
+    **	laid down in the middle of the field by way of a remote event.
+    */
+    if (!Map.Passes_Proximity_Check(&wall->Class_Of(), Class->House, wall->Occupy_List(true), anchor)) {
+        if (this == PlayerPtr) {
+            Speak(VOX_DEPLOY);
+        }
+        return (false);
+    }
+
+    /*
     **	The run joins onto every wall that stands within stretch range of the anchor, so that
     **	a corner clicked between two walls closes the gap on both sides.
     */
@@ -3918,13 +3930,22 @@ bool HouseClass::Place_Line_Object(RTTIType type, CELL anchor, CELL /*to*/)
         }
     }
 
+    /*
+    **	Buy and place the cells that join the anchor to the walls around it. A cell
+    **	that cannot take the wall any more, because something moved into it while
+    **	the run was being laid down, stops the run. The segments that are already
+    **	down stay down and stay paid for.
+    */
+    bool complete = true;
     for (int index = 1; index < plan_count; index++) {
         BuildingClass* segment = (BuildingClass*)wall->Class->Create_One_Of(this);
         if (!segment) {
+            complete = false;
             break;
         }
         if (!segment->Unlimbo(Cell_Coord(plan[index]))) {
             delete segment;
+            complete = false;
             break;
         }
         Spend_Money(cost);
@@ -3935,6 +3956,14 @@ bool HouseClass::Place_Line_Object(RTTIType type, CELL anchor, CELL /*to*/)
         **	One sound for the whole run, not one for every segment of it.
         */
         Sound_Effect(VOC_PLACE_BUILDING_DOWN);
+
+        /*
+        **	The run could not be finished, so the player is told that part of it
+        **	did not go down.
+        */
+        if (!complete) {
+            Speak(VOX_DEPLOY);
+        }
 
         /*
         **	The map is painted over, so that the preview of the run does not stay on it. The

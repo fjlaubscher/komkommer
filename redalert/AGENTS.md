@@ -29,6 +29,7 @@ Read the root guide first. Do not copy TD identifiers or its `Altitude` field.
 - Standalone production queues are absent from the Remastered build. `CANCEL_QUEUE` removes the newest waiting match and leaves the active item. Keep `EventLength` and `EventNames` aligned with the enum.
 - SDL2 shake is `Request_Video_Shake`. Keep the blocking `Frame_Limiter` loop only for non-SDL2 backends.
 - The tactical map only repaints the cells that are flagged, and the flags are cleared at the end of the frame. An overlay that is drawn every frame has to flag its cells before `Redraw_Icons` runs, or it leaves marks on the map.
+- `Set_Cursor_Pos` moves the placement cursor back when it would hang off the edge of the tactical map, so `ZoneCell` is not always the cell the mouse is over. Anything that has to agree with a click has to use the raw mouse cell.
 - Game Controls applies speed and scroll on Esc. Sound Controls saves when it closes. Options use `Paths.User_Path()/redalert.ini`, not whichever `redalert.ini` the asset search finds.
 - Keep campaign and non-campaign atom damage apart. Current numbers are in `docs/komkommer.md`.
 
