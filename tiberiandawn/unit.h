@@ -86,7 +86,7 @@ public:
     bool Goto_Clear_Spot(void);
     bool Try_To_Deploy(void);
 
-    int Tiberium_Check(CELL& center, int x, int y);
+    int Tiberium_Amount(CELL cell);
     bool Flag_Attach(HousesType house);
     bool Flag_Remove(void);
     void Find_LZ(void);

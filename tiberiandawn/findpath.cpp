@@ -273,18 +273,6 @@ bool FootClass::Find_Path_AStar(CELL source,
     int best_h = AStar_Heuristic(source);
     bool reached = false;
 
-    /*
-    **	Impassable ground beside a diagonal step is a corridor wall (bridge,
-    **	cliff gap, diagonal wall). An occupied passable cell still blocks the cut.
-    */
-    auto Blocks_Corner = [&](CELL side) -> bool {
-        if (Passable_Cell(side, FACING_NONE, threat, threshhold)) {
-            return false;
-        }
-        LandType land = Map[side].Land_Type();
-        return (land != LAND_WATER && land != LAND_ROCK && land != LAND_WALL);
-    };
-
     while (AStarHeapSize > 0) {
         CELL cur = AStar_Pop();
         AStarState[cur] = 2;
@@ -316,7 +304,8 @@ bool FootClass::Find_Path_AStar(CELL source,
             **	beside the step does not disconnect a one-cell corridor.
             */
             if (dir & 1) {
-                if (Blocks_Corner(XY_Cell(x + AStarDX[dir], y)) || Blocks_Corner(XY_Cell(x, y + AStarDY[dir]))) {
+                if (Blocks_Corner(XY_Cell(x + AStarDX[dir], y), threat, threshhold)
+                    || Blocks_Corner(XY_Cell(x, y + AStarDY[dir]), threat, threshhold)) {
                     continue;
                 }
             }
@@ -489,6 +478,193 @@ PathType* FootClass::Find_Path(CELL dest, FacingType* final_moves, int maxlen, M
         Keyboard->Get();
     }
     return (&path);
+}
+
+/*=========================================================================*/
+/* Travel distance table. The cells hold the distance a unit would really   */
+/* walk to reach them, filled by FootClass::Travel_Costs().                 */
+/*=========================================================================*/
+static int TravelCost[MAP_CELL_TOTAL];
+
+/*
+**	Travel walk heap. The walk comes out of the heap in the order of the
+**	distance, so the cheapest cell is always expanded first.
+*/
+static CELL TravelHeap[MAP_CELL_TOTAL];
+static short TravelHeapPos[MAP_CELL_TOTAL];
+static int TravelHeapSize;
+
+static inline bool Travel_Less(CELL a, CELL b)
+{
+    return (TravelCost[a] < TravelCost[b]);
+}
+
+static void Travel_SiftUp(int i)
+{
+    CELL cell = TravelHeap[i];
+
+    while (i > 0) {
+        int parent = (i - 1) >> 1;
+        if (!Travel_Less(cell, TravelHeap[parent]))
+            break;
+        TravelHeap[i] = TravelHeap[parent];
+        TravelHeapPos[TravelHeap[parent]] = (short)i;
+        i = parent;
+    }
+    TravelHeap[i] = cell;
+    TravelHeapPos[cell] = (short)i;
+}
+
+static void Travel_SiftDown(int i)
+{
+    CELL cell = TravelHeap[i];
+
+    for (;;) {
+        int left = (i << 1) + 1;
+        int right = left + 1;
+        int best = i;
+
+        if (left < TravelHeapSize && Travel_Less(TravelHeap[left], TravelHeap[best]))
+            best = left;
+        if (right < TravelHeapSize && Travel_Less(TravelHeap[right], TravelHeap[best]))
+            best = right;
+        if (best == i)
+            break;
+        TravelHeap[i] = TravelHeap[best];
+        TravelHeapPos[TravelHeap[best]] = (short)i;
+        i = best;
+    }
+    TravelHeap[i] = cell;
+    TravelHeapPos[cell] = (short)i;
+}
+
+static void Travel_Push(CELL cell)
+{
+    TravelHeap[TravelHeapSize] = cell;
+    TravelHeapPos[cell] = (short)TravelHeapSize;
+    TravelHeapSize++;
+    Travel_SiftUp(TravelHeapSize - 1);
+}
+
+static CELL Travel_Pop(void)
+{
+    CELL top = TravelHeap[0];
+
+    TravelHeapSize--;
+    if (TravelHeapSize > 0) {
+        TravelHeap[0] = TravelHeap[TravelHeapSize];
+        TravelHeapPos[TravelHeap[0]] = 0;
+        Travel_SiftDown(0);
+    }
+    TravelHeapPos[top] = -1;
+    return (top);
+}
+
+/*
+**	Blocks_Corner -- True when a diagonal step would cut through a wall.
+**
+**	Impassable ground beside a diagonal step is a corridor wall (bridge,
+**	cliff gap, diagonal wall). An occupied passable cell still blocks the cut.
+*/
+bool FootClass::Blocks_Corner(CELL side, int threat, MoveType threshhold)
+{
+    if (Passable_Cell(side, FACING_NONE, threat, threshhold)) {
+        return (false);
+    }
+    LandType land = Map[side].Land_Type();
+    return (land != LAND_WATER && land != LAND_ROCK && land != LAND_WALL);
+}
+
+/***********************************************************************************************
+ * Travel_Costs -- Walks the map the way this unit walks it and records the distance to every  *
+ *                 cell it reaches.                                                              *
+ *                                                                                             *
+ *    The walk uses the passability rules of the path search, so cliffs, water and buildings    *
+ *    block it. The cost of a cell is the distance the unit would really cover to reach it     *
+ *    and not the straight line between two cells. Ore behind a cliff therefore costs what    *
+ *    the trip is worth.                                                                      *
+ *                                                                                             *
+ * INPUT:   source      -- cell the walk starts from.                                          *
+ *          maxcost     -- travel budget of the walk.                                          *
+ *          unreachable -- cost of a cell the walk did not reach.                              *
+ *                                                                                             *
+ * OUTPUT:  none                                                                               *
+ *                                                                                             *
+ * WARNINGS:   The result is shared by every caller, so the table is only good until the      *
+ *             next walk.                                                                      *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *   11/15/2026  Komkommer : Created.                                                          *
+ *=============================================================================================*/
+void FootClass::Travel_Costs(CELL source, int maxcost, int unreachable)
+{
+    for (int index = 0; index < MAP_CELL_TOTAL; index++) {
+        TravelCost[index] = unreachable;
+    }
+    memset(TravelHeapPos, 0xFF, sizeof(TravelHeapPos));
+
+    TravelHeapSize = 0;
+    TravelCost[source] = 0;
+    Travel_Push(source);
+
+    /*
+    **	Threat is ignored, the walk measures the trip and not the danger. A unit
+    **	in the way is only congestion and not a wall, so the walk goes around it
+    **	at a price. Cliffs, water and buildings stay in the way.
+    */
+    const MoveType threshhold = MOVE_TEMP;
+
+    while (TravelHeapSize > 0) {
+        CELL cur = Travel_Pop();
+        int cost = TravelCost[cur];
+
+        int x = Cell_X(cur);
+        int y = Cell_Y(cur);
+
+        for (int dir = FACING_N; dir < FACING_COUNT; dir++) {
+            int nx = x + AStarDX[dir];
+            int ny = y + AStarDY[dir];
+
+            if (nx < 0 || nx >= MAP_CELL_W || ny < 0 || ny >= MAP_CELL_H)
+                continue;
+
+            /*
+            **	Never cut a corner through an occupied cell, the same rule the path
+            **	search uses.
+            */
+            if (dir & 1) {
+                if (Blocks_Corner(XY_Cell(x + AStarDX[dir], y), -1, threshhold)
+                    || Blocks_Corner(XY_Cell(x, y + AStarDY[dir]), -1, threshhold)) {
+                    continue;
+                }
+            }
+
+            CELL nxt = XY_Cell(nx, ny);
+            int step = Passable_Cell(nxt, (FacingType)dir, -1, threshhold);
+
+            if (step <= 0)
+                continue;
+
+            int next = cost + step;
+            if (next > maxcost || next >= TravelCost[nxt])
+                continue;
+
+            TravelCost[nxt] = next;
+            if (TravelHeapPos[nxt] == -1) {
+                Travel_Push(nxt);
+            } else {
+                Travel_SiftUp(TravelHeapPos[nxt]);
+            }
+        }
+    }
+}
+
+/*
+**	Travel_Cost -- The travel distance of a cell from the last walk.
+*/
+int FootClass::Travel_Cost(CELL cell)
+{
+    return (TravelCost[cell]);
 }
 
 /***********************************************************************************************

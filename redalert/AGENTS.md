@@ -25,6 +25,7 @@ Read the root guide first. Do not copy TD identifiers or its `Altitude` field.
 - Rally markers are cell flags (`ANIM_FLAG`/`FLAGFLY`). A drawn line renders as a laser in Remastered. Markers must not block foundations. Dynamic-map export must hide opponent flags.
 - Repair bays, refineries, and helipads queue. The airstrip does not. `Dock_Advance` only drops stale heads; the waiting unit's `RADIO_DOCKING` poll takes the dock. A repair order targets `STRUCT_REPAIR`, not a refinery.
 - Harvester `ArchiveTarget` is the last ore cell, not the dock (`TiberiumUnloadRefinery`). `FINDHOME` or `RADIO_RUN_AWAY` with an empty hold docks and dumps forever.
+- The harvester ore search in `unit.cpp` ranks ore cells by the travel distance from `FootClass::Travel_Costs` in `findpath.cpp`, so cliffs count and a field behind one is not "closer". The shared selection rule is in `common/harvestpath.h`; the walk stays per engine because `Passable_Cell` differs.
 - A helipad can be occupied with no radio contact: active, non-limbo, `Height == 0`, on the dock cell.
 - Standalone production queues are absent from the Remastered build. `CANCEL_QUEUE` removes the newest waiting match and leaves the active item. Keep `EventLength` and `EventNames` aligned with the enum.
 - SDL2 shake is `Request_Video_Shake`. Keep the blocking `Frame_Limiter` loop only for non-SDL2 backends.

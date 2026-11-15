@@ -112,11 +112,13 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - The command list is still smoothed by `Optimize_Moves`. A 90° or 135° shortcut is kept only when that cell is passable.
 - This changes only the path search itself; the `PathType` command-list contract and the movement/`drive.cpp` consumers are unchanged.
 - TD adds a tiberium cost on top of this, so infantry walk around fields. See **Infantry routes around tiberium** below.
+- `FootClass::Travel_Costs` is a separate walk over the same rules that records the **travel distance** to every cell around a unit, so a caller can compare places by the length of the trip instead of the straight line. It is used by the harvester ore search below.
 
 ### Harvester destination choice
 - **Vanilla:** Autonomous harvesters stop at the first ore ring that contains any cell, return after a dump to the cell they just emptied, and stick to the last refinery they used even when another dock is closer or freer.
 - **Komkommer:** When a harvester chooses for itself (a player click on a field still wins while that destination is set):
-  - It still walks rings outward and stops at the **nearest ring that has ore**, then picks the **richest** cell on that ring. It skips a cell another friendly harvester is already driving to.
+  - It measures the distance to the ore **the way it would really drive there**, using the same passability rules as the path search. A field behind a cliff or a wall is no longer "closer" than one it can reach directly, because the straight line between two cells is not the length of the trip.
+  - It takes the **nearest ore it can actually reach** and then prefers the **richest** cell among those that are only a few steps farther along the path. Richer ore is worth a few extra steps of walking, but not a trip across the map. It skips a cell another friendly harvester is already driving to, and falls back to the closest such cell when every ore cell is taken.
   - When the hold fills, it stores a nearby cell that **still has ore** as the return point (TD short scan is 6 cells; RA uses `OreNearScan` / `TiberiumShortScan`).
   - It picks a refinery by **distance plus a fixed wait per other harvester already bound there** (13 cells per load in TD, 6 in RA). A truck already within 5 cells of its current refinery discounts that dock's wait so it does not U-turn over a one-load swing. The dock service queue itself remains FIFO.
 
