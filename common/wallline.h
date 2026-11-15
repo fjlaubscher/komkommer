@@ -24,7 +24,12 @@ enum
     WALL_LINE_MAX_SEGMENTS = 257,
 
     // The number of cells of the biggest map either engine can load.
-    WALL_LINE_MAX_CELLS = 16384
+    WALL_LINE_MAX_CELLS = 16384,
+
+    // How far, in cells, a wall run may stretch from an already standing wall
+    // to the cell being placed. Within this distance the run joins the two
+    // together; beyond it a wall is laid down alone.
+    WALL_LINE_STRETCH = 5
 };
 
 // One cell of a run.

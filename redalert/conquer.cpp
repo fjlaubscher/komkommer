@@ -749,20 +749,8 @@ void Keyboard_Process(KeyNumType& input)
     **	Brings up the options dialog box.
     */
     if (key != 0 && (key == Options.KeyOption1 || key == Options.KeyOption2)) {
-        bool options = true;
-#ifndef REMASTER_BUILD
-        /*
-        **	Esc leaves the wall line mode instead of opening the options.
-        */
-        if (Map.WallLineAnchor != -1) {
-            Map.Wall_Line_Cancel();
-            options = false;
-        }
-#endif
-        if (options) {
-            Map.Help_Text(TXT_NONE); // Turns off help text.
-            Queue_Options();
-        }
+        Map.Help_Text(TXT_NONE); // Turns off help text.
+        Queue_Options();
         input = KN_NONE;
     }
 

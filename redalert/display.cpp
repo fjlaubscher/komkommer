@@ -201,9 +201,7 @@ DisplayClass::DisplayClass(void)
 #ifndef REMASTER_BUILD
     LastClickTime = 0;
     LastClickType = NULL;
-    WallLineAnchor = -1;
     WallLineLastAnchor = -1;
-    WallLineLastEnd = -1;
 #endif
 
     Set_View_Dimensions(0, 8, 320 / CELL_PIXEL_W, 200 / CELL_PIXEL_H);
@@ -299,9 +297,7 @@ void DisplayClass::Init_Clear(void)
 #ifndef REMASTER_BUILD
     LastClickTime = 0;
     LastClickType = NULL;
-    WallLineAnchor = -1;
     WallLineLastAnchor = -1;
-    WallLineLastEnd = -1;
 #endif
 
     /*
@@ -3569,18 +3565,6 @@ int DisplayClass::TacticalClass::Command_Object(unsigned flags, KeyNumType& key)
  *=============================================================================================*/
 void DisplayClass::Mouse_Right_Press(void)
 {
-#ifndef REMASTER_BUILD
-    /*
-    **	The first right click leaves the wall line mode. The wall that is waiting to be placed
-    **	stays where it is, so that the next click places a single wall as before.
-    */
-    if (WallLineAnchor != -1) {
-        Wall_Line_Cancel();
-        Set_Default_Mouse(MOUSE_NORMAL, Map.IsSmall);
-        return;
-    }
-#endif
-
     if (PendingObjectPtr && PendingObjectPtr->Is_Techno()) {
         // PendingObjectPtr->Transmit_Message(RADIO_OVER_OUT);
         PendingObjectPtr = 0;
@@ -3968,7 +3952,10 @@ static bool Wall_Line_Has_Wall(CELL neighbour, CELL const* run, int count, Overl
 }
 
 /*
-**	Flags the cells of a run of wall segments, so that they are painted over.
+**	Flags the cells of a run of wall segments, so that they are painted over, and marks the
+**	objects on those cells for redraw. The preview is drawn onto the map before the objects
+**	are, so a building that the preview touches has to be redrawn on top of it. Without that the
+**	building keeps the preview's wall pixels and flickers as the preview moves over it.
 */
 static void Wall_Line_Flag_Run(CELL from, CELL to)
 {
@@ -3984,7 +3971,7 @@ static void Wall_Line_Flag_Run(CELL from, CELL to)
     for (int index = 0; index < count; index++) {
         CELL cell = XY_Cell(points[index].X, points[index].Y);
         if (Map.In_View(cell)) {
-            Map.Flag_Cell(cell);
+            Map[cell].Redraw_Objects(true);
         }
     }
 
@@ -3997,7 +3984,7 @@ static void Wall_Line_Flag_Run(CELL from, CELL to)
         int path_count = PlayerPtr->Wall_Line_Path((BuildingClass*)Map.PendingObjectPtr, from, to, path, WALL_LINE_MAX_SEGMENTS);
         for (int index = 0; index < path_count; index++) {
             if (Map.In_View(path[index])) {
-                Map.Flag_Cell(path[index]);
+                Map[path[index]].Redraw_Objects(true);
             }
         }
     }
@@ -4027,33 +4014,11 @@ bool DisplayClass::Wall_Line_Pending(void) const
 }
 
 /***********************************************************************************************
- * DisplayClass::Wall_Line_Cancel -- Leaves the wall line mode.                                 *
- *                                                                                             *
- *    This routine drops the cell that a wall run starts from. The wall that is waiting to be   *
- *    placed stays where it is, so the next click places a single wall as before.               *
- *                                                                                             *
- * INPUT:   none                                                                               *
- *                                                                                             *
- * OUTPUT:  none                                                                               *
- *                                                                                             *
- * WARNINGS:   none                                                                            *
- *                                                                                             *
- * HISTORY:                                                                                    *
- *   11/15/2026 JLB : Created.                                                                 *
- *=============================================================================================*/
-void DisplayClass::Wall_Line_Cancel(void)
-{
-    if (WallLineAnchor != -1) {
-        WallLineAnchor = -1;
-        Flag_To_Redraw(true);
-    }
-}
-
-/***********************************************************************************************
  * DisplayClass::Wall_Line_Click -- Handles a click while a wall is waiting to be placed.       *
  *                                                                                             *
- *    The first click sets the cell that the run of wall segments starts from. The second click  *
- *    lays the run down.                                                                        *
+ *    A wall that is within stretch range of the cell being placed is joined to it, so the       *
+ *    click lays a run from that wall to the clicked cell. Otherwise a single wall is placed,    *
+ *    the way it always was.                                                                     *
  *                                                                                             *
  * INPUT:   cell  -- The cell that the mouse is over.                                           *
  *                                                                                             *
@@ -4073,10 +4038,9 @@ void DisplayClass::Wall_Line_Click(CELL cell)
     CELL target = (CELL)(cell + ZoneOffset);
 
     /*
-    **	Shift places a single wall, the way it always did, and leaves the wall line mode.
+    **	Shift places a single wall, the way it always did, and does not stretch to a nearby wall.
     */
     if (Keyboard->Down(Options.KeySelect1) || Keyboard->Down(Options.KeySelect2)) {
-        Wall_Line_Cancel();
         if (ProximityCheck) {
             OutList.Add(EventClass(EventClass::PLACE, PendingObjectPtr->What_Am_I(), target));
         } else {
@@ -4085,108 +4049,25 @@ void DisplayClass::Wall_Line_Click(CELL cell)
         return;
     }
 
-    if (WallLineAnchor == -1) {
-
-        /*
-        **	A wall that is standing on the cell the mouse is over, or next to it, is the start
-        **	of the run. That way a new piece of wall can be joined onto it without the player
-        **	having to pick a start point first.
-        */
-        CELL start = Wall_Line_Start(target);
-        if (start != -1) {
-            OutList.Add(EventClass(EventClass::PLACE_LINE, PendingObjectPtr->What_Am_I(), start, target));
-            return;
-        }
-
-        /*
-        **	Otherwise the click sets the cell that the run starts from. The wall has to be
-        **	able to go down there, so the proximity check has to pass.
-        */
-        if (!ProximityCheck) {
-            Speak(VOX_DEPLOY);
-            return;
-        }
-        WallLineAnchor = target;
-        Flag_To_Redraw(true);
+    /*
+    **	A wall that is already standing within range is joined onto. The click lays a run that
+    **	joins the cell being placed to every wall in range around it.
+    */
+    CELL walls[WALL_LINE_MAX_SEGMENTS];
+    if (PlayerPtr->Wall_Line_Starts(target, walls, WALL_LINE_MAX_SEGMENTS) > 0) {
+        OutList.Add(EventClass(EventClass::PLACE_LINE, PendingObjectPtr->What_Am_I(), target, target));
         return;
     }
 
     /*
-    **	The second click lays the run down. The house expands the run into the cells that it
-    **	covers, so that every peer of a network game lays down the same wall run.
+    **	No wall is in range, so a single wall is placed. The cell has to be free and near
+    **	something the player owns, so the proximity check has to pass.
     */
-    OutList.Add(EventClass(EventClass::PLACE_LINE, PendingObjectPtr->What_Am_I(), WallLineAnchor, target));
-}
-
-/***********************************************************************************************
- * DisplayClass::Wall_Line_Start -- Finds the wall that a run can start from.                    *
- *                                                                                             *
- *    This routine looks for a wall that is standing on the cell the mouse is over, or next to   *
- *    it. That wall is the start of a run, so that a new piece of wall can be joined onto it     *
- *    without the player having to pick a start point first.                                     *
- *                                                                                             *
- * INPUT:   cell  -- The cell that the mouse is over.                                           *
- *                                                                                             *
- * OUTPUT:  CELL; The cell the run starts from, or -1 when there is no wall to join.            *
- *                                                                                             *
- * WARNINGS:   none                                                                            *
- *                                                                                             *
- * HISTORY:                                                                                    *
- *   11/15/2026 JLB : Created.                                                                 *
- *=============================================================================================*/
-CELL DisplayClass::Wall_Line_Start(CELL cell) const
-{
-    if (cell < 0 || cell >= MAP_CELL_TOTAL) {
-        return (-1);
+    if (!ProximityCheck) {
+        Speak(VOX_DEPLOY);
+        return;
     }
-
-    static FacingType const _offsets[4] = {FACING_N, FACING_E, FACING_S, FACING_W};
-
-    for (int index = 0; index < 5; index++) {
-        CELL candidate = (index == 0) ? cell : Adjacent_Cell(cell, _offsets[index - 1]);
-        if (candidate < 0 || candidate >= MAP_CELL_TOTAL) {
-            continue;
-        }
-
-        if (Map[candidate].Overlay != OVERLAY_NONE && OverlayTypeClass::As_Reference(Map[candidate].Overlay).IsWall
-            && Map[candidate].Owner == PendingHouse) {
-            return (candidate);
-        }
-    }
-    return (-1);
-}
-
-/***********************************************************************************************
- * DisplayClass::Wall_Line_Run -- Works out the ends of the run that is previewed.               *
- *                                                                                             *
- *    The run starts at the anchor that the player picked, or at a wall that is standing next to  *
- *    the cell the mouse is over. It ends at the cell the mouse is over.                          *
- *                                                                                             *
- * INPUT:   from  -- The cell the run starts at is written here.                                *
- *                                                                                             *
- *          to    -- The cell the run ends at is written here.                                  *
- *                                                                                             *
- * OUTPUT:  bool; Is there a run to preview?                                                    *
- *                                                                                             *
- * WARNINGS:   none                                                                            *
- *                                                                                             *
- * HISTORY:                                                                                    *
- *   11/15/2026 JLB : Created.                                                                 *
- *=============================================================================================*/
-bool DisplayClass::Wall_Line_Run(CELL& from, CELL& to)
-{
-    to = (CELL)(ZoneCell + ZoneOffset);
-    if (to < 0 || to >= MAP_CELL_TOTAL) {
-        return (false);
-    }
-
-    if (WallLineAnchor != -1) {
-        from = WallLineAnchor;
-        return (true);
-    }
-
-    from = Wall_Line_Start(to);
-    return (from != -1);
+    OutList.Add(EventClass(EventClass::PLACE, PendingObjectPtr->What_Am_I(), target));
 }
 
 /***********************************************************************************************
@@ -4210,17 +4091,23 @@ void DisplayClass::Wall_Line_Flag_Cells(void)
     /*
     **	The run of the last preview has to be painted over.
     */
-    if (WallLineLastEnd != -1) {
-        Wall_Line_Flag_Run(WallLineLastAnchor, WallLineLastEnd);
-        WallLineLastEnd = -1;
+    if (WallLineLastAnchor != -1) {
+        if (PlayerPtr) {
+            CELL walls[WALL_LINE_MAX_SEGMENTS];
+            int count = PlayerPtr->Wall_Line_Starts(WallLineLastAnchor, walls, WALL_LINE_MAX_SEGMENTS);
+            for (int index = 0; index < count; index++) {
+                Wall_Line_Flag_Run(walls[index], WallLineLastAnchor);
+            }
+        }
+        WallLineLastAnchor = -1;
     }
 
-    if (!Wall_Line_Pending() || !PendingObjectPtr) {
+    if (!Wall_Line_Pending() || !PendingObjectPtr || !PlayerPtr) {
         return;
     }
 
-    CELL from, to;
-    if (!Wall_Line_Run(from, to)) {
+    CELL anchor = (CELL)(ZoneCell + ZoneOffset);
+    if (anchor < 0 || anchor >= MAP_CELL_TOTAL) {
         return;
     }
 
@@ -4228,9 +4115,12 @@ void DisplayClass::Wall_Line_Flag_Cells(void)
     **	The cells of the run that is previewed now are painted over as well, because the last
     **	preview may have covered cells that are not part of this run.
     */
-    Wall_Line_Flag_Run(from, to);
-    WallLineLastAnchor = from;
-    WallLineLastEnd = to;
+    CELL walls[WALL_LINE_MAX_SEGMENTS];
+    int count = PlayerPtr->Wall_Line_Starts(anchor, walls, WALL_LINE_MAX_SEGMENTS);
+    for (int index = 0; index < count; index++) {
+        Wall_Line_Flag_Run(walls[index], anchor);
+    }
+    WallLineLastAnchor = anchor;
 }
 
 /***********************************************************************************************
@@ -4267,72 +4157,95 @@ void DisplayClass::Wall_Line_Draw(void)
     */
     static FacingType const _offsets[4] = {FACING_N, FACING_E, FACING_S, FACING_W};
 
-    CELL from, to;
-    if (!Wall_Line_Run(from, to)) {
+    CELL anchor = (CELL)(ZoneCell + ZoneOffset);
+    if (anchor < 0 || anchor >= MAP_CELL_TOTAL) {
         return;
     }
 
     /*
-    **	Work out the cells that the run covers. This is the path that the placement uses too,
-    **	so the preview shows the wall that the run will make.
+    **	Work out the walls that the run would join onto. The preview shows one line to each of
+    **	them, so a corner clicked between two walls shows both sides being closed.
     */
-    CELL path[WALL_LINE_MAX_SEGMENTS];
-    int path_count = PlayerPtr->Wall_Line_Path((BuildingClass*)PendingObjectPtr, from, to, path, WALL_LINE_MAX_SEGMENTS);
-    if (path_count < 1) {
+    CELL walls[WALL_LINE_MAX_SEGMENTS];
+    int wall_count = PlayerPtr->Wall_Line_Starts(anchor, walls, WALL_LINE_MAX_SEGMENTS);
+    if (wall_count < 1) {
         return;
     }
 
     /*
-    **	Work out which cells of the run can take a wall. The segments of the run own their
-    **	cell once they are down, so the next segment of the run may join up with them.
+    **	Work out which cells can take a wall, the anchor included. The segments of the run own
+    **	their cell once they are down, so the next segment may join up with them.
     */
     CELL legal[WALL_LINE_MAX_SEGMENTS];
-    int legal_count = 0;
-    for (int index = 0; index < path_count; index++) {
-        if (PlayerPtr->Wall_Line_Cell_Legal((BuildingClass*)PendingObjectPtr, path[index], legal, legal_count)) {
-            legal[legal_count++] = path[index];
+    int legal_count = 1;
+    legal[0] = anchor;
+
+    CELL path[WALL_LINE_MAX_SEGMENTS];
+    for (int w = 0; w < wall_count; w++) {
+        int path_count = PlayerPtr->Wall_Line_Path((BuildingClass*)PendingObjectPtr, walls[w], anchor, path, WALL_LINE_MAX_SEGMENTS);
+        for (int index = 0; index < path_count; index++) {
+            CELL cell = path[index];
+            if (cell == walls[w] || cell == anchor) {
+                continue;
+            }
+            if (!PlayerPtr->Wall_Line_Cell_Legal((BuildingClass*)PendingObjectPtr, cell, legal, legal_count)) {
+                continue;
+            }
+            bool planned = false;
+            for (int p = 0; p < legal_count; p++) {
+                if (legal[p] == cell) {
+                    planned = true;
+                    break;
+                }
+            }
+            if (!planned && legal_count < WALL_LINE_MAX_SEGMENTS) {
+                legal[legal_count++] = cell;
+            }
         }
     }
 
     OverlayTypeClass const& overlay = OverlayTypeClass::As_Reference(otype);
     IsTheaterShape = (bool)overlay.IsTheater;
 
-    for (int index = 0; index < path_count; index++) {
-        CELL cell = path[index];
-        if (!In_View(cell)) {
-            continue;
-        }
-
-        /*
-        **	A cell that already holds a wall keeps the wall it has, so it is not drawn again.
-        */
-        if (Map[cell].Overlay != OVERLAY_NONE && OverlayTypeClass::As_Reference(Map[cell].Overlay).IsWall) {
-            continue;
-        }
-
-        int icon = 0;
-        for (int facing = 0; facing < 4; facing++) {
-            CELL neighbour = Adjacent_Cell(cell, _offsets[facing]);
-            if (Wall_Line_Has_Wall(neighbour, legal, legal_count, otype)) {
-                icon |= 1 << facing;
+    for (int w = 0; w < wall_count; w++) {
+        int path_count = PlayerPtr->Wall_Line_Path((BuildingClass*)PendingObjectPtr, walls[w], anchor, path, WALL_LINE_MAX_SEGMENTS);
+        for (int index = 0; index < path_count; index++) {
+            CELL cell = path[index];
+            if (!In_View(cell)) {
+                continue;
             }
-        }
 
-        /*
-        **	A cell that cannot take a wall is drawn in red.
-        */
-        bool ok = Wall_Line_In_Run(cell, legal, legal_count);
+            /*
+            **	A cell that already holds a wall keeps the wall it has, so it is not drawn again.
+            */
+            if (Map[cell].Overlay != OVERLAY_NONE && OverlayTypeClass::As_Reference(Map[cell].Overlay).IsWall) {
+                continue;
+            }
 
-        int xpixel, ypixel;
-        if (Coord_To_Pixel(Coord_Whole(Cell_Coord(cell)), xpixel, ypixel)) {
-            CC_Draw_Shape(overlay.Get_Image_Data(),
-                          icon,
-                          xpixel + (CELL_PIXEL_W >> 1),
-                          ypixel + (CELL_PIXEL_H >> 1),
-                          WINDOW_TACTICAL,
-                          SHAPE_CENTER | SHAPE_WIN_REL | SHAPE_TRANS,
-                          ok ? NULL : FadingRed,
-                          NULL);
+            int icon = 0;
+            for (int facing = 0; facing < 4; facing++) {
+                CELL neighbour = Adjacent_Cell(cell, _offsets[facing]);
+                if (Wall_Line_Has_Wall(neighbour, legal, legal_count, otype)) {
+                    icon |= 1 << facing;
+                }
+            }
+
+            /*
+            **	A cell that cannot take a wall is drawn in red.
+            */
+            bool ok = Wall_Line_In_Run(cell, legal, legal_count);
+
+            int xpixel, ypixel;
+            if (Coord_To_Pixel(Coord_Whole(Cell_Coord(cell)), xpixel, ypixel)) {
+                CC_Draw_Shape(overlay.Get_Image_Data(),
+                              icon,
+                              xpixel + (CELL_PIXEL_W >> 1),
+                              ypixel + (CELL_PIXEL_H >> 1),
+                              WINDOW_TACTICAL,
+                              SHAPE_CENTER | SHAPE_WIN_REL | SHAPE_TRANS,
+                              ok ? NULL : FadingRed,
+                              NULL);
+            }
         }
     }
     IsTheaterShape = false;
