@@ -1,0 +1,88 @@
+# Compile check for pull requests and for main.
+# Release archives stay in linux.yml, macos.yml, and windows.yml, which run on v* tags.
+name: check
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+# A newer push to the same branch or pull request replaces the run already going.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq -y libsdl2-dev libopenal-dev ninja-build
+
+      - name: Build Tiberian Dawn and Red Alert
+        env:
+          VC_CXX_FLAGS: "-w;-Wwrite-strings;-Werror=write-strings"
+        run: cmake --workflow --preset release
+
+      - name: Build and run tests
+        env:
+          VC_CXX_FLAGS: "-w;-Wwrite-strings;-Werror=write-strings"
+        run: cmake --workflow --preset testing
+
+  windows-x64:
+    name: Windows x64
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ilammy/msvc-dev-cmd@v1.13.0
+        with:
+          arch: x64
+
+      - name: Install dependencies
+        run: |
+          Invoke-WebRequest -Uri https://www.libsdl.org/release/SDL2-devel-2.0.12-VC.zip -OutFile SDL2-devel.zip
+          Invoke-WebRequest -Uri https://github.com/ninja-build/ninja/releases/download/v1.10.1/ninja-win.zip -OutFile $Env:TEMP\ninja-win.zip
+          Invoke-WebRequest -SkipCertificateCheck -Uri https://openal-soft.org/openal-binaries/openal-soft-1.21.0-bin.zip -OutFile openal-soft-1.21.0-bin.zip
+          Expand-Archive SDL2-devel.zip -DestinationPath .
+          Expand-Archive $Env:TEMP\ninja-win.zip -DestinationPath $Env:TEMP\ninja
+          Expand-Archive openal-soft-1.21.0-bin.zip -DestinationPath .
+          echo "$Env:TEMP\ninja" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          ninja --version
+
+      - name: Build Tiberian Dawn and Red Alert
+        env:
+          CMAKE_FIND_ROOT_PATH: "SDL2-2.0.12;openal-soft-1.21.0-bin"
+          VC_CXX_FLAGS: "/Zc:strictStrings;-wd4244;-wd4018;-wd4291;-wd4101;-wd4267;-wd4200"
+        run: cmake --workflow --preset release
+
+  windows-x86:
+    name: Windows x86 Remastered
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ilammy/msvc-dev-cmd@v1.13.0
+        with:
+          arch: x86
+
+      - name: Install Ninja
+        run: |
+          Invoke-WebRequest -Uri https://github.com/ninja-build/ninja/releases/download/v1.10.1/ninja-win.zip -OutFile $Env:TEMP\ninja-win.zip
+          Expand-Archive $Env:TEMP\ninja-win.zip -DestinationPath $Env:TEMP\ninja
+          echo "$Env:TEMP\ninja" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          ninja --version
+
+      - name: Build Remastered DLLs
+        env:
+          VC_CXX_FLAGS: "/Zc:strictStrings;-wd4244;-wd4018;-wd4291;-wd4101;-wd4267;-wd4200"
+        run: cmake --workflow --preset remaster

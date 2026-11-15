@@ -158,7 +158,7 @@ Use `-Game TD` or `-Game RA` for one game, and `-Config Debug` for an unoptimize
 - [Contributor/agent guide](AGENTS.md), with more specific guides in the source directories
 - [Komkommer releases](https://github.com/fjlaubscher/komkommer/releases) and [issues](https://github.com/fjlaubscher/komkommer/issues)
 
-CI builds and publishes releases on **`v*` tag pushes**, not ordinary branch pushes or pull requests. Upstream Vanilla Conquer binaries do not contain Komkommer's changes.
+Every pull request, and every push to `main`, compiles both games. Linux also runs the unit tests, and a 32-bit Windows job compiles the Remastered DLLs. Those checks do not publish binaries. A **`v*` tag push** is what builds the release archives and uploads them. Upstream Vanilla Conquer binaries do not contain Komkommer's changes.
 
 ## Credits and license
 
