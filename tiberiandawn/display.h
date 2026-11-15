@@ -37,6 +37,9 @@
 
 #include "map.h"
 #include "layer.h"
+#ifndef REMASTER_BUILD
+#include "common/wallline.h"
+#endif
 
 #define ICON_PIXEL_W  24
 #define ICON_PIXEL_H  24
@@ -109,11 +112,11 @@ public:
 
 #ifndef REMASTER_BUILD
     /*
-    ** The anchor of the run of wall segments that was previewed last. Its cells are painted
-    **	over before the next preview is drawn, so that the preview does not leave marks on the
-    **	map. It is -1 when no run was previewed.
+    ** The cells of the run of wall segments that was previewed last. They are painted over
+    **	before the next preview is drawn, so that the preview does not leave marks on the map.
     */
-    CELL WallLineLastAnchor;
+    int WallLineLastCount;
+    CELL WallLineLastCells[WALL_LINE_MAX_SEGMENTS];
 #endif
 
     static unsigned char FadingBrighten[256];

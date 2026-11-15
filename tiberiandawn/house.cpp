@@ -3307,9 +3307,9 @@ bool HouseClass::Wall_Cell_Free(BuildingClass* wall, CELL cell) const
 /***********************************************************************************************
  * HouseClass::Wall_Line_Path -- Works out the cells that a wall run covers.                      *
  *                                                                                             *
- *    This routine works out the cells that a run of wall segments covers. The run is a straight  *
- *    line between the two ends, unless something stands in the way. Then the line is routed     *
- *    around it, so that a wall can be built past a structure instead of through it.              *
+ *    This routine works out the cells of the straight run between two ends. The run may only  *
+ *    join walls that it can reach in a straight line, so this never routes around a structure.*
+ *    The caller decides which cells of the run may be laid down.                              *
  *                                                                                             *
  * INPUT:   wall        -- The wall that would be placed.                                       *
  *                                                                                             *
@@ -3328,7 +3328,7 @@ bool HouseClass::Wall_Cell_Free(BuildingClass* wall, CELL cell) const
  * HISTORY:                                                                                    *
  *   11/15/2026 JLB : Created.                                                                 *
  *=============================================================================================*/
-int HouseClass::Wall_Line_Path(BuildingClass* wall, CELL from, CELL to, CELL* out, int max_points) const
+int HouseClass::Wall_Line_Path(BuildingClass* /*wall*/, CELL from, CELL to, CELL* out, int max_points) const
 {
     if (from < 0 || from >= MAP_CELL_TOTAL || to < 0 || to >= MAP_CELL_TOTAL) {
         return (0);
@@ -3340,62 +3340,24 @@ int HouseClass::Wall_Line_Path(BuildingClass* wall, CELL from, CELL to, CELL* ou
         return (0);
     }
 
-    /*
-    **	The straight line is the path as long as nothing stands in the way. The first cell is
-    **	the one the run starts on, which may already hold a wall.
-    */
-    bool blocked = false;
-    for (int index = 1; index < count; index++) {
-        if (!Wall_Cell_Free(wall, XY_Cell(points[index].X, points[index].Y))) {
-            blocked = true;
-            break;
-        }
+    for (int index = 0; index < count; index++) {
+        out[index] = XY_Cell(points[index].X, points[index].Y);
     }
-
-    if (!blocked) {
-        for (int index = 0; index < count; index++) {
-            out[index] = XY_Cell(points[index].X, points[index].Y);
-        }
-        return (count);
-    }
-
-    /*
-    **	Something is in the way, so the line is routed around it. When there is no way around,
-    **	the straight line is used and the cells that are in the way are skipped.
-    */
-    WallLinePoint detour[WALL_LINE_MAX_SEGMENTS];
-    int detour_count =
-        WallLine_Path(MAP_CELL_W,
-                       MAP_CELL_H,
-                       Cell_X(from),
-                       Cell_Y(from),
-                       Cell_X(to),
-                       Cell_Y(to),
-                       [this, wall](int x, int y) { return (Wall_Cell_Free(wall, XY_Cell(x, y))); },
-                       detour,
-                       WALL_LINE_MAX_SEGMENTS);
-
-    if (detour_count < 1 || detour_count > max_points) {
-        for (int index = 0; index < count; index++) {
-            out[index] = XY_Cell(points[index].X, points[index].Y);
-        }
-        return (count);
-    }
-
-    for (int index = 0; index < detour_count; index++) {
-        out[index] = XY_Cell(detour[index].X, detour[index].Y);
-    }
-    return (detour_count);
+    return (count);
 }
 
 /***********************************************************************************************
  * HouseClass::Wall_Line_Starts -- Finds the walls that a run can join onto.                   *
  *                                                                                             *
- *    This routine collects the cells of every wall that this house owns within stretch range   *
- *    of the anchor, so that a run laid at the anchor joins onto all of them. The cells are     *
- *    written oldest first and the number of them is returned.                                  *
+ *    This routine collects every wall of the same type that this house owns within stretch    *
+ *    range of the anchor, and that the run can reach in a straight line. A run laid at the    *
+ *    anchor joins onto all of them. A run that would travel alongside another wall of the     *
+ *    same type is not a start: that is a chord across the inside of a bend. The cells are     *
+ *    written oldest first and the number of them is returned.                                 *
  *                                                                                             *
- * INPUT:   anchor    -- The cell that the run is anchored at.                                 *
+ * INPUT:   wall      -- The wall that would be placed.                                        *
+ *                                                                                             *
+ *          anchor    -- The cell that the run is anchored at.                                 *
  *                                                                                             *
  *          walls     -- The cells of the walls are written here.                              *
  *                                                                                             *
@@ -3408,9 +3370,22 @@ int HouseClass::Wall_Line_Path(BuildingClass* wall, CELL from, CELL to, CELL* ou
  * HISTORY:                                                                                    *
  *   11/15/2026 JLB : Created.                                                                 *
  *=============================================================================================*/
-int HouseClass::Wall_Line_Starts(CELL anchor, CELL* walls, int max_walls) const
+int HouseClass::Wall_Line_Starts(BuildingClass* wall, CELL anchor, CELL* walls, int max_walls) const
 {
-    if (anchor < 0 || anchor >= MAP_CELL_TOTAL) {
+    if (!wall || anchor < 0 || anchor >= MAP_CELL_TOTAL) {
+        return (0);
+    }
+
+    /*
+    **	The cell being placed has to be able to take the wall. This also keeps a click on a
+    **	structure or on a standing wall from planning a run around it.
+    */
+    if (!Wall_Cell_Free(wall, anchor)) {
+        return (0);
+    }
+
+    OverlayType otype = wall->Class->Wall_Overlay();
+    if (otype == OVERLAY_NONE) {
         return (0);
     }
 
@@ -3434,18 +3409,61 @@ int HouseClass::Wall_Line_Starts(CELL anchor, CELL* walls, int max_walls) const
             }
 
             CELL cell = XY_Cell(x, y);
-            OverlayType overlay = Map[cell].Overlay;
-            if (overlay == OVERLAY_NONE || Map[cell].Owner != Class->House) {
-                continue;
-            }
-            if (!OverlayTypeClass::As_Reference(overlay).IsWall) {
+            if (Map[cell].Overlay != otype || Map[cell].Owner != Class->House) {
                 continue;
             }
 
-            if (count < max_walls) {
-                walls[count] = cell;
+            /*
+            **	The standing wall is the start of the run. Every cell after it, up to and
+            **	including the anchor, has to be free for the wall, so that the run is a straight
+            **	one. A wall on the far side of a structure fails this test, so the run never
+            **	routes itself around a structure and lays walls the player did not ask for.
+            */
+            static int const _step_x[4] = {0, 1, 0, -1};
+            static int const _step_y[4] = {-1, 0, 1, 0};
+
+            WallLinePoint points[WALL_LINE_MAX_SEGMENTS];
+            int line = WallLine_Walk(x, y, cx, cy, points, WALL_LINE_MAX_SEGMENTS);
+            bool clear = true;
+            for (int index = 1; index < line; index++) {
+                CELL step = XY_Cell(points[index].X, points[index].Y);
+                if (!Wall_Cell_Free(wall, step)) {
+                    clear = false;
+                    break;
+                }
+
+                /*
+                **	A run joins the wall it starts from and leaves it there. A run that travels
+                **	alongside another wall of the same type is a chord across the inside of a
+                **	bend, and laying it is not what the player asked for. The anchor is not
+                **	checked, because a corner cell is expected to touch the walls it closes.
+                */
+                if (index < (line - 1)) {
+                    for (int direction = 0; direction < 4; direction++) {
+                        int nx = points[index].X + _step_x[direction];
+                        int ny = points[index].Y + _step_y[direction];
+                        if (nx < 0 || nx >= MAP_CELL_W || ny < 0 || ny >= MAP_CELL_H) {
+                            continue;
+                        }
+                        CELL neighbour = XY_Cell(nx, ny);
+                        if (neighbour == cell) {
+                            continue;
+                        }
+                        if (Map[neighbour].Overlay == otype && Map[neighbour].Owner == Class->House) {
+                            clear = false;
+                            break;
+                        }
+                    }
+                }
             }
-            count++;
+            if (!clear) {
+                continue;
+            }
+
+            if (count >= max_walls) {
+                return (count);
+            }
+            walls[count++] = cell;
         }
     }
 
@@ -3506,7 +3524,7 @@ bool HouseClass::Place_Line_Object(RTTIType type, CELL anchor, CELL /*to*/)
     **	a corner clicked between two walls closes the gap on both sides.
     */
     CELL starts[WALL_LINE_MAX_SEGMENTS];
-    int start_count = Wall_Line_Starts(anchor, starts, WALL_LINE_MAX_SEGMENTS);
+    int start_count = Wall_Line_Starts(wall, anchor, starts, WALL_LINE_MAX_SEGMENTS);
     if (start_count < 1) {
         return (false);
     }

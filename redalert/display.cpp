@@ -201,7 +201,7 @@ DisplayClass::DisplayClass(void)
 #ifndef REMASTER_BUILD
     LastClickTime = 0;
     LastClickType = NULL;
-    WallLineLastAnchor = -1;
+    WallLineLastCount = 0;
 #endif
 
     Set_View_Dimensions(0, 8, 320 / CELL_PIXEL_W, 200 / CELL_PIXEL_H);
@@ -297,7 +297,7 @@ void DisplayClass::Init_Clear(void)
 #ifndef REMASTER_BUILD
     LastClickTime = 0;
     LastClickType = NULL;
-    WallLineLastAnchor = -1;
+    WallLineLastCount = 0;
 #endif
 
     /*
@@ -3952,40 +3952,16 @@ static bool Wall_Line_Has_Wall(CELL neighbour, CELL const* run, int count, Overl
 }
 
 /*
-**	Flags the cells of a run of wall segments, so that they are painted over, and marks the
-**	objects on those cells for redraw. The preview is drawn onto the map before the objects
-**	are, so a building that the preview touches has to be redrawn on top of it. Without that the
-**	building keeps the preview's wall pixels and flickers as the preview moves over it.
+**	Flags the cells of the last preview, so that they are painted over, and marks the objects on
+**	those cells for redraw. The preview is drawn onto the map before the objects are, so a
+**	building that the preview touches has to be redrawn on top of it. Without that the building
+**	keeps the preview's wall pixels and flickers as the preview moves over it.
 */
-static void Wall_Line_Flag_Run(CELL from, CELL to)
+static void Wall_Line_Paint_Cells(CELL const* cells, int count)
 {
-    if (from < 0 || from >= MAP_CELL_TOTAL || to < 0 || to >= MAP_CELL_TOTAL) {
-        return;
-    }
-
-    /*
-    **	The straight line of the run.
-    */
-    WallLinePoint points[WALL_LINE_MAX_SEGMENTS];
-    int count = WallLine_Walk(Cell_X(from), Cell_Y(from), Cell_X(to), Cell_Y(to), points, WALL_LINE_MAX_SEGMENTS);
     for (int index = 0; index < count; index++) {
-        CELL cell = XY_Cell(points[index].X, points[index].Y);
-        if (Map.In_View(cell)) {
-            Map[cell].Redraw_Objects(true);
-        }
-    }
-
-    /*
-    **	The line may be routed around something that stands in the way, so those cells are
-    **	painted over as well.
-    */
-    if (PlayerPtr && Map.PendingObjectPtr) {
-        CELL path[WALL_LINE_MAX_SEGMENTS];
-        int path_count = PlayerPtr->Wall_Line_Path((BuildingClass*)Map.PendingObjectPtr, from, to, path, WALL_LINE_MAX_SEGMENTS);
-        for (int index = 0; index < path_count; index++) {
-            if (Map.In_View(path[index])) {
-                Map[path[index]].Redraw_Objects(true);
-            }
+        if (Map.In_View(cells[index])) {
+            Map[cells[index]].Redraw_Objects(true);
         }
     }
 }
@@ -4050,17 +4026,17 @@ void DisplayClass::Wall_Line_Click(CELL cell)
     }
 
     /*
-    **	A wall that is already standing within range is joined onto. The click lays a run that
-    **	joins the cell being placed to every wall in range around it.
+    **	A wall that is already standing within reach is joined onto. The click lays a run that
+    **	joins the cell being placed to every wall it can reach in a straight line.
     */
     CELL walls[WALL_LINE_MAX_SEGMENTS];
-    if (PlayerPtr->Wall_Line_Starts(target, walls, WALL_LINE_MAX_SEGMENTS) > 0) {
+    if (PlayerPtr->Wall_Line_Starts((BuildingClass*)PendingObjectPtr, target, walls, WALL_LINE_MAX_SEGMENTS) > 0) {
         OutList.Add(EventClass(EventClass::PLACE_LINE, PendingObjectPtr->What_Am_I(), target, target));
         return;
     }
 
     /*
-    **	No wall is in range, so a single wall is placed. The cell has to be free and near
+    **	No wall is in reach, so a single wall is placed. The cell has to be free and near
     **	something the player owns, so the proximity check has to pass.
     */
     if (!ProximityCheck) {
@@ -4073,9 +4049,9 @@ void DisplayClass::Wall_Line_Click(CELL cell)
 /***********************************************************************************************
  * DisplayClass::Wall_Line_Flag_Cells -- Flags the cells of the wall preview.                   *
  *                                                                                             *
- *    This routine flags the cells that the preview of a wall run covers, so that they are     *
- *    painted over before the next preview is drawn. Without this the preview would leave marks  *
- *    on the map where the mouse has been.                                                      *
+ *    This routine flags the cells that the last preview covered, so they are painted over     *
+ *    before the next preview is drawn. Without this the preview would leave marks on the map  *
+ *    where the mouse has been.                                                                *
  *                                                                                             *
  * INPUT:   none                                                                               *
  *                                                                                             *
@@ -4089,38 +4065,11 @@ void DisplayClass::Wall_Line_Click(CELL cell)
 void DisplayClass::Wall_Line_Flag_Cells(void)
 {
     /*
-    **	The run of the last preview has to be painted over.
+    **	The cells of the last preview have to be painted over before the new one is drawn, or
+    **	the preview would leave marks on the map.
     */
-    if (WallLineLastAnchor != -1) {
-        if (PlayerPtr) {
-            CELL walls[WALL_LINE_MAX_SEGMENTS];
-            int count = PlayerPtr->Wall_Line_Starts(WallLineLastAnchor, walls, WALL_LINE_MAX_SEGMENTS);
-            for (int index = 0; index < count; index++) {
-                Wall_Line_Flag_Run(walls[index], WallLineLastAnchor);
-            }
-        }
-        WallLineLastAnchor = -1;
-    }
-
-    if (!Wall_Line_Pending() || !PendingObjectPtr || !PlayerPtr) {
-        return;
-    }
-
-    CELL anchor = (CELL)(ZoneCell + ZoneOffset);
-    if (anchor < 0 || anchor >= MAP_CELL_TOTAL) {
-        return;
-    }
-
-    /*
-    **	The cells of the run that is previewed now are painted over as well, because the last
-    **	preview may have covered cells that are not part of this run.
-    */
-    CELL walls[WALL_LINE_MAX_SEGMENTS];
-    int count = PlayerPtr->Wall_Line_Starts(anchor, walls, WALL_LINE_MAX_SEGMENTS);
-    for (int index = 0; index < count; index++) {
-        Wall_Line_Flag_Run(walls[index], anchor);
-    }
-    WallLineLastAnchor = anchor;
+    Wall_Line_Paint_Cells(WallLineLastCells, WallLineLastCount);
+    WallLineLastCount = 0;
 }
 
 /***********************************************************************************************
@@ -4142,6 +4091,14 @@ void DisplayClass::Wall_Line_Flag_Cells(void)
 void DisplayClass::Wall_Line_Draw(void)
 {
     if (!Wall_Line_Pending() || !PendingObjectPtr) {
+        return;
+    }
+
+    /*
+    **	Shift places a single wall, so the stretch preview would show a run that the click
+    **	does not lay down.
+    */
+    if (Keyboard->Down(Options.KeySelect1) || Keyboard->Down(Options.KeySelect2)) {
         return;
     }
 
@@ -4167,7 +4124,7 @@ void DisplayClass::Wall_Line_Draw(void)
     **	them, so a corner clicked between two walls shows both sides being closed.
     */
     CELL walls[WALL_LINE_MAX_SEGMENTS];
-    int wall_count = PlayerPtr->Wall_Line_Starts(anchor, walls, WALL_LINE_MAX_SEGMENTS);
+    int wall_count = PlayerPtr->Wall_Line_Starts((BuildingClass*)PendingObjectPtr, anchor, walls, WALL_LINE_MAX_SEGMENTS);
     if (wall_count < 1) {
         return;
     }
@@ -4207,6 +4164,13 @@ void DisplayClass::Wall_Line_Draw(void)
     OverlayTypeClass const& overlay = OverlayTypeClass::As_Reference(otype);
     IsTheaterShape = (bool)overlay.IsTheater;
 
+    /*
+    **	The cells that are painted are remembered, so that exactly those cells are painted over
+    **	before the next preview. Asking the map what is in range again would miss the cells of a
+    **	preview that was drawn before a wall went down or came down.
+    */
+    int preview_count = 0;
+
     for (int w = 0; w < wall_count; w++) {
         int path_count = PlayerPtr->Wall_Line_Path((BuildingClass*)PendingObjectPtr, walls[w], anchor, path, WALL_LINE_MAX_SEGMENTS);
         for (int index = 0; index < path_count; index++) {
@@ -4220,6 +4184,10 @@ void DisplayClass::Wall_Line_Draw(void)
             */
             if (Map[cell].Overlay != OVERLAY_NONE && OverlayTypeClass::As_Reference(Map[cell].Overlay).IsWall) {
                 continue;
+            }
+
+            if (preview_count < WALL_LINE_MAX_SEGMENTS && !Wall_Line_In_Run(cell, WallLineLastCells, preview_count)) {
+                WallLineLastCells[preview_count++] = cell;
             }
 
             int icon = 0;
@@ -4248,6 +4216,7 @@ void DisplayClass::Wall_Line_Draw(void)
             }
         }
     }
+    WallLineLastCount = preview_count;
     IsTheaterShape = false;
 }
 #endif
