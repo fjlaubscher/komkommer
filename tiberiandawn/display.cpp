@@ -335,6 +335,15 @@ void DisplayClass::Init_IO(void)
     ** Re-attach our buttons to the main map button list, only in non-edit mode.
     */
     if (!Debug_Map) {
+#ifndef REMASTER_BUILD
+        /*
+        ** The support power panel is attached first, so that it is checked
+        ** before the tactical map. A click on a power must not also be a map
+        ** order.
+        */
+        SupportPanel.Button.Zap();
+        Add_A_Button(SupportPanel.Button);
+#endif
         TacButton.Zap();
         Add_A_Button(TacButton);
     }

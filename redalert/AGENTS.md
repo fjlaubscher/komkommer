@@ -8,6 +8,7 @@ Read the root guide first. Do not copy TD identifiers or its `Altitude` field.
 | --- | --- |
 | Selection/input | `display.cpp/.h`, shared keyboard/gadget code |
 | Production and base AI | `house.cpp/.h`, `sidebar.cpp`, `factory.cpp` |
+| Support power panel | `super.cpp/.h`, `sidebar.cpp`, `display.cpp` |
 | Rally, docks, exits | `building.cpp/.h`, `event.cpp/.h`, `drive.cpp`, `foot.cpp`, `techno.cpp`, `unit.cpp` |
 | Saboteur | `defines.h`, `idata.cpp`, `infantry.cpp`, `techno.cpp`, `house.cpp`, `dllinterface.cpp` |
 | Aircraft sight | `aadata.cpp`, `aircraft.cpp` |
@@ -33,5 +34,6 @@ Read the root guide first. Do not copy TD identifiers or its `Altitude` field.
 - `Set_Cursor_Pos` moves the placement cursor back when it would hang off the edge of the tactical map, so `ZoneCell` is not always the cell the mouse is over. Anything that has to agree with a click has to use the raw mouse cell.
 - Game Controls applies speed and scroll on Esc. Sound Controls saves when it closes. Options use `Paths.User_Path()/redalert.ini`, not whichever `redalert.ini` the asset search finds.
 - Keep campaign and non-campaign atom damage apart. Current numbers are in `docs/komkommer.md`.
+- The super weapons live in their own always visible panel on the left edge of the screen, not in the production sidebar. `Map.Add(RTTI_SPECIAL, ...)` does nothing in the standalone build; the panel reads `PlayerPtr->SuperWeapon[type].Is_Present()` instead. The panel is a gadget at the head of the map button list, so a click on it is not a map order.
 
 Build target: `KomkommerRA`, or `RedAlert` for the DLL.

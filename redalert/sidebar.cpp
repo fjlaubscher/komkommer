@@ -218,6 +218,10 @@ void SidebarClass::One_Time(void)
 
     PowerClass::One_Time();
 
+#ifndef REMASTER_BUILD
+    SupportPanel.One_Time();
+#endif
+
     /*
     **	This sets up the clipping window. This window is used by the shape drawing
     **	code so that as the sidebar buildable buttons scroll, they get properly
@@ -268,6 +272,10 @@ void SidebarClass::One_Time(void)
 void SidebarClass::Init_Clear(void)
 {
     PowerClass::Init_Clear();
+
+#ifndef REMASTER_BUILD
+    SupportPanel.Init_Clear();
+#endif
 
     IsToRedraw = true;
     IsRepairActive = false;
@@ -664,6 +672,16 @@ bool SidebarClass::Add(RTTIType type, int id, bool via_capture)
 {
     assert((unsigned)type < RTTI_COUNT);
 
+#ifndef REMASTER_BUILD
+    /*
+    ** Support powers are shown in their own panel on the left edge of the
+    ** screen, not in the production sidebar.
+    */
+    if (type == RTTI_SPECIAL) {
+        return (false);
+    }
+#endif
+
     /*
     ** Add the sidebar only if we're not in editor mode.
     */
@@ -785,6 +803,15 @@ void SidebarClass::Draw_It(bool complete)
             Zoom.Draw_Me(true);
         }
     }
+
+#ifndef REMASTER_BUILD
+    /*
+    **	The support power panel is drawn last, because it sits on top of the
+    **	tactical map.
+    */
+    SupportPanel.Draw_It();
+#endif
+
     IsToRedraw = false;
 
     BEnd(BENCH_SIDEBAR);
@@ -823,6 +850,13 @@ void SidebarClass::AI(KeyNumType& input, int x, int y)
         PowerClass::AI(input, x, y);
         return;
     }
+
+#ifndef REMASTER_BUILD
+    /*
+    **	Keep the support power panel in step with the powers the player has.
+    */
+    SupportPanel.AI();
+#endif
 
     /*
     **	Toggle the sidebar in and out with the <TAB> key.
@@ -1911,6 +1945,16 @@ bool SidebarClass::StripClass::Recalc(void)
     bool redraw = false;
     for (int index = 0; index < BuildableCount; index++) {
         TechnoTypeClass const* tech = Fetch_Techno_Type(Buildables[index].BuildableType, Buildables[index].BuildableID);
+#ifndef REMASTER_BUILD
+        /*
+        **	Support powers are shown in their own panel on the left edge of the
+        **	screen. A saved game can still have one in the sidebar, so it is
+        **	dropped here.
+        */
+        if (Buildables[index].BuildableType == RTTI_SPECIAL) {
+            ok = false;
+        } else
+#endif
         if (tech != NULL) {
             ok = tech->Who_Can_Build_Me(true, false, PlayerPtr->Class->House) != NULL;
         } else {

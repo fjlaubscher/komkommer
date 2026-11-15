@@ -8,6 +8,7 @@ Read the root guide first. TD constants and fields are not RA's.
 | --- | --- |
 | Selection and placement | `display.cpp/.h` |
 | Production and base AI | `house.cpp/.h`, `sidebar.cpp`, `factory.cpp`, `bdata.cpp` |
+| Support power panel | `super.cpp/.h`, `sidebar.cpp`, `display.cpp` |
 | Rally, docks, exits | `building.cpp/.h`, `event.cpp/.h`, `drive.cpp`, `foot.cpp`, `techno.cpp`, `unit.cpp` |
 | Aircraft sight | `aadata.cpp`, `aircraft.cpp` |
 | Nuke and Ion Cannon | `anim.cpp` |
@@ -37,5 +38,6 @@ Read the root guide first. TD constants and fields are not RA's.
 - `Set_Cursor_Pos` moves the placement cursor back when it would hang off the edge of the tactical map, so `ZoneCell` is not always the cell the mouse is over. Anything that has to agree with a click has to use the raw mouse cell.
 - Infantry melt in tiberium here, but not in RA. `FootClass::Takes_Tiberium_Damage` is the one rule: it drives both the damage in `Per_Cell_Process` and the path cost that keeps infantry off fields. `INFANTRY_E5` is immune.
 - Ion Cannon area damage applies in every mode. Nuke campaign and non-campaign values stay separate. Numbers are in `docs/komkommer.md`.
+- The Ion Cannon, Nuke and Air Strike live in their own always visible panel on the left edge of the screen, not in the production sidebar. `Map.Add(RTTI_SPECIAL, ...)` does nothing in the standalone build; the panel reads `PlayerPtr->IonCannon.Is_Present()` and its siblings instead. The panel is a gadget at the head of the map button list, so a click on it is not a map order.
 
 Build target: `KomkommerTD`, or `TiberianDawn` for the DLL. Building and house layout changes need a fresh game.

@@ -31,6 +31,18 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - **Komkommer:** The credit count renders on the **sidebar-toggle tab** at the top-right instead of the word "Sidebar". Clicking that tab still collapses/expands the sidebar, and the counter keeps its classic tick-up/tick-down animation and money sounds. The old separate credits tab is gone, which also moves the counter out from under the macOS screen notch.
 - RA's "insufficient funds" flash now flashes that right-edge tab. RA with `AllowSidebarToggle=false` (sidebar always visible) already showed its credits tab on the right edge and is unchanged; the RA mission-timer tab keeps its position. Remastered host UI is unchanged.
 
+### Support powers have their own panel (standalone)
+- **Vanilla:** Super weapons are ordinary entries in the production sidebar. They scroll away with the other buildable icons, they vanish when the sidebar is collapsed, and gaining one pops the sidebar open.
+- **Komkommer (standalone executables only):** Support powers are a UI area of their own. They are shown in a panel on the **far left edge of the screen**, over the tactical map, that is **always visible**. It does not collapse with the sidebar and it does not scroll.
+  - The panel shows one cameo per power the player currently has, in a fixed order (TD: Ion Cannon, Nuke, Air Strike; RA: Sonar Pulse, Nuke, Chronosphere, Paratroopers, Paratroop Infantry, Spy Plane, Iron Curtain, GPS). A power appears as soon as it is available and disappears again when it is taken away.
+  - The charge of each power uses the same clock overlay the sidebar used, and a charged power gets the same **Ready** pip.
+  - A **left click** fires the power: a ready power enters targeting mode, and a power that is still charging gives the usual "not ready" feedback. A **right click** leaves targeting mode again. Hovering a power shows its name.
+  - The panel is only as big as the powers it holds, and it only appears at all while the player has at least one support power. It stays where it is when the sidebar is collapsed.
+  - **The panel sits on top of the tactical map, so the leftmost column of the map cannot be clicked on while a power is shown there.** The map still scrolls under it.
+  - Support powers are no longer in the production sidebar, and gaining one no longer pops the sidebar open.
+  - TD's air strike only shows up when the game grants it, the way it always did. It is not a regular support power yet.
+  - The Remastered client owns its own UI and is unchanged: its sidebar still carries the super weapon buttons.
+
 ### Vertical sync (standalone)
 - **Vanilla:** The SDL2 renderer presented frames unsynchronized, so fast motion could tear (notably in windowed mode on macOS).
 - **Komkommer:** The renderer is created with vsync by default, giving tear-free presentation. Set `VSync=false` under `[Video]` in `conquer.ini`/`redalert.ini` to restore uncapped presenting (the `FrameLimit` setting still applies either way). The frame limiter adapts to the blocking present, so game and movie pacing are unchanged. SDL1 and Remastered rendering are unchanged.

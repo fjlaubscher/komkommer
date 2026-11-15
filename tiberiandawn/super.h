@@ -37,6 +37,11 @@
 
 #include "ftimer.h"
 
+#ifndef REMASTER_BUILD
+// The support power panel is a gadget, and this header can be reached before gadget.h.
+#include "gadget.h"
+#endif
+
 class SuperClass
 {
 public:
@@ -103,5 +108,72 @@ public:
         ANIMATION_STAGES = 102
     };
 };
+
+#ifndef REMASTER_BUILD
+
+/*
+**	Support powers are a UI area of their own. They are shown in a panel on the
+**	left edge of the screen that is always visible, instead of scrolling away
+**	in the production sidebar.
+*/
+class SupportPowerPanelClass
+{
+public:
+    SupportPowerPanelClass(void);
+
+    void One_Time(void);
+    void Init_Clear(void);
+    void AI(void);
+    void Draw_It(void);
+    void Flag_To_Redraw(void);
+
+    /*
+    **	The whole panel is a single gadget. It works out which power was
+    **	clicked from the mouse position.
+    */
+    class ButtonClass : public GadgetClass
+    {
+    public:
+        ButtonClass(void)
+            : GadgetClass(0, 0, 0, 0, LEFTPRESS | LEFTRELEASE | LEFTHELD | LEFTUP | RIGHTPRESS)
+        {
+        }
+
+    protected:
+        virtual int Action(unsigned flags, KeyNumType& key);
+    };
+
+    static ButtonClass Button;
+
+private:
+    int Slot_At(int x, int y) const;
+    void Layout(void);
+
+    enum
+    {
+        MAX_POWERS = 3
+    };
+
+    struct SlotClass
+    {
+        SpecialWeaponType Type;
+        SuperClass* Power;
+        int Stage;
+    };
+
+    SlotClass Slots[MAX_POWERS];
+    int SlotCount;
+    int SlotWidth;
+    int SlotHeight;
+    int Rows;
+    int Columns;
+    int PanelX;
+    int PanelY;
+    unsigned IsToRedraw : 1;
+};
+
+extern SupportPowerPanelClass SupportPanel;
+
+#endif
 
 #endif

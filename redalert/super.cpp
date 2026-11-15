@@ -377,3 +377,411 @@ void SuperClass::Forced_Charge(bool player)
         }
     }
 }
+
+#ifndef REMASTER_BUILD
+
+/*
+**	Support power panel.
+*/
+SupportPowerPanelClass::ButtonClass SupportPowerPanelClass::Button;
+SupportPowerPanelClass SupportPanel;
+
+SupportPowerPanelClass::SupportPowerPanelClass(void)
+    : SlotCount(0)
+    , SlotWidth(0)
+    , SlotHeight(0)
+    , Rows(1)
+    , Columns(1)
+    , PanelX(0)
+    , PanelY(0)
+    , IsToRedraw(true)
+{
+    for (int index = 0; index < SPC_COUNT; index++) {
+        Slots[index].Type = SPC_NONE;
+        Slots[index].Power = NULL;
+        Slots[index].Stage = -1;
+    }
+}
+
+/***********************************************************************************************
+ * SupportPowerPanelClass::One_Time -- Sets up the size of the panel slots.                      *
+ *                                                                                             *
+ *    The slots are the same size as the objects in the production sidebar, so the support      *
+ *    power art is drawn at the same scale as it always was.                                     *
+ *                                                                                             *
+ * INPUT:   none                                                                               *
+ *                                                                                             *
+ * OUTPUT:  none                                                                               *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *    11/15/2026 : Created.                                                                    *
+ *=============================================================================================*/
+void SupportPowerPanelClass::One_Time(void)
+{
+    SlotWidth = SidebarClass::StripClass::OBJECT_WIDTH * RESFACTOR;
+    SlotHeight = SidebarClass::StripClass::OBJECT_HEIGHT * RESFACTOR;
+    Layout();
+}
+
+/***********************************************************************************************
+ * SupportPowerPanelClass::Init_Clear -- Clears the panel to a known state.                      *
+ *                                                                                             *
+ * INPUT:   none                                                                               *
+ *                                                                                             *
+ * OUTPUT:  none                                                                               *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *    11/15/2026 : Created.                                                                    *
+ *=============================================================================================*/
+void SupportPowerPanelClass::Init_Clear(void)
+{
+    SlotCount = 0;
+
+    for (int index = 0; index < SPC_COUNT; index++) {
+        Slots[index].Type = SPC_NONE;
+        Slots[index].Power = NULL;
+        Slots[index].Stage = -1;
+    }
+
+    Button.X = 0;
+    Button.Y = 0;
+    Button.Width = 0;
+    Button.Height = 0;
+    IsToRedraw = true;
+}
+
+/***********************************************************************************************
+ * SupportPowerPanelClass::Layout -- Works out where the powers sit on the panel.                *
+ *                                                                                             *
+ *    The panel is a column on the left edge of the screen. If there are more powers than fit   *
+ *    in one column, the panel grows to the right instead of off the bottom of the screen.      *
+ *                                                                                             *
+ * INPUT:   none                                                                               *
+ *                                                                                             *
+ * OUTPUT:  none                                                                               *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *    11/15/2026 : Created.                                                                    *
+ *=============================================================================================*/
+void SupportPowerPanelClass::Layout(void)
+{
+    PanelX = 0;
+    PanelY = Map.TacPixelY;
+
+    int available = SeenBuff.Get_Height() - PanelY;
+    Rows = (SlotHeight > 0) ? (available / SlotHeight) : 1;
+    if (Rows < 1) {
+        Rows = 1;
+    }
+
+    Columns = (SlotCount > 0) ? ((SlotCount + Rows - 1) / Rows) : 1;
+
+    Button.X = PanelX;
+    Button.Y = PanelY;
+    Button.Width = Columns * SlotWidth;
+    Button.Height = ((SlotCount < Rows) ? SlotCount : Rows) * SlotHeight;
+
+    if (SlotCount == 0) {
+        Button.Width = 0;
+        Button.Height = 0;
+    }
+}
+
+/***********************************************************************************************
+ * SupportPowerPanelClass::AI -- Keeps the panel in step with the powers the player has.         *
+ *                                                                                             *
+ *    A power shows up in the panel as soon as it is available and disappears again when it     *
+ *    is taken away. The charge of every power is watched as well, because the clock overlay    *
+ *    that shows it has to be redrawn as the power recharges.                                   *
+ *                                                                                             *
+ * INPUT:   none                                                                               *
+ *                                                                                             *
+ * OUTPUT:  none                                                                               *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *    11/15/2026 : Created.                                                                    *
+ *=============================================================================================*/
+void SupportPowerPanelClass::AI(void)
+{
+    if (Debug_Map || PlayerPtr == NULL) {
+        SlotCount = 0;
+        Button.Width = 0;
+        Button.Height = 0;
+        return;
+    }
+
+    SuperClass* powers[SPC_COUNT];
+    SpecialWeaponType types[SPC_COUNT];
+    int count = 0;
+
+    for (int type = SPC_FIRST; type < SPC_COUNT; type++) {
+        if (PlayerPtr->SuperWeapon[type].Is_Present()) {
+            powers[count] = &PlayerPtr->SuperWeapon[type];
+            types[count] = SpecialWeaponType(type);
+            count++;
+        }
+    }
+
+    bool changed = (count != SlotCount);
+    for (int index = 0; index < count && !changed; index++) {
+        changed = (Slots[index].Type != types[index]) || (Slots[index].Power != powers[index]);
+    }
+
+    if (changed) {
+        int oldcount = SlotCount;
+        for (int index = 0; index < count; index++) {
+            Slots[index].Type = types[index];
+            Slots[index].Power = powers[index];
+            Slots[index].Stage = -1;
+        }
+        SlotCount = count;
+        IsToRedraw = true;
+
+        if (count != oldcount) {
+            /*
+            **	The panel changed size, so the map has to be redrawn to clear
+            **	the area the panel used to cover.
+            */
+            Map.Flag_To_Redraw(true);
+        }
+    }
+
+    Layout();
+
+    for (int index = 0; index < SlotCount; index++) {
+        int stage = Slots[index].Power->Anim_Stage();
+        if (stage != Slots[index].Stage) {
+            Slots[index].Stage = stage;
+            IsToRedraw = true;
+        }
+    }
+
+    if (IsToRedraw) {
+        IsToRedraw = false;
+        Map.Flag_To_Redraw(false);
+    }
+}
+
+/***********************************************************************************************
+ * SupportPowerPanelClass::Draw_It -- Renders the support power panel.                           *
+ *                                                                                             *
+ * INPUT:   none                                                                               *
+ *                                                                                             *
+ * OUTPUT:  none                                                                               *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *    11/15/2026 : Created.                                                                    *
+ *=============================================================================================*/
+void SupportPowerPanelClass::Draw_It(void)
+{
+    if (SlotCount == 0 || Debug_Map) {
+        return;
+    }
+
+    if (!LogicPage->Lock()) {
+        return;
+    }
+
+    int width = Columns * SlotWidth;
+    int height = ((SlotCount < Rows) ? SlotCount : Rows) * SlotHeight;
+
+    /*
+    **	Draw the panel background.
+    */
+    Draw_Box(PanelX, PanelY, width, height, BOXSTYLE_RAISED, true);
+
+    for (int index = 0; index < SlotCount; index++) {
+        int x = PanelX + ((index / Rows) * SlotWidth);
+        int y = PanelY + ((index % Rows) * SlotHeight);
+        SuperClass* power = Slots[index].Power;
+        void const* cameo = Map.Column[0].Get_Special_Cameo(Slots[index].Type);
+
+        if (cameo != NULL) {
+            CC_Draw_Shape(cameo, 0, x, y, WINDOW_MAIN, SHAPE_NORMAL);
+        }
+
+        if (power->Is_Ready()) {
+
+            /*
+            **	The power is charged and waiting to be fired.
+            */
+            CC_Draw_Shape(ObjectTypeClass::PipShapes,
+                          PIP_READY,
+                          x + (17 * RESFACTOR),
+                          y + (4 * RESFACTOR),
+                          WINDOW_MAIN,
+                          SHAPE_CENTER);
+        } else {
+
+            /*
+            **	The clock shows how far the power has recharged.
+            */
+            CC_Draw_Shape(Map.Column[0].ClockShapes,
+                          power->Anim_Stage() + 1,
+                          x,
+                          y,
+                          WINDOW_MAIN,
+                          SHAPE_NORMAL | SHAPE_GHOST,
+                          NULL,
+                          Map.Column[0].ClockTranslucentTable);
+        }
+    }
+
+    LogicPage->Unlock();
+}
+
+/***********************************************************************************************
+ * SupportPowerPanelClass::Slot_At -- Finds the power that is under the mouse.                  *
+ *                                                                                             *
+ * INPUT:   x,y   -- The mouse position in screen coordinates.                                   *
+ *                                                                                             *
+ * OUTPUT:  The index of the power under the mouse, or -1 if there is none.                     *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *    11/15/2026 : Created.                                                                    *
+ *=============================================================================================*/
+int SupportPowerPanelClass::Slot_At(int x, int y) const
+{
+    if (SlotCount == 0 || SlotWidth == 0 || SlotHeight == 0) {
+        return (-1);
+    }
+
+    if (x < PanelX || y < PanelY) {
+        return (-1);
+    }
+
+    int row = (y - PanelY) / SlotHeight;
+    int column = (x - PanelX) / SlotWidth;
+
+    if (column < 0 || column >= Columns || row < 0 || row >= Rows) {
+        return (-1);
+    }
+
+    int slot = (column * Rows) + row;
+    if (slot < 0 || slot >= SlotCount) {
+        return (-1);
+    }
+    return (slot);
+}
+
+/***********************************************************************************************
+ * SupportPowerPanelClass::Flag_To_Redraw -- Marks the panel as needing a redraw.               *
+ *                                                                                             *
+ * INPUT:   none                                                                               *
+ *                                                                                             *
+ * OUTPUT:  none                                                                               *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *    11/15/2026 : Created.                                                                    *
+ *=============================================================================================*/
+void SupportPowerPanelClass::Flag_To_Redraw(void)
+{
+    IsToRedraw = true;
+    Map.Flag_To_Redraw(false);
+}
+
+/***********************************************************************************************
+ * SupportPowerPanelClass::ButtonClass::Action -- Handles the mouse over the support panel.     *
+ *                                                                                             *
+ *    A left click fires the power that is under the mouse. A right click leaves the targeting   *
+ *    mode again.                                                                              *
+ *                                                                                             *
+ * INPUT:   flags -- The gadget event flags that triggered the call to this function.            *
+ *                                                                                             *
+ *          key   -- A reference to the keyboard event (if any).                               *
+ *                                                                                             *
+ * OUTPUT:  bool; Should processing be aborted on any succeeding buttons in the chain?         *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *    11/15/2026 : Created.                                                                    *
+ *=============================================================================================*/
+int SupportPowerPanelClass::ButtonClass::Action(unsigned flags, KeyNumType& key)
+{
+    int mousex;
+    int mousey;
+
+    /*
+    **	For a button event the mouse position is held in the queue globals, because
+    **	that is where the mouse was when the button was pressed.
+    */
+    if (flags & (LEFTPRESS | LEFTRELEASE | RIGHTPRESS | RIGHTRELEASE)) {
+        mousex = Keyboard->MouseQX;
+        mousey = Keyboard->MouseQY;
+    } else {
+        mousex = Get_Mouse_X();
+        mousey = Get_Mouse_Y();
+    }
+
+    int slot = SupportPanel.Slot_At(mousex, mousey);
+    if (slot < 0) {
+        return (false);
+    }
+
+    /*
+    **	The mouse is over the panel, not over the tactical map.
+    */
+    Map.Override_Mouse_Shape(MOUSE_NORMAL);
+
+    SuperClass* power = SupportPanel.Slots[slot].Power;
+    SpecialWeaponType type = SupportPanel.Slots[slot].Type;
+
+    /*
+    **	Show what this power is while the mouse is over it.
+    */
+    if (flags & LEFTUP) {
+        RemapControlType* scheme = GadgetClass::Get_Color_Scheme();
+        if (scheme != NULL && (unsigned)type < SPC_COUNT) {
+            Map.Help_Text(SpecialWeaponHelp[type], mousex, mousey, scheme->Color, true);
+        }
+        flags &= ~LEFTUP;
+    }
+
+    /*
+    **	A right mouse button press cancels the targeting mode.
+    */
+    if (flags & RIGHTPRESS) {
+        Map.IsTargettingMode = SPC_NONE;
+    }
+
+    /*
+    **	A left mouse button press fires the power, if it is ready.
+    */
+    if (flags & LEFTPRESS) {
+        if ((unsigned)type < SPC_COUNT) {
+            if (power->Is_Ready()) {
+                if (type != SPC_SONAR_PULSE) {
+                    Map.IsTargettingMode = type;
+                    Unselect_All();
+                    Speak(VOX_SELECT_TARGET);
+                } else {
+                    OutList.Add(EventClass(EventClass::SPECIAL_PLACE, SPC_SONAR_PULSE, 0));
+                }
+            } else {
+                power->Impatient_Click();
+            }
+        }
+    }
+
+    /*
+    **	The click was on the panel, so the tactical map must not act on it.
+    */
+    return (true);
+}
+
+#endif
