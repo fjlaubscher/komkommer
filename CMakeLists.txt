@@ -44,6 +44,12 @@ option(BUILD_WITH_ASAN "Build with address sanitizer" OFF)
 option(GERMAN "Use German instead of English." OFF)
 option(FRENCH "Use French instead of English." OFF)
 
+# The Remastered Collection loads 32-bit DLLs. Stop before a 64-bit configure writes one it cannot load.
+if((BUILD_REMASTERTD OR BUILD_REMASTERRA) AND NOT (CMAKE_SIZEOF_VOID_P EQUAL 4))
+    message(FATAL_ERROR
+        "Remastered DLLs have to be 32-bit. This compiler uses ${CMAKE_SIZEOF_VOID_P}-byte pointers, so the DLL it would build will not load in the game. Open the x86 Native Tools prompt and configure again in a separate build directory.")
+endif()
+
 if(WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
     option(WIN9X "Enable support for Windows 95/98/ME." OFF)
     option(DSOUND "Enable DirectSound audio. (deprecated)" OFF)
