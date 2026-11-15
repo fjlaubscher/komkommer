@@ -2,9 +2,11 @@
 
 #include <stddef.h>
 
-// The numbers below are the layout this tree already compiles. They are here so a
-// later edit that reorders a field, or changes a packet, fails the build. Do not
-// move a field to make an assert match.
+// The numbers below are the layout this tree already compiles. A failing assert
+// is a layout change: saved games dump these classes with their padding, and a
+// LAN packet is EventClass, so the old bytes no longer load or match a peer.
+// After an intentional change, update the numbers here. Do not move a field to
+// make an assert match.
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -40,9 +42,11 @@ static_assert(EventClass::TIMING == 25, "event id");
 static_assert(EventClass::PROCESS_TIME == 26, "event id");
 static_assert(EventClass::RALLY == 27, "event id");
 static_assert(EventClass::CANCEL_QUEUE == 28, "event id");
-static_assert(EventClass::LAST_EVENT == 29, "event id");
+static_assert(EventClass::PLACE_LINE == 29, "event id");
+static_assert(EventClass::LAST_EVENT == 30, "event id");
 static_assert(EventClass::CANCEL_QUEUE == EventClass::RALLY + 1, "CANCEL_QUEUE follows RALLY");
-static_assert(EventClass::LAST_EVENT == EventClass::CANCEL_QUEUE + 1, "LAST_EVENT follows CANCEL_QUEUE");
+static_assert(EventClass::PLACE_LINE == EventClass::CANCEL_QUEUE + 1, "PLACE_LINE follows CANCEL_QUEUE");
+static_assert(EventClass::LAST_EVENT == EventClass::PLACE_LINE + 1, "LAST_EVENT follows PLACE_LINE");
 
 // Same size on LP64, Windows x64, and the 32-bit remaster DLL.
 static_assert(sizeof(EventClass) == 22, "EventClass");
@@ -124,7 +128,7 @@ PIN(TerrainClass, 80);
 PIN(TerrainTypeClass, 88);
 PIN(UnitClass, 440);
 PIN(UnitTypeClass, 120);
-PIN(MouseClass, 2768);
+PIN(MouseClass, 3288);
 PIN(CellClass, 72);
 PIN(FactoryClass, 40);
 PIN(BaseClass, 48);
@@ -171,7 +175,7 @@ PIN(TerrainClass, 64);
 PIN(TerrainTypeClass, 80);
 PIN(UnitClass, 400);
 PIN(UnitTypeClass, 112);
-PIN(MouseClass, 2736);
+PIN(MouseClass, 3256);
 PIN(CellClass, 72);
 PIN(FactoryClass, 40);
 PIN(BaseClass, 48);
