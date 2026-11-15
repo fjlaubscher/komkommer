@@ -2050,10 +2050,11 @@ void DisplayClass::Draw_It(bool forced)
 #ifndef REMASTER_BUILD
                 /*
                 ** The support power panel is drawn on top of the tactical map, so
-                ** the panel pixels were shifted along with the map. They have to
-                ** be painted over, or the panel leaves a trail of copies behind.
+                ** the panel pixels were shifted along with the map. The cells they
+                ** ended up on have to be flagged, or the panel leaves a trail of
+                ** copies behind.
                 */
-                SupportPanel.Paint_Over_Scrolled(oldx, oldy);
+                SupportPanel.Scrolled(oldx, oldy);
 #endif
 
             } else {

@@ -394,6 +394,8 @@ SupportPowerPanelClass::SupportPowerPanelClass(void)
     , Columns(1)
     , PanelX(0)
     , PanelY(0)
+    , PanelWidth(0)
+    , PanelHeight(0)
     , IsToRedraw(true)
 {
     for (int index = 0; index < SPC_COUNT; index++) {
@@ -451,6 +453,8 @@ void SupportPowerPanelClass::Init_Clear(void)
     Button.Y = 0;
     Button.Width = 0;
     Button.Height = 0;
+    PanelWidth = 0;
+    PanelHeight = 0;
     IsToRedraw = true;
 }
 
@@ -482,10 +486,13 @@ void SupportPowerPanelClass::Layout(void)
 
     Columns = (SlotCount > 0) ? ((SlotCount + Rows - 1) / Rows) : 1;
 
+    PanelWidth = Columns * SlotWidth;
+    PanelHeight = ((SlotCount < Rows) ? SlotCount : Rows) * SlotHeight;
+
     Button.X = PanelX;
     Button.Y = PanelY;
-    Button.Width = Columns * SlotWidth;
-    Button.Height = ((SlotCount < Rows) ? SlotCount : Rows) * SlotHeight;
+    Button.Width = PanelWidth;
+    Button.Height = PanelHeight;
 
     if (SlotCount == 0) {
         Button.Width = 0;
@@ -556,6 +563,14 @@ void SupportPowerPanelClass::AI(void)
 
     Layout();
 
+    /*
+    **	The panel is drawn on top of the tactical map, so the map has to be
+    **	drawn over it again. Flagging the cells that the panel covers is enough
+    **	for that: the map draws the terrain and the objects of a flagged cell
+    **	again, and that erases the panel.
+    */
+    Flag_Cells(PanelX, PanelY, PanelWidth, PanelHeight);
+
     for (int index = 0; index < SlotCount; index++) {
         int stage = Slots[index].Power->Anim_Stage();
         if (stage != Slots[index].Stage) {
@@ -571,11 +586,12 @@ void SupportPowerPanelClass::AI(void)
 }
 
 /***********************************************************************************************
- * SupportPowerPanelClass::Paint_Over_Scrolled -- Erases the panel after the map scrolled.     *
+ * SupportPowerPanelClass::Scrolled -- Flags the cells the panel was scrolled onto.               *
  *                                                                                             *
- *    The panel is drawn on top of the tactical map, so the map scroll shifts the panel pixels   *
- *    along with the map. Those pixels have to be painted over, or the panel leaves a trail of   *
- *    copies behind it.                                                                         *
+ *    The panel is drawn on top of the tactical map, so the map scroll shifts the panel pixels    *
+ *    along with the map. Those pixels have to be painted over, or the panel leaves a trail of    *
+ *    copies behind it. Flagging the cells is enough for that: the map draws the terrain and the   *
+ *    objects of a flagged cell again, and that covers the copies.                                *
  *                                                                                             *
  * INPUT:   dx,dy -- The distance in pixels that the map was scrolled by.                        *
  *                                                                                             *
@@ -586,34 +602,17 @@ void SupportPowerPanelClass::AI(void)
  * HISTORY:                                                                                    *
  *    11/15/2026 : Created.                                                                    *
  *=============================================================================================*/
-void SupportPowerPanelClass::Paint_Over_Scrolled(int dx, int dy)
+void SupportPowerPanelClass::Scrolled(int dx, int dy)
 {
-    if (SlotCount == 0 || SlotWidth == 0 || SlotHeight == 0) {
-        return;
-    }
-
-    int width = Columns * SlotWidth;
-    int height = ((SlotCount < Rows) ? SlotCount : Rows) * SlotHeight;
-
-    Paint_Over(PanelX + dx, PanelY + dy, width, height);
-
-    /*
-    **	The help text is drawn next to the panel, so it was scrolled as well.
-    */
-    int mousex = Get_Mouse_X();
-    int mousey = Get_Mouse_Y();
-    int text = Help_Text_At(mousex, mousey);
-    if (text != TXT_NONE) {
-        int textwidth = String_Pixel_Width(Text_String(text));
-        Paint_Over(PanelX + width + dx, mousey + dy, textwidth + 2, FontHeight + 2);
-    }
+    Flag_Cells(PanelX + dx, PanelY + dy, PanelWidth, PanelHeight);
 }
 
 /***********************************************************************************************
- * SupportPowerPanelClass::Paint_Over -- Paints over a piece of the map and flags its cells.   *
+ * SupportPowerPanelClass::Flag_Cells -- Flags the map cells under an area for redraw.           *
  *                                                                                             *
- *    The area is painted black, because that is what a cell that is not on the map looks like.  *
- *    The cells underneath are flagged, so that the map is drawn over the black again.           *
+ *    The panel is drawn on top of the tactical map, so the map has to be drawn over it again.     *
+ *    That is done by flagging the cells that the area covers. The map draws the terrain and the  *
+ *    objects of a flagged cell again, and that erases whatever was drawn over it.               *
  *                                                                                             *
  * INPUT:   x,y    -- The upper left corner of the area in screen coordinates.                   *
  *                                                                                             *
@@ -628,51 +627,46 @@ void SupportPowerPanelClass::Paint_Over_Scrolled(int dx, int dy)
  * HISTORY:                                                                                    *
  *    11/15/2026 : Created.                                                                    *
  *=============================================================================================*/
-void SupportPowerPanelClass::Paint_Over(int x, int y, int width, int height)
+void SupportPowerPanelClass::Flag_Cells(int x, int y, int width, int height)
 {
-    /*
-    **	Only the part of the area that is on the map has to be painted over.
-    */
-    int right = Map.TacPixelX + Lepton_To_Pixel(Map.TacLeptonWidth) - 1;
-    int bottom = Map.TacPixelY + Lepton_To_Pixel(Map.TacLeptonHeight) - 1;
+    if (width < 1 || height < 1) {
+        return;
+    }
 
-    if (x < Map.TacPixelX) {
-        x = Map.TacPixelX;
+    /*
+    **	Only the part of the area that is on the tactical map can be flagged.
+    */
+    int left = Map.TacPixelX;
+    int top = Map.TacPixelY;
+    int right = Map.TacPixelX + Lepton_To_Pixel(Map.TacLeptonWidth);
+    int bottom = Map.TacPixelY + Lepton_To_Pixel(Map.TacLeptonHeight);
+
+    if (x < left) {
+        x = left;
     }
-    if (y < Map.TacPixelY) {
-        y = Map.TacPixelY;
+    if (y < top) {
+        y = top;
     }
-    if (x + width - 1 > right) {
-        width = right - x + 1;
+    if (x + width > right) {
+        width = right - x;
     }
-    if (y + height - 1 > bottom) {
-        height = bottom - y + 1;
+    if (y + height > bottom) {
+        height = bottom - y;
     }
     if (width < 1 || height < 1) {
         return;
     }
 
-    CELL ul = Map.Click_Cell_Calc(x, y);
-    CELL lr = Map.Click_Cell_Calc(x + width - 1, y + height - 1);
-    int x1, y1, x2, y2;
-
-    if (ul == -1 || lr == -1) {
-        return;
-    }
-    if (!Map.Coord_To_Pixel(Coord_Whole(Cell_Coord(ul)), x1, y1)
-        || !Map.Coord_To_Pixel(Coord_Whole(Cell_Coord(lr)), x2, y2)) {
-        return;
-    }
-
     /*
-    **	The terrain of a cell is drawn with an icon that is twice the size of a
-    **	cell, so the painted over area has to be that big as well. Otherwise
-    **	a stripe of black would be left behind.
+    **	The cells of the map lie on a grid that starts at the upper left corner
+    **	of the tactical map, so the whole cells that the area touches have to be
+    **	flagged.
     */
-    HidPage.Fill_Rect(x1, y1, x2 + ICON_PIXEL_W, y2 + ICON_PIXEL_H, BLACK);
+    int startx = left + (((x - left) / CELL_PIXEL_W) * CELL_PIXEL_W);
+    int starty = top + (((y - top) / CELL_PIXEL_H) * CELL_PIXEL_H);
 
-    for (int py = y1; py <= y2; py += CELL_PIXEL_H) {
-        for (int px = x1; px <= x2; px += CELL_PIXEL_W) {
+    for (int py = starty; py < y + height; py += CELL_PIXEL_H) {
+        for (int px = startx; px < x + width; px += CELL_PIXEL_W) {
             CELL cell = Map.Click_Cell_Calc(px, py);
             if (cell != -1) {
                 Map[cell].Redraw_Objects(true);
@@ -880,9 +874,10 @@ int SupportPowerPanelClass::ButtonClass::Action(unsigned flags, KeyNumType& key)
     */
     if (flags & LEFTUP) {
         RemapControlType* scheme = GadgetClass::Get_Color_Scheme();
-        if (scheme != NULL && (unsigned)type < SPC_COUNT) {
-            int textwidth = String_Pixel_Width(Text_String(SpecialWeaponHelp[type]));
-            Map.Help_Text(SpecialWeaponHelp[type],
+        int text = SupportPanel.Help_Text_At(mousex, mousey);
+        if (scheme != NULL && text != TXT_NONE) {
+            int textwidth = String_Pixel_Width(Text_String(text));
+            Map.Help_Text(text,
                           SupportPanel.PanelX + (SupportPanel.Columns * SupportPanel.SlotWidth) + textwidth,
                           mousey,
                           scheme->Color,
