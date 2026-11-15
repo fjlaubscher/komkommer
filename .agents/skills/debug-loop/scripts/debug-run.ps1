@@ -5,6 +5,10 @@ param(
     # The CMake tree that holds the standalone game build.
     [string]$BuildTree = 'build/release',
 
+    # The CMake preset that configures that tree. The presets write to build/<preset>,
+    # so the preset name is taken from the tree unless it is given here.
+    [string]$Preset = '',
+
     [ValidateSet('RelWithDebInfo', 'Debug')]
     [string]$Config = 'Debug',
 
@@ -112,6 +116,11 @@ if (-not $repo) {
 $tree = Join-Path $repo $BuildTree
 $outDir = Join-Path $tree $Config
 
+# The presets configure into build/<preset>, so the tree name gives the preset name.
+if (-not $Preset) {
+    $Preset = Split-Path -Leaf $BuildTree
+}
+
 # The settings that came from the release build. The debug build keeps its own copy,
 # so the played release folder is only ever read.
 $games = @()
@@ -137,12 +146,12 @@ if ($Game -ne 'TD') {
 }
 
 if (-not (Test-Path (Join-Path $tree 'CMakeCache.txt'))) {
-    Write-Host "Configuring $BuildTree"
+    Write-Host "Configuring $BuildTree with preset $Preset"
     $vcvars = Get-VcVars
-    $configure = "call `"$vcvars`" x64 >nul && cd /d `"$repo`" && cmake --preset $BuildTree -DSDL2_ROOT_DIR=`"$Sdl2Root`" -DOPENAL_ROOT=`"$OpenalRoot`" -DCMAKE_TOOLCHAIN_FILE=`"$Toolchain`""
+    $configure = "call `"$vcvars`" x64 >nul && cd /d `"$repo`" && cmake --preset $Preset -B `"$tree`" -DSDL2_ROOT_DIR=`"$Sdl2Root`" -DOPENAL_ROOT=`"$OpenalRoot`" -DCMAKE_TOOLCHAIN_FILE=`"$Toolchain`""
     cmd /c $configure
     if ($LASTEXITCODE -ne 0) {
-        throw "Configuring $BuildTree failed with exit code $LASTEXITCODE"
+        throw "Configuring $BuildTree with preset $Preset failed with exit code $LASTEXITCODE"
     }
 }
 
@@ -217,6 +226,6 @@ foreach ($entry in $games) {
 
     if ($Launch) {
         Start-Process -FilePath $exe -WorkingDirectory $outDir
-        Write-Host "     started $entry.Name"
+        Write-Host "     started $($entry.Name)"
     }
 }
