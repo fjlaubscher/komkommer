@@ -35,5 +35,6 @@ Read the root guide first. Do not copy TD identifiers or its `Altitude` field.
 - Game Controls applies speed and scroll on Esc. Sound Controls saves when it closes. Options use `Paths.User_Path()/redalert.ini`, not whichever `redalert.ini` the asset search finds.
 - Keep campaign and non-campaign atom damage apart. Current numbers are in `docs/komkommer.md`.
 - The super weapons live in their own always visible panel on the left edge of the screen, not in the production sidebar. `Map.Add(RTTI_SPECIAL, ...)` does nothing in the standalone build; the panel reads `PlayerPtr->SuperWeapon[type].Is_Present()` instead. The panel is a gadget at the head of the map button list, so a click on it is not a map order.
+- The support power panel is drawn on top of the tactical map, and the map scroll shifts the hidden page, so the panel pixels travel with the map. `SupportPanel.Paint_Over_Scrolled()` paints over the shifted pixels and flags the cells again. Help text has to stay inside the map: text drawn off the left edge gets an empty overlap list and can never be painted over.
 
 Build target: `KomkommerRA`, or `RedAlert` for the DLL.

@@ -571,6 +571,138 @@ void SupportPowerPanelClass::AI(void)
 }
 
 /***********************************************************************************************
+ * SupportPowerPanelClass::Paint_Over_Scrolled -- Erases the panel after the map scrolled.     *
+ *                                                                                             *
+ *    The panel is drawn on top of the tactical map, so the map scroll shifts the panel pixels   *
+ *    along with the map. Those pixels have to be painted over, or the panel leaves a trail of   *
+ *    copies behind it.                                                                         *
+ *                                                                                             *
+ * INPUT:   dx,dy -- The distance in pixels that the map was scrolled by.                        *
+ *                                                                                             *
+ * OUTPUT:  none                                                                               *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *    11/15/2026 : Created.                                                                    *
+ *=============================================================================================*/
+void SupportPowerPanelClass::Paint_Over_Scrolled(int dx, int dy)
+{
+    if (SlotCount == 0 || SlotWidth == 0 || SlotHeight == 0) {
+        return;
+    }
+
+    int width = Columns * SlotWidth;
+    int height = ((SlotCount < Rows) ? SlotCount : Rows) * SlotHeight;
+
+    Paint_Over(PanelX + dx, PanelY + dy, width, height);
+
+    /*
+    **	The help text is drawn next to the panel, so it was scrolled as well.
+    */
+    int mousex = Get_Mouse_X();
+    int mousey = Get_Mouse_Y();
+    int text = Help_Text_At(mousex, mousey);
+    if (text != TXT_NONE) {
+        int textwidth = String_Pixel_Width(Text_String(text));
+        Paint_Over(PanelX + width + dx, mousey + dy, textwidth + 2, FontHeight + 2);
+    }
+}
+
+/***********************************************************************************************
+ * SupportPowerPanelClass::Paint_Over -- Paints over a piece of the map and flags its cells.   *
+ *                                                                                             *
+ *    The area is painted black, because that is what a cell that is not on the map looks like.  *
+ *    The cells underneath are flagged, so that the map is drawn over the black again.           *
+ *                                                                                             *
+ * INPUT:   x,y    -- The upper left corner of the area in screen coordinates.                   *
+ *                                                                                             *
+ *          width  -- The width of the area.                                                    *
+ *                                                                                             *
+ *          height -- The height of the area.                                                   *
+ *                                                                                             *
+ * OUTPUT:  none                                                                               *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *    11/15/2026 : Created.                                                                    *
+ *=============================================================================================*/
+void SupportPowerPanelClass::Paint_Over(int x, int y, int width, int height)
+{
+    /*
+    **	Only the part of the area that is on the map has to be painted over.
+    */
+    int right = Map.TacPixelX + Lepton_To_Pixel(Map.TacLeptonWidth) - 1;
+    int bottom = Map.TacPixelY + Lepton_To_Pixel(Map.TacLeptonHeight) - 1;
+
+    if (x < Map.TacPixelX) {
+        x = Map.TacPixelX;
+    }
+    if (y < Map.TacPixelY) {
+        y = Map.TacPixelY;
+    }
+    if (x + width - 1 > right) {
+        width = right - x + 1;
+    }
+    if (y + height - 1 > bottom) {
+        height = bottom - y + 1;
+    }
+    if (width < 1 || height < 1) {
+        return;
+    }
+
+    CELL ul = Map.Click_Cell_Calc(x, y);
+    CELL lr = Map.Click_Cell_Calc(x + width - 1, y + height - 1);
+    int x1, y1, x2, y2;
+
+    if (ul == -1 || lr == -1) {
+        return;
+    }
+    if (!Map.Coord_To_Pixel(Coord_Whole(Cell_Coord(ul)), x1, y1)
+        || !Map.Coord_To_Pixel(Coord_Whole(Cell_Coord(lr)), x2, y2)) {
+        return;
+    }
+
+    /*
+    **	The terrain of a cell is drawn with an icon that is twice the size of a
+    **	cell, so the painted over area has to be that big as well. Otherwise
+    **	a stripe of black would be left behind.
+    */
+    HidPage.Fill_Rect(x1, y1, x2 + ICON_PIXEL_W, y2 + ICON_PIXEL_H, BLACK);
+
+    for (int py = y1; py <= y2; py += CELL_PIXEL_H) {
+        for (int px = x1; px <= x2; px += CELL_PIXEL_W) {
+            CELL cell = Map.Click_Cell_Calc(px, py);
+            if (cell != -1) {
+                Map[cell].Redraw_Objects(true);
+            }
+        }
+    }
+}
+
+/***********************************************************************************************
+ * SupportPowerPanelClass::Help_Text_At -- Finds the help text of the power under the mouse.    *
+ *                                                                                             *
+ * INPUT:   x,y   -- The mouse position in screen coordinates.                                   *
+ *                                                                                             *
+ * OUTPUT:  The text number of the power under the mouse, or TXT_NONE if there is none.         *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *                                                                                             *
+ * HISTORY:                                                                                    *
+ *    11/15/2026 : Created.                                                                    *
+ *=============================================================================================*/
+int SupportPowerPanelClass::Help_Text_At(int x, int y) const
+{
+    int slot = Slot_At(x, y);
+    if (slot < 0) {
+        return (TXT_NONE);
+    }
+    return (SpecialWeaponHelp[Slots[slot].Type]);
+}
+
+/***********************************************************************************************
  * SupportPowerPanelClass::Draw_It -- Renders the support power panel.                           *
  *                                                                                             *
  * INPUT:   none                                                                               *
@@ -742,12 +874,19 @@ int SupportPowerPanelClass::ButtonClass::Action(unsigned flags, KeyNumType& key)
     SpecialWeaponType type = SupportPanel.Slots[slot].Type;
 
     /*
-    **	Show what this power is while the mouse is over it.
+    **	Show what this power is while the mouse is over it. The text is placed
+    **	to the right of the panel, because help text that is drawn off the
+    **	left edge of the tactical map can never be painted over again.
     */
     if (flags & LEFTUP) {
         RemapControlType* scheme = GadgetClass::Get_Color_Scheme();
         if (scheme != NULL && (unsigned)type < SPC_COUNT) {
-            Map.Help_Text(SpecialWeaponHelp[type], mousex, mousey, scheme->Color, true);
+            int textwidth = String_Pixel_Width(Text_String(SpecialWeaponHelp[type]));
+            Map.Help_Text(SpecialWeaponHelp[type],
+                          SupportPanel.PanelX + (SupportPanel.Columns * SupportPanel.SlotWidth) + textwidth,
+                          mousey,
+                          scheme->Color,
+                          true);
         }
         flags &= ~LEFTUP;
     }

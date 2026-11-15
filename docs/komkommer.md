@@ -39,6 +39,7 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - A **left click** fires the power: a ready power enters targeting mode, and a power that is still charging gives the usual "not ready" feedback. A **right click** leaves targeting mode again. Hovering a power shows its name.
   - The panel is only as big as the powers it holds, and it only appears at all while the player has at least one support power. It stays where it is when the sidebar is collapsed.
   - **The panel sits on top of the tactical map, so the leftmost column of the map cannot be clicked on while a power is shown there.** The map still scrolls under it.
+  - The panel does not leave marks on the map: scrolling the map paints over the panel's pixels again, and the name that pops up next to a hovered power is painted over when it goes away.
   - Support powers are no longer in the production sidebar, and gaining one no longer pops the sidebar open.
   - TD's air strike only shows up when the game grants it, the way it always did. It is not a regular support power yet.
   - The Remastered client owns its own UI and is unchanged: its sidebar still carries the super weapon buttons.

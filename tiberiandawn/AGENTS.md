@@ -39,5 +39,6 @@ Read the root guide first. TD constants and fields are not RA's.
 - Infantry melt in tiberium here, but not in RA. `FootClass::Takes_Tiberium_Damage` is the one rule: it drives both the damage in `Per_Cell_Process` and the path cost that keeps infantry off fields. `INFANTRY_E5` is immune.
 - Ion Cannon area damage applies in every mode. Nuke campaign and non-campaign values stay separate. Numbers are in `docs/komkommer.md`.
 - The Ion Cannon, Nuke and Air Strike live in their own always visible panel on the left edge of the screen, not in the production sidebar. `Map.Add(RTTI_SPECIAL, ...)` does nothing in the standalone build; the panel reads `PlayerPtr->IonCannon.Is_Present()` and its siblings instead. The panel is a gadget at the head of the map button list, so a click on it is not a map order.
+- The support power panel is drawn on top of the tactical map, and the map scroll shifts the hidden page, so the panel pixels travel with the map. `SupportPanel.Paint_Over_Scrolled()` paints over the shifted pixels and flags the cells again. Help text has to stay inside the map: text drawn off the left edge gets an empty overlap list and can never be painted over.
 
 Build target: `KomkommerTD`, or `TiberianDawn` for the DLL. Building and house layout changes need a fresh game.

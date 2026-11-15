@@ -134,6 +134,12 @@ public:
     void Flag_To_Redraw(void);
 
     /*
+    **	The map scroll shifts the panel pixels along with the map, so they
+    **	have to be painted over again.
+    */
+    void Paint_Over_Scrolled(int dx, int dy);
+
+    /*
     **	The whole panel is a single gadget. It works out which power was
     **	clicked from the mouse position.
     */
@@ -153,7 +159,9 @@ public:
 
 private:
     int Slot_At(int x, int y) const;
+    int Help_Text_At(int x, int y) const;
     void Layout(void);
+    void Paint_Over(int x, int y, int width, int height);
 
     struct SlotClass
     {
