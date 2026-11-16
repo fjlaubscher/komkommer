@@ -256,9 +256,20 @@ std::string PathsClass::Get_Filename(const char* path)
 
 std::string PathsClass::Argv_Path(const char* cmd_arg)
 {
+#if defined(__linux__)
+    // The AppImage runtime executes the payload from a read-only mount, so
+    // argv[0] is not the file the user launched. $APPIMAGE is that file, and
+    // game data or an ini beside it is the portable location.
+    const char* appimage = std::getenv("APPIMAGE");
+    if (appimage != nullptr && appimage[0] != '\0') {
+        cmd_arg = appimage;
+    }
+#endif
+
     std::string ret(PATH_MAX, '\0');
     char arg_dir[PATH_MAX];
     strncpy(arg_dir, cmd_arg, sizeof(arg_dir));
+    arg_dir[sizeof(arg_dir) - 1] = '\0';
 
     // remove the executable from path, if any
     char* dir = strrchr(arg_dir, '/');

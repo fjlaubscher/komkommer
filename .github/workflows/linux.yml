@@ -20,7 +20,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update -qq > /dev/null
-        sudo apt-get install -qq -y libsdl2-dev libopenal-dev > /dev/null
+        sudo apt-get install -qq -y libsdl2-dev libopenal-dev librsvg2-bin > /dev/null
 
     - name: Build komkommer
       env:
@@ -29,17 +29,13 @@ jobs:
         ninja --version
         cmake --workflow --preset release
 
-    - name: Create archives
-      run: |
-        strip --strip-all ./build/release/RelWithDebInfo/komkommertd
-        strip --strip-all ./build/release/RelWithDebInfo/komkommerra
-        mkdir artifact
-        7z a artifact/komkommer-linux-x64.zip ./build/release/RelWithDebInfo/komkommertd ./build/release/RelWithDebInfo/komkommerra
+    - name: Package AppImages
+      run: bash scripts/package-linux.sh build/release/RelWithDebInfo artifact
 
     - name: Upload tagged release
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          artifact/*
+          artifact/*.AppImage
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

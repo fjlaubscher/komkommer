@@ -42,6 +42,24 @@ PlayIntro=no
 
 Change `DataPath` to your game-data directory. A config beside the executable also makes that directory the default location for writable settings/saves; set `UserPath` under `[Paths]` to override it. Without a local config, Windows user data normally lives in `%APPDATA%\Vanilla-Conquer\vanillatd` or `vanillara` (the upstream directory names are retained).
 
+### Linux AppImage
+
+Release builds for Linux are `komkommer-td-x86_64.AppImage` and `komkommer-ra-x86_64.AppImage`. Each one bundles SDL2 and OpenAL. PulseAudio, PipeWire, and ALSA stay on the system, so sound follows the desktop's own server. Mark the file executable and run it:
+
+```sh
+chmod +x komkommer-td-x86_64.AppImage
+./komkommer-td-x86_64.AppImage
+```
+
+Classic game data is picked up from either of these places:
+
+- Beside the AppImage. `CONQUER.MIX` (Tiberian Dawn) or `REDALERT.MIX` (Red Alert) in that directory selects it, and a `conquer.ini` or `redalert.ini` there is the portable config. That config sets `DataPath`. It also makes the AppImage's directory the writable settings/saves location unless it sets `UserPath`.
+- The user directory `~/.config/vanilla-conquer/vanillatd` or `vanillara`, or `$XDG_CONFIG_HOME/vanilla-conquer/...` when `XDG_CONFIG_HOME` is set. Put the same ini there with an absolute `DataPath`, or put the classic files in that directory. With no ini beside the AppImage, settings and saves are written here.
+
+The mounted AppImage is read-only. Data and settings stay beside the file or in the user directory.
+
+On a Steam Deck, use Desktop Mode and copy the AppImage into the home directory (the system partition is read-only). Mark it executable, then add it in Steam as a non-Steam game. The desktop entry is named `KOMKOMMER: Tiberian Dawn` or `KOMKOMMER: Red Alert`, the same text as the window title. Game data and settings use the two locations above, under that user's home directory.
+
 **Start a fresh game when testing engine changes.** Added state in `HouseClass` and `BuildingClass` can make saves incompatible between builds. All players in a multiplayer game should use the same build and gameplay data.
 
 ## Build standalone
@@ -116,6 +134,14 @@ cmake --build --preset release
 
 For Fedora, install `gcc-c++ cmake SDL2-devel openal-soft-devel` and Ninja 1.13.2 or newer. The executables are in `build/release/RelWithDebInfo/`. To keep game data separate, set `[Paths] DataPath` in `~/.config/vanilla-conquer/vanillatd/conquer.ini` or `vanillara/redalert.ini` (or under `$XDG_CONFIG_HOME` when set).
 
+To package those binaries the way a release tag does, install `librsvg2-bin` and run:
+
+```sh
+bash scripts/package-linux.sh
+```
+
+The AppImages are written to `build/release/linux-dist/`.
+
 ### macOS
 
 Install the Xcode command-line tools and Homebrew dependencies:
@@ -185,7 +211,7 @@ Use `-Game TD` or `-Game RA` for one game, and `-Config Debug` for an unoptimize
 - [Contributor/agent guide](AGENTS.md), with more specific guides in the source directories
 - [Komkommer releases](https://github.com/fjlaubscher/komkommer/releases) and [issues](https://github.com/fjlaubscher/komkommer/issues)
 
-Every pull request, and every push to `main`, compiles both games. Linux also runs the unit tests, and a 32-bit Windows job compiles the Remastered DLLs. Those checks do not publish binaries. A **`v*` tag push** is what builds the release archives and uploads them. Upstream Vanilla Conquer binaries do not contain Komkommer's changes.
+Every pull request, and every push to `main`, compiles both games. Linux also runs the unit tests, and a 32-bit Windows job compiles the Remastered DLLs. Those checks do not publish binaries. A **`v*` tag push** builds the release assets and uploads them: `komkommer-td-x86_64.AppImage` and `komkommer-ra-x86_64.AppImage` on Linux, plus the macOS and Windows zips. Upstream Vanilla Conquer binaries do not contain Komkommer's changes.
 
 ## Credits and license
 

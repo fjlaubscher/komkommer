@@ -23,6 +23,7 @@ The pipeline and the regression list are in `docs/double-click-select-all.md`.
 
 - `skirmishroster.h` and `skirmishdrop.h` are lobby-only and are not saved engine state. Include the dropdown template only from standalone game code. Slot counts, countries, and startup stay in each game.
 - A config beside the executable sets `DataPath` and, unless overridden, `UserPath`.
+- On Linux, `$APPIMAGE` is that location when the game is an AppImage. `/proc/self/exe` is inside the read-only mount.
 - `Vanilla-Conquer`, `vanillatd`, and `vanillara` are the existing user-data directories. Renaming them strands settings and saves.
 - Load assets through the engine file classes. A loose-file check misses MIX archives.
 
