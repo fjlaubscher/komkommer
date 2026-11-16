@@ -3520,6 +3520,13 @@ bool HouseClass::Place_Line_Object(RTTIType type, CELL anchor, CELL /*to*/)
     }
 
     /*
+    **	Laying the anchor down deletes it, because a wall turns into an overlay and the
+    **	building that became it goes away with it. The type class is kept here, because
+    **	the rest of the run needs it to make the segments that join the walls around it.
+    */
+    BuildingTypeClass const* wall_type = wall->Class;
+
+    /*
     **	The anchor is the wall that the construction yard built. It has to pass the
     **	same proximity check that a single wall passes, so that a run cannot be
     **	laid down in the middle of the field by way of a remote event.
@@ -3578,7 +3585,7 @@ bool HouseClass::Place_Line_Object(RTTIType type, CELL anchor, CELL /*to*/)
     **	paid for. Every other cell is bought now, so the run is refused when the player cannot
     **	pay for all of it.
     */
-    int cost = wall->Class->Cost_Of() * CostBias;
+    int cost = wall_type->Cost_Of() * CostBias;
     if (Available_Money() < (plan_count - 1) * cost) {
         if (this == PlayerPtr) {
             Speak(VOX_NO_CASH);
@@ -3622,7 +3629,7 @@ bool HouseClass::Place_Line_Object(RTTIType type, CELL anchor, CELL /*to*/)
     */
     bool complete = true;
     for (int index = 1; index < plan_count; index++) {
-        BuildingClass* segment = (BuildingClass*)wall->Class->Create_One_Of(this);
+        BuildingClass* segment = (BuildingClass*)wall_type->Create_One_Of(this);
         if (!segment) {
             complete = false;
             break;
