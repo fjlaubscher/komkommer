@@ -15,6 +15,7 @@ SettingsClass::SettingsClass()
     Mouse.ControllerEnabled = false;
     Mouse.ControllerPointerSpeed = 10;
     Options.MouseWheelScrolling = true;
+    Options.ScrollWhileHeld = true;
 
     /*
     ** Video settings
@@ -52,6 +53,7 @@ void SettingsClass::Load(INIClass& ini)
     */
     Options.MouseWheelScrolling = ini.Get_Bool("Options", "MouseWheelScrolling", Options.MouseWheelScrolling);
     Options.MouseWheelScrolling = ini.Get_Bool("Mouse", "MouseWheelScrolling", Options.MouseWheelScrolling);
+    Options.ScrollWhileHeld = ini.Get_Bool("Options", "ScrollWhileHeld", Options.ScrollWhileHeld);
 
     /*
     ** Video settings
@@ -103,6 +105,7 @@ void SettingsClass::Save(INIClass& ini)
     ini.Put_Bool("Mouse", "ControllerEnabled", Mouse.ControllerEnabled);
     ini.Put_Int("Mouse", "ControllerPointerSpeed", Mouse.ControllerPointerSpeed);
     ini.Put_Bool("Mouse", "MouseWheelScrolling", Options.MouseWheelScrolling);
+    ini.Put_Bool("Options", "ScrollWhileHeld", Options.ScrollWhileHeld);
 
     /*
     ** Video settings

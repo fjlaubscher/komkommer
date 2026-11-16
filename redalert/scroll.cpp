@@ -36,6 +36,10 @@
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include "function.h"
+#ifndef REMASTER_BUILD
+#include "keyscroll.h"
+#include "settings.h"
+#endif
 
 #define SCROLL_DELAY 1
 
@@ -61,6 +65,71 @@ ScrollClass::ScrollClass(void)
     Counter = SCROLL_DELAY;
     Inertia = 0;
 }
+
+#ifndef REMASTER_BUILD
+static int const* Scroll_Steps(void)
+{
+    static int steps[KEYSCROLL_STEPS] = {0x00E0 * RESFACTOR,
+        0x00C0 * RESFACTOR,
+        0x00A0 * RESFACTOR,
+        0x0080 * RESFACTOR,
+        0x0060 * RESFACTOR,
+        0x0040 * RESFACTOR,
+        0x0020 * RESFACTOR,
+        0x0010 * RESFACTOR,
+        0x0008 * RESFACTOR};
+    return (steps);
+}
+
+static bool Key_Down(unsigned key)
+{
+    if (key == 0) {
+        return (false);
+    }
+    return (Keyboard->Down((unsigned short)key));
+}
+
+static bool Key_Scroll(int direction, int distance)
+{
+    if (distance == 0 || direction < 0) {
+        return (false);
+    }
+    int step = distance;
+    DirType facing = (DirType)direction;
+    if (!Map.Scroll_Map(facing, step, false)) {
+        return (false);
+    }
+    step = distance;
+    return (Map.Scroll_Map(facing, step, true));
+}
+
+static void Keyboard_Scroll(KeyNumType& input)
+{
+    if (!Settings.Options.ScrollWhileHeld) {
+        return;
+    }
+
+    static KeyScrollState state;
+    static CDTimerClass<SystemTimerClass> counter;
+    bool elapsed = counter == 0;
+    unsigned key = input;
+    bool typing = Session.Messages.Is_Edit() != 0;
+    KeyScroll_Apply(state,
+        Options,
+        Key_Down,
+        Key_Scroll,
+        Debug_Map || typing,
+        Options.ScrollRate,
+        elapsed,
+        Scroll_Steps(),
+        KEYSCROLL_STEPS,
+        key);
+    if (elapsed) {
+        counter = SCROLL_DELAY;
+    }
+    input = (KeyNumType)key;
+}
+#endif
 
 /***********************************************************************************************
  * ScrollClass::AI -- Handles scroll AI processing.                                            *
@@ -92,6 +161,7 @@ void ScrollClass::AI(KeyNumType& input, int x, int y)
 	**	If rubber band mode is in progress, then don't allow scrolling of the tactical map.
 	*/
     if (!IsRubberBand /*&& !IsTentative*/) {
+        Keyboard_Scroll(input);
 
         /*
 		**	Special check to not scroll within the special no-scroll regions.
@@ -149,15 +219,7 @@ void ScrollClass::AI(KeyNumType& input, int x, int y)
 				**	The mouse is over a scroll region so set the mouse shape accordingly if the map
 				**	can be scrolled in the direction indicated.
 				*/
-                static int _rate[9] = {0x00E0 * RESFACTOR,
-                                       0x00C0 * RESFACTOR,
-                                       0x00A0 * RESFACTOR,
-                                       0x0080 * RESFACTOR,
-                                       0x0060 * RESFACTOR,
-                                       0x0040 * RESFACTOR,
-                                       0x0020 * RESFACTOR,
-                                       0x0010 * RESFACTOR,
-                                       0x0008 * RESFACTOR};
+                int const* steps = Scroll_Steps();
                 if (Debug_Map) {
                     rate = Options.ScrollRate + 1;
                 } else {
@@ -176,7 +238,7 @@ void ScrollClass::AI(KeyNumType& input, int x, int y)
                 //				rate = Bound(rate-3, 0, 4);
                 //			}
                 if (Keyboard->Down(KN_RMOUSE)) {
-                    rate = Bound(rate + 1, 4, (int)(sizeof(_rate) / sizeof(_rate[0])) - 1);
+                    rate = Bound(rate + 1, 4, KEYSCROLL_STEPS - 1);
                 }
 
                 /*
@@ -186,7 +248,7 @@ void ScrollClass::AI(KeyNumType& input, int x, int y)
 				*/
                 direction = Facing_Dir(Dir_Facing(direction));
 
-                int distance = _rate[rate] / 2;
+                int distance = steps[rate] / 2;
 
                 if (!Scroll_Map(direction, distance, false)) {
                     Override_Mouse_Shape((MouseType)(MOUSE_NO_N + control), false);
@@ -198,13 +260,13 @@ void ScrollClass::AI(KeyNumType& input, int x, int y)
 					**	the map if the delay counter indicates.
 					*/
                     if (Keyboard->Down(KN_LMOUSE) || IsAutoScroll) {
-                        distance = _rate[rate];
+                        distance = steps[rate];
 
                         if (Debug_Map) {
                             Scroll_Map(direction, distance, true);
                             Counter = SCROLL_DELAY;
                         } else {
-                            distance = _rate[rate];
+                            distance = steps[rate];
                             Scroll_Map(direction, distance, true);
 
                             if (Counter == 0 && player_scrolled) {

@@ -730,7 +730,7 @@ void Keyboard_Process(KeyNumType& input)
     /*
     **	Scrolls the sidebar up one slot.
     */
-    if (key != 0
+    if (key != 0 && key != Options.KeyScrollUp
         && (key == Options.KeySidebarUp || (Settings.Options.MouseWheelScrolling && key == KN_MOUSEWHEEL_UP))) {
         Map.SidebarClass::Scroll(true, -1);
         input = KN_NONE;
@@ -739,7 +739,7 @@ void Keyboard_Process(KeyNumType& input)
     /*
     **	Scrolls the sidebar down one slot.
     */
-    if (key != 0
+    if (key != 0 && key != Options.KeyScrollDown
         && (key == Options.KeySidebarDown || (Settings.Options.MouseWheelScrolling && key == KN_MOUSEWHEEL_DOWN))) {
         Map.SidebarClass::Scroll(false, -1);
         input = KN_NONE;
@@ -758,19 +758,19 @@ void Keyboard_Process(KeyNumType& input)
     **	Scrolls the tactical map in the direction specified.
     */
     int distance = CELL_LEPTON_W;
-    if (key != 0 && key == Options.KeyScrollLeft) {
+    if (!Settings.Options.ScrollWhileHeld && key != 0 && key == Options.KeyScrollLeft) {
         Map.Scroll_Map(DIR_W, distance, true);
         input = KN_NONE;
     }
-    if (key != 0 && key == Options.KeyScrollRight) {
+    if (!Settings.Options.ScrollWhileHeld && key != 0 && key == Options.KeyScrollRight) {
         Map.Scroll_Map(DIR_E, distance, true);
         input = KN_NONE;
     }
-    if (key != 0 && key == Options.KeyScrollUp) {
+    if (!Settings.Options.ScrollWhileHeld && key != 0 && key == Options.KeyScrollUp) {
         Map.Scroll_Map(DIR_N, distance, true);
         input = KN_NONE;
     }
-    if (key != 0 && key == Options.KeyScrollDown) {
+    if (!Settings.Options.ScrollWhileHeld && key != 0 && key == Options.KeyScrollDown) {
         Map.Scroll_Map(DIR_S, distance, true);
         input = KN_NONE;
     }
