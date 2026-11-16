@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=KOMKOMMER: Red Alert
+Exec=komkommerra
+Icon=komkommer-ra
+Categories=Game;
+Terminal=false
