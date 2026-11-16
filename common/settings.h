@@ -43,6 +43,7 @@ public:
     struct
     {
         bool MouseWheelScrolling;
+        bool ScrollWhileHeld;
     } Options;
 };
 

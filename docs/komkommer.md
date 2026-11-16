@@ -48,6 +48,13 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - **Vanilla:** The SDL2 renderer presented frames unsynchronized, so fast motion could tear (notably in windowed mode on macOS).
 - **Komkommer:** The renderer is created with vsync by default, giving tear-free presentation. Set `VSync=false` under `[Video]` in `conquer.ini`/`redalert.ini` to restore uncapped presenting (the `FrameLimit` setting still applies either way). The frame limiter adapts to the blocking present, so game and movie pacing are unchanged. SDL1 and Remastered rendering are unchanged.
 
+### Keyboard map scrolling (standalone)
+- **Vanilla:** The arrow keys do not move the tactical map. Up and Down step the production sidebar one slot per press. The four scroll hotkeys exist, but they are saved as unbound (`0`), and a bound key moves the view one cell per press.
+- **Komkommer:** The scroll hotkeys default to the arrow keys. Holding one pans the tactical map. Two at once pan on the diagonal (up and left is north-west, and the other three corners the same way). The view starts slow and speeds up to the fastest step the existing scroll-rate option allows, the same ramp as resting the pointer on the screen edge. Letting go coasts to a stop. Opposite keys held together stop the pan where it is.
+- Rebinding `KeyScrollLeft`, `KeyScrollRight`, `KeyScrollUp`, or `KeyScrollDown` under `[SDLHotkeys]` or `[WinHotkeys]` changes which keys pan. An existing ini that still has those entries as `0` is treated as unset and picks up the arrow keys; the next save writes the arrow scancodes. Team keys **1–9, 0** are unchanged.
+- While a scroll key is also the sidebar up or down key, that key pans the map instead of stepping the sidebar. The mouse wheel (when mouse-wheel scrolling is on) and the sidebar's own buttons still move the sidebar. While a multiplayer message is being typed, the view eases to a stop and the keys stay with the message. The scenario editor keeps the arrow keys for editing.
+- `ScrollWhileHeld=no` under `[Options]` in `conquer.ini` or `redalert.ini` moves the view one cell per press of the bound scroll key. That key still belongs to the map, so it does not also step the sidebar. The Remastered client handles its own input and is unchanged.
+
 ### Campaign autosave (standalone)
 - Each campaign mission writes `SAVEGAME.999` when it starts. The next mission overwrites that file. Skirmish, multiplayer, the scenario editor, and loading an existing save do not.
 - The load list shows `AUTOSAVE: NOD 01` (GDI, SOVIET, or ALLIES the same way). Remastered keeps the host's own save UI.

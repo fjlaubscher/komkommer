@@ -61,6 +61,7 @@
 #include "function.h"
 #include "hsv.h"
 #include "options.h"
+#include "keyscroll.h"
 
 #ifdef SDL_BUILD
 char const* const OptionsClass::HotkeyName = "SDLHotkeys";
@@ -140,10 +141,10 @@ OptionsClass::OptionsClass(void)
     , KeySidebarDown(KN_DOWN)
     , KeyOption1(KN_ESC)
     , KeyOption2(KN_SPACE)
-    , KeyScrollLeft(KN_NONE)
-    , KeyScrollRight(KN_NONE)
-    , KeyScrollUp(KN_NONE)
-    , KeyScrollDown(KN_NONE)
+    , KeyScrollLeft(KN_LEFT)
+    , KeyScrollRight(KN_RIGHT)
+    , KeyScrollUp(KN_UP)
+    , KeyScrollDown(KN_DOWN)
     , KeyQueueMove1(KN_Q)
     , KeyQueueMove2(KN_Q)
     , KeyTeam1(KN_1)
@@ -673,6 +674,11 @@ void OptionsClass::Load_Settings(void)
     KeyScrollRight = (KeyNumType)(KeyScrollRight & ~WWKEY_VK_BIT);
     KeyScrollUp = (KeyNumType)(KeyScrollUp & ~WWKEY_VK_BIT);
     KeyScrollDown = (KeyNumType)(KeyScrollDown & ~WWKEY_VK_BIT);
+    // Saved 0 is the old unbound value, including inis that wrote the default back.
+    KeyScrollLeft = (KeyNumType)KeyScroll_Default(KeyScrollLeft, KN_LEFT);
+    KeyScrollRight = (KeyNumType)KeyScroll_Default(KeyScrollRight, KN_RIGHT);
+    KeyScrollUp = (KeyNumType)KeyScroll_Default(KeyScrollUp, KN_UP);
+    KeyScrollDown = (KeyNumType)KeyScroll_Default(KeyScrollDown, KN_DOWN);
     KeyQueueMove1 = (KeyNumType)(KeyQueueMove1 & ~WWKEY_VK_BIT);
     KeyQueueMove2 = (KeyNumType)(KeyQueueMove2 & ~WWKEY_VK_BIT);
     KeyTeam1 = (KeyNumType)(KeyTeam1 & ~WWKEY_VK_BIT);
