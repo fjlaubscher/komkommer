@@ -27,6 +27,9 @@ command -v rsvg-convert >/dev/null 2>&1 || {
 }
 
 mkdir -p "$tools" "$out_dir"
+# linuxdeploy runs from the staging directory, so a relative out-dir would
+# resolve there. Make it absolute first.
+out_dir=$(cd -- "$out_dir" && pwd)
 
 fetch() {
 	local url=$1 name=$2
