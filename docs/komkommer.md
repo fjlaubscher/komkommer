@@ -80,7 +80,7 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - **Komkommer:** Production buildings support rally points.
   - A left click stores a rally cell through the event queue.
   - Newly produced and fully repaired units move to the rally point.
-  - The rally marker is shown as a **player-coloured animated flag** (uses the cell flag/animation system so it renders correctly in both classic and remastered graphics modes).
+  - The rally marker is shown as a **player-coloured animated flag** (uses the cell flag/animation system so it renders correctly in both classic and remastered graphics modes). Naval producers (Sub Pen / Naval Yard) can plant their marker **on water**, which the vanilla tracked-vehicle flag check rejects; their rally order on a shore cell still plants via the land check.
   - The rally flag is shown **only while the structure is selected**.
   - Rally flags do **not** block structure placement (flagged rally cells are ignored for placement blocking where appropriate).
   - Enemy units driving over a rally marker do **not** "capture" it; the classic capture-the-flag pickup only applies to genuine CTF flags.

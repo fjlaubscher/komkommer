@@ -738,7 +738,17 @@ void BuildingClass::Refresh_Rally(void)
     **	AI retries it until the cell clears.
     */
     if (Rally >= 0 && Rally < MAP_CELL_TOTAL && Map.In_Radar(Rally)) {
-        if (!Map[Rally].IsFlagged && Map[Rally].Flag_Place(Owner())) {
+        /*
+        **	Komkommer: naval producers (Sub Pen / Naval Yard) rally on water,
+        **	which the vanilla tracked-vehicle flag check rejects, so plant
+        **	their marker with the water locomotion first. Everything else
+        **	keeps the tracked check. A naval rally on land keeps working
+        **	through the fallback.
+        */
+        bool naval = (*this == STRUCT_SHIP_YARD || *this == STRUCT_SUB_PEN);
+        if (!Map[Rally].IsFlagged
+            && (Map[Rally].Flag_Place(Owner(), naval ? SPEED_FLOAT : SPEED_TRACK)
+                || (naval && Map[Rally].Flag_Place(Owner(), SPEED_TRACK)))) {
             LastRally = Rally;
         }
     }

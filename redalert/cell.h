@@ -317,7 +317,7 @@ public:
     void Occupy_Up(ObjectClass* object);
     void Overlap_Down(ObjectClass* object);
     void Overlap_Up(ObjectClass* object);
-    bool Flag_Place(HousesType house);
+    bool Flag_Place(HousesType house, SpeedType loco = SPEED_TRACK);
     bool Flag_Remove(void);
     void Flag_Update(void);
     void Flag_Create(void);

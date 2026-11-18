@@ -2812,6 +2812,8 @@ bool CellClass::Goodie_Check(FootClass* object)
  *    This routine will place the house flag at this cell location.                            *
  *                                                                                             *
  * INPUT:   house -- The house that is having its flag placed here.                            *
+ *          loco  -- Locomotion the cell must be passable to. Defaults to the vanilla tracked   *
+ *                      vehicle check (capture-the-flag); rally markers on water pass SPEED_FLOAT. *
  *                                                                                             *
  * OUTPUT:  Was the flag successfully placed here?                                             *
  *                                                                                             *
@@ -2820,11 +2822,11 @@ bool CellClass::Goodie_Check(FootClass* object)
  * HISTORY:                                                                                    *
  *   05/23/1995 JLB : Created.                                                                 *
  *=============================================================================================*/
-bool CellClass::Flag_Place(HousesType house)
+bool CellClass::Flag_Place(HousesType house, SpeedType loco)
 {
     assert((unsigned)Cell_Number() <= MAP_CELL_TOTAL);
 
-    if (!IsFlagged && Is_Clear_To_Move(SPEED_TRACK, false, false)) {
+    if (!IsFlagged && Is_Clear_To_Move(loco, false, false)) {
         IsFlagged = true;
         Owner = house;
         Flag_Update();
