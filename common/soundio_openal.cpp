@@ -90,11 +90,24 @@ void SoundImp_Buffer_Sample_Data(SampleTrackerTypeImp* st, const void* data, siz
 {
     ALuint buffer;
 
-    if (1 && st->UnusedBufferCount) {
+    if (st->UnusedBufferCount) {
         buffer = st->AudioBuffers[OPENAL_BUFFER_COUNT - st->UnusedBufferCount];
         st->UnusedBufferCount--;
     } else {
-        alSourceUnqueueBuffers(st->OpenALSource, 1, &buffer);
+        ALint processed;
+
+        alGetSourcei(st->OpenALSource, AL_BUFFERS_PROCESSED, &processed);
+
+        if (processed > 0) {
+            alSourceUnqueueBuffers(st->OpenALSource, 1, &buffer);
+        } else {
+            /*
+            **	No processed buffer is free to recycle. Queueing this chunk would
+            **	over-fill the source, and unqueueing without a processed buffer
+            **	writes into an uninitialized buffer name. Drop the chunk instead.
+            */
+            return;
+        }
     }
 
     alBufferData(buffer, st->Format, data, datalen, st->Frequency);
@@ -110,6 +123,13 @@ int SoundImp_Get_Sample_Free_Buffer_Count(SampleTrackerTypeImp* st)
     if (state == AL_PLAYING) {
         alGetSourcei(st->OpenALSource, AL_BUFFERS_PROCESSED, &processed_buffers);
     } else {
+        /*
+        **	OpenAL reports buffers queued to a stopped source as processed
+        **	instantly, so counting them here would let a pre-fill on a reused
+        **	source recycle buffers it has only just queued and drain the whole
+        **	ring chunk into them. A stopped source's buffers are handled by the
+        **	maintenance restart, which detaches them before refilling.
+        */
         processed_buffers = 0;
     }
 

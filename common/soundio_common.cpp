@@ -607,9 +607,20 @@ void Sound_Callback()
 
 static void Maintenance_Callback()
 {
-    if (AudioDone) {
+    /*
+    **	File_Callback calls this routine directly while it refills the stream
+    **	ring from disk. Servicing a tracker from inside another servicing pass
+    **	lets the outer pass fill against a stale free-buffer count, which
+    **	double-fills the source. Nested calls are skipped; every pass comes
+    **	around again on the next Sound_Callback.
+    */
+    static bool servicing = false;
+
+    if (AudioDone || servicing) {
         return;
     }
+
+    servicing = true;
 
     SampleTrackerType* st = LockedData.SampleTracker;
 
@@ -618,6 +629,22 @@ static void Maintenance_Callback()
             if (st->Service) {
                 // Do we have more data in this tracker to play?
                 if (st->MoreSource) {
+                    /*
+                    **	A long frame can drain the queued buffers and OpenAL
+                    **	stops the starved source mid-stream. Everything it still
+                    **	holds was already played, and OpenAL reports buffers
+                    **	queued to a stopped source as processed instantly, so
+                    **	detach the dead queue first: the refill queues into clean
+                    **	slots and the source restarts afterwards, or the stream
+                    **	stays silent forever.
+                    */
+                    st->Restart = !SoundImp_Sample_Status(st->Imp);
+
+                    if (st->Restart) {
+                        SoundImp_Stop_Sample(st->Imp);
+                    }
+
+                    bool queued_data = false;
                     int processed_buffers;
 
                     // Work out if we have any space to buffer more data right now.
@@ -642,6 +669,19 @@ static void Maintenance_Callback()
                         if (bytes_copied > 0) {
                             SoundImp_Buffer_Sample_Data(st->Imp, ChunkBuffer, bytes_copied);
                             --processed_buffers;
+                            queued_data = true;
+                        }
+                    }
+
+                    if (st->Restart) {
+                        st->Restart = false;
+
+                        if (queued_data) {
+                            SoundImp_Start_Sample(st->Imp);
+
+                            if (st->IsScore) {
+                                DBG_LOG("MUSIC: restarted starved score sample %d\n", i);
+                            }
                         }
                     }
                 } else {
@@ -699,6 +739,8 @@ static void Maintenance_Callback()
 
         --LockedData.VolumeLock;
     }
+
+    servicing = false;
 }
 
 void* Load_Sample(char const* filename)
@@ -819,7 +861,12 @@ void Stop_Sample(int index)
 
         if (st->Active || st->Loading) {
             if (st->IsScore) {
-                DBG_LOG("MUSIC: stop score sample handle %d (loading=%d)\n", index, (int)st->Loading);
+                DBG_LOG("MUSIC: stop score sample handle %d (loading=%d state=%d queued=%d processed=%d)\n",
+                        index,
+                        (int)st->Loading,
+                        SoundImp_Get_Sample_State(st->Imp),
+                        SoundImp_Get_Sample_Queued(st->Imp),
+                        SoundImp_Get_Sample_Processed(st->Imp));
             }
 
             st->Active = false;
@@ -848,6 +895,15 @@ void Stop_Sample(int index)
 
 bool Sample_Status(int index)
 {
+#ifdef _DEBUG
+    /*
+    **	Log the not-active state once per handle instead of on every poll; the
+    **	theme manager polls between maintenance passes and would otherwise flood
+    **	the log with one line per Call_Back for the whole lifetime of the handle.
+    */
+    static bool not_active_logged[MAX_SAMPLE_TRACKERS];
+#endif
+
     if (index < 0) {
         return false;
     }
@@ -868,14 +924,35 @@ bool Sample_Status(int index)
 
     if (!st->Active) {
         if (st->IsScore) {
-            DBG_LOG("MUSIC: score sample %d is not active (service=%d more=%d pending=%d queue=%d)\n",
-                    index,
-                    (int)st->Service,
-                    (int)st->MoreSource,
-                    st->FilePending,
-                    st->QueueBuffer != nullptr ? 1 : 0);
+#ifdef _DEBUG
+            if (!not_active_logged[index]) {
+                not_active_logged[index] = true;
+                DBG_LOG("MUSIC: score sample %d is not active (service=%d more=%d pending=%d queue=%d)\n",
+                        index,
+                        (int)st->Service,
+                        (int)st->MoreSource,
+                        st->FilePending,
+                        st->QueueBuffer != nullptr ? 1 : 0);
+            }
+#endif
         }
         return false;
+    }
+
+#ifdef _DEBUG
+    not_active_logged[index] = false;
+#endif
+
+    /*
+    **	An active serviced stream that still has source data counts as playing.
+    **	A long frame can starve the backend into stopping before the next
+    **	maintenance pass refills and restarts it; reporting the momentary underrun
+    **	as "not playing" made the theme manager treat it as the end of the song
+    **	and swap tracks. When the data is exhausted (MoreSource false) the
+    **	backend answer decides, so a finished stream still ends normally.
+    */
+    if (st->Service && st->MoreSource) {
+        return true;
     }
 
     bool status = SoundImp_Sample_Status(st->Imp);
@@ -1065,6 +1142,17 @@ static int Play_Sample_Handle(const void* sample, int priority, int volume, sign
             if (priority == PRIORITY_MAX) {
                 DBG_LOG("MUSIC: sample start refused, the primary sound buffer did not start\n");
             }
+
+            /*
+            **	The fill above queued the initial buffers on a source that will
+            **	never be started. Detach them, or they replay as the head of the
+            **	next sample queued on this tracker.
+            */
+            st->Active = false;
+            st->Service = 0;
+            st->MoreSource = false;
+            SoundImp_Stop_Sample(st->Imp);
+
             return INVALID_AUDIO_HANDLE;
         }
 
