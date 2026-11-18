@@ -140,6 +140,12 @@ static int AStarDestY; // Destination cell Y (heuristic target).
 
 static CELL DestLocation;
 
+/*
+**	Octile distance scaled to the step costs in Find_Path_AStar: a straight
+**	step costs 10 and a diagonal step 14, so the ideal path costs
+**	10*max(dx,dy) + 4*min(dx,dy). The heuristic stays admissible (cells can
+**	only cost more than this) and consistent (no closed-cell reopening).
+*/
 static inline int AStar_Heuristic(CELL cell)
 {
     int dx = Cell_X(cell) - AStarDestX;
@@ -149,7 +155,7 @@ static inline int AStar_Heuristic(CELL cell)
         dx = -dx;
     if (dy < 0)
         dy = -dy;
-    return (dx > dy) ? dx : dy;
+    return ((dx > dy) ? (10 * dx + 4 * dy) : (10 * dy + 4 * dx));
 }
 
 static inline bool AStar_Less(CELL a, CELL b)
@@ -317,7 +323,13 @@ bool FootClass::Find_Path_AStar(CELL source,
             if (step <= 0)
                 continue;
 
-            int ng = AStarG[cur] + step;
+            /*
+            **	A diagonal step covers two cell edges, so it must cost more
+            **	than a straight one. With equal costs every staircase ties
+            **	with the straight line and the tie-breaks pick one that
+            **	bulges north; a 10/14 split makes the direct line win.
+            */
+            int ng = AStarG[cur] + step * ((dir & 1) ? 14 : 10);
             unsigned char state = AStarState[nxt];
 
             if (state == 0) {
@@ -873,7 +885,7 @@ int FootClass::Optimize_Moves(PathType* path, MoveType threshhold)
 #endif
 
             cell = Adjacent_Cell(cell, *cmd2);
-            path->Cost += Passable_Cell(cell, *cmd2, -1, threshhold);
+            path->Cost += Passable_Cell(cell, *cmd2, -1, threshhold) * ((*cmd2 & 1) ? 14 : 10);
             path->Length++;
             *cmd1++ = *cmd2;
         }

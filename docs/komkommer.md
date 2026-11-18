@@ -135,8 +135,9 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 
 ### Pathfinding (A*)
 - **Vanilla:** `Find_Path` walked a straight line and, on hitting an impassable cell, "edge-followed" the obstacle clockwise/counterclockwise. It could route around obstacles on the long side, wander, and fail in cul-de-sacs, doughnut-shaped obstacles, and maze-like base layouts.
-- **Komkommer:** `Find_Path` uses an **A\*** search over the cell grid (8-direction movement, Chebyshev heuristic, binary-heap open list) that finds the optimal route under the game's movement-cost model.
+- **Komkommer:** `Find_Path` uses an **A\*** search over the cell grid (8-direction movement, octile heuristic, binary-heap open list) that finds the optimal route under the game's movement-cost model.
   - Cell passability and cost still come from the existing `Passable_Cell`, so the caller's movement threshold (`MOVE_CLOAK` → `MOVE_TEMP`) and roundabout-team threat avoidance are preserved.
+  - A straight step costs 10 and a diagonal step 14 (times the cell's occupancy cost), so a straight line is strictly cheaper than any staircase. With equal costs, every staircase tied as "optimal" and the tie-breaks deterministically picked one that bulged north (click due east → the unit steps up first, then right); a diagonal had to cost more than a straight step for the direct line to win.
   - Diagonal moves never cut a corner through an occupied cell. Impassable ground beside the step (water, rock, wall, and RA river) does not count, so a one-cell diagonal bridge, cliff gap, or wall gap stays connected. A destroyed span stays blocked because the gap cell itself is impassable.
   - If the destination is unreachable, the search still returns a best-effort path to the closest reachable cell, so units make progress and re-path instead of stalling.
   - The command list is still smoothed by `Optimize_Moves`. A 90° or 135° shortcut is kept only when that cell is passable.
