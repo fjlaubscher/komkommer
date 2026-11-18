@@ -201,7 +201,7 @@ function(GetGitState _working_dir)
         set(ENV{GIT_REV_LIST_COUNT} "0")
     endif()
 
-    RunGitCommand(describe --tags ${object})
+    RunGitCommand(describe --tags --exact-match ${object})
     if(exit_code EQUAL 0)
         set(ENV{GIT_TAG} ${output})
     else()

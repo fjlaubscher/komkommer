@@ -5,12 +5,20 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 ## Both games (TD + RA)
 
 ### Window title (standalone)
-- The window title is **KOMKOMMER: Tiberian Dawn** or **KOMKOMMER: Red Alert** instead of the upstream **Vanilla Conquer**.
+- The window title is **KOMKOMMER: Tiberian Dawn** or **KOMKOMMER: Red Alert** instead of the upstream **Vanilla Conquer**, with the build version appended in parentheses.
+- The version is `DEBUG <short-sha>` while developing (including when the working tree has uncommitted changes), and `<tag> <short-sha>` (e.g. `v0.4.3 7ead1de`) for a clean checkout exactly on a `v*` tag. The same text appears in the version field of the options/menu screens.
 
 ### Rules file
 - The engine reads `RULES.INI` from the working directory, the user directory, and the game data, in that order. A loose file **replaces** the rules that come with the game data instead of adding to them, so a partial file leaves the game without its weapon, unit, and building data.
 - **Komkommer:** Tiberian Dawn no longer writes a copy of its rules next to the executable. That copy shadowed the rules of the game data for the next run, and it broke Red Alert when both games were played from the same folder: the weapon heap was sized from a `[Maximums]` section that the copy did not have, so the weapon types were missing and the Red Alert campaign crashed while loading its first mission.
 - Red Alert's built-in heap maximums now fit every type object, so a rules file without `[Maximums]` can no longer leave types missing.
+
+### Custom maps in a `maps/` folder
+- **Vanilla:** Custom scenarios have to sit loose in the game-data or user-data directory (or be packed into a MIX). A subfolder is not searched.
+- **Komkommer:** The game also searches a **`maps/`** subfolder of the data directory and the user directory, so custom maps can be kept in one folder instead of scattered loose in the data directory root.
+  - Red Alert: loose `.MPR` files in `maps/` are added to the skirmish map list, the same as loose files in the data directory itself.
+  - Tiberian Dawn: multiplayer scenarios in `maps/` are found by their usual `SCM##EA.INI` names.
+  - Loose files in the base data/user directory still take precedence over the same filename in `maps/`.
 
 ### Double-click selects all on-screen units of the same type (standalone)
 - **Vanilla:** Double-clicking a unit is treated as two ordinary single clicks (select, then toggle the one unit).

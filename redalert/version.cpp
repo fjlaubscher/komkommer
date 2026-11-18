@@ -408,16 +408,12 @@ unsigned short VersionClass::Minor_Version(void)
  *=========================================================================*/
 char* VersionClass::Version_Name(void)
 {
-    // Only print the git tag version number if it starts with 'v'
-    if (*GitTag == '\0' || GitUncommittedChanges || *GitTag != 'v') {
-        snprintf(VersionName,
-                 sizeof(VersionName),
-                 "r%d %s%s",
-                 GitRevision,
-                 (GitUncommittedChanges ? "~" : ""),
-                 GitShortSHA1);
+    // A clean checkout exactly on a version tag shows that tag; anything else
+    // (development, uncommitted changes, or no tag) shows the debug label.
+    if (*GitTag == 'v' && !GitUncommittedChanges) {
+        snprintf(VersionName, sizeof(VersionName), "%s %s", GitTag, GitShortSHA1);
     } else {
-        snprintf(VersionName, sizeof(VersionName), "%s %s%s", GitTag, (GitUncommittedChanges ? "~" : ""), GitShortSHA1);
+        snprintf(VersionName, sizeof(VersionName), "DEBUG %s", GitShortSHA1);
     }
 
     return (VersionName);

@@ -149,6 +149,14 @@ void CDFileClass::Refresh_Search_Drives(void)
     Add_Search_Drive(Paths.User_Path());
     Set_Search_Drives(RawPath);
     Add_Search_Drive(Paths.Data_Path());
+
+    // Custom scenarios can live together in a "maps" subfolder of the data and
+    // user directories. Search those after the base directories so a loose file
+    // in the base directory still takes precedence.
+    Add_Search_Drive(PathsClass::Concatenate_Paths(Paths.Data_Path(), "maps").c_str());
+    if (strcmp(Paths.User_Path(), Paths.Data_Path()) != 0) {
+        Add_Search_Drive(PathsClass::Concatenate_Paths(Paths.User_Path(), "maps").c_str());
+    }
 }
 
 /***********************************************************************************************

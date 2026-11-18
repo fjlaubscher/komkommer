@@ -209,7 +209,7 @@ int main(int argc, char** argv)
         printf("Zuwenig Hauptspeicher verf?gbar.\n");
 #else
 #ifdef FRENCH
-        printf("M‚moire vive (RAM) insuffisante.\n");
+        printf("Mï¿½moire vive (RAM) insuffisante.\n");
 #else
         printf("Insufficient RAM available.\n");
 #endif
@@ -322,7 +322,10 @@ int main(int argc, char** argv)
 #ifdef REMASTER_BUILD
         video_success = true;
 #else
-        if (Set_Video_Mode(ScreenWidth, ScreenHeight, 8, "KOMKOMMER: Tiberian Dawn")) {
+        Version_Number();
+        char window_title[128];
+        snprintf(window_title, sizeof(window_title), "KOMKOMMER: Tiberian Dawn (%s)", VersionText);
+        if (Set_Video_Mode(ScreenWidth, ScreenHeight, 8, window_title)) {
             video_success = true;
         }
 #endif

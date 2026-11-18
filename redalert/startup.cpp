@@ -355,7 +355,9 @@ int main(int argc, char* argv[])
 #ifdef REMASTER_BUILD
         video_success = true;
 #else
-        if (Set_Video_Mode(ScreenWidth, ScreenHeight, 8, "KOMKOMMER: Red Alert")) {
+        char window_title[128];
+        snprintf(window_title, sizeof(window_title), "KOMKOMMER: Red Alert (%s)", VerNum.Version_Name());
+        if (Set_Video_Mode(ScreenWidth, ScreenHeight, 8, window_title)) {
             video_success = true;
         }
 #endif
@@ -542,7 +544,9 @@ bool InitDDraw(void)
 #else
     bool video_success = false;
 
-    if (Set_Video_Mode(ScreenWidth, ScreenHeight, 8, "KOMKOMMER: Red Alert")) {
+    char window_title[128];
+    snprintf(window_title, sizeof(window_title), "KOMKOMMER: Red Alert (%s)", VerNum.Version_Name());
+    if (Set_Video_Mode(ScreenWidth, ScreenHeight, 8, window_title)) {
         video_success = true;
     }
 

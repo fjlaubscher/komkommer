@@ -2158,23 +2158,12 @@ int Version_Number(void)
 {
     const char* demo_text = Is_Demo() ? "DEMO " : "";
 
-    // Only print the git tag version number if it starts with 'v'
-    if (*GitTag == '\0' || GitUncommittedChanges || *GitTag != 'v') {
-        snprintf(VersionText,
-                 sizeof(VersionText),
-                 "%sr%d %s%s",
-                 demo_text,
-                 GitRevision,
-                 (GitUncommittedChanges ? "~" : ""),
-                 GitShortSHA1);
+    // A clean checkout exactly on a version tag shows that tag; anything else
+    // (development, uncommitted changes, or no tag) shows the debug label.
+    if (*GitTag == 'v' && !GitUncommittedChanges) {
+        snprintf(VersionText, sizeof(VersionText), "%s%s %s", demo_text, GitTag, GitShortSHA1);
     } else {
-        snprintf(VersionText,
-                 sizeof(VersionText),
-                 "%s%s %s%s",
-                 demo_text,
-                 GitTag,
-                 (GitUncommittedChanges ? "~" : ""),
-                 GitShortSHA1);
+        snprintf(VersionText, sizeof(VersionText), "%sDEBUG %s", demo_text, GitShortSHA1);
     }
 
     return (1);
