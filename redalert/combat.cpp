@@ -315,8 +315,15 @@ AnimType Combat_Anim(int damage, WarheadType warhead, LandType land)
     };
 
     static AnimType _helist[] = {
-        ANIM_VEH_HIT1, //	Small fireball explosion (bulges rightward).
-        ANIM_VEH_HIT2, //	Small fragment throwing explosion -- pop & sparkles.
+        ANIM_VEH_HIT1, // Small fireball explosion (bulges rightward).
+        /*
+        ** Komkommer balance: stock played ANIM_VEH_HIT2 here, whose sound is
+        ** KABOOM12, the longest muffled explosion in the game, so a Mammoth
+        ** missile or a grenade popping one infantryman boomed like a building
+        ** dying. Play the medium HE fragment explosion (short HE boom) instead,
+        ** the same impact Tiberian Dawn uses for its Mammoth missiles.
+        */
+        ANIM_FRAG1,    // Medium fragment throwing explosion -- short decay.
         ANIM_ART_EXP1, // Large fragment throwing explosion -- many sparkles.
         ANIM_FBALL1,   // Large fireball explosion (bulges rightward).
     };

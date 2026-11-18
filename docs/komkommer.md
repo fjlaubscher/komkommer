@@ -276,6 +276,10 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - **Komkommer:** Both attack helicopters get **`Strength=150`**, so one SAM site kills an attack helicopter in **three missiles**, matching the Tiberian Dawn SAM count. They stay a little tougher than the TD helicopters (150 vs 125) because RA's SAM fires single missiles rather than TD's pairs. The missiles, SAM site, planes, and all other units are untouched.
 - The override is applied after the rules are read, and only when the rules still carry the stock **225** — a rules file that deliberately sets a different `Strength` for these types stays authoritative.
 
+### Mammoth missile impact sound
+- **Vanilla (stock):** A high-explosive impact in the mid damage band (43–86: the Mammoth's tusks and the grenadier's grenade) played `ANIM_VEH_HIT2`, whose sound is **`KABOOM12`, the longest muffled explosion in the game** — the same boom family as building damage. Popping one rifleman with Mammoth missiles (two per salvo) boomed like a demolition.
+- **Komkommer:** That band now plays `ANIM_FRAG1`, the medium fragment explosion with **`KABOOM30`, a short HE boom** — the same impact animation Tiberian Dawn uses for its Mammoth missiles. Artillery, the V2, and para-bombs (higher HE bands) keep their big fireballs, and tank shells (armor-piercing band) keep their current impact sound.
+
 ### Superweapon (skirmish/multiplayer balance)
 
 #### Atom bomb / nuke (`Do_Atom_Damage`, `ANIM_ATOM_BLAST`)
