@@ -1838,7 +1838,11 @@ void UnitClass::Per_Cell_Process(PCPType why)
         */
         if (Flagged == HOUSE_NONE) {
 
-            if (Map[cell].IsFlagged && !House->Is_Ally(Map[cell].Owner)) {
+            /*
+            **	Komkommer: a rally-point marker is not a capturable flag; only a
+            **	genuine capture-the-flag flag is picked up.
+            */
+            if (Map[cell].IsFlagged && !House->Is_Ally(Map[cell].Owner) && !Rally_Cell_Claimed(cell, Map[cell].Owner)) {
                 HouseClass::As_Pointer(Map[cell].Owner)->Flag_Attach(this);
             }
         }

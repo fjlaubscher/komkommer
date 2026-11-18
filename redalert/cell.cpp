@@ -434,6 +434,20 @@ void CellClass::Redraw_Objects(bool forced)
 }
 
 /***********************************************************************************************
+ * CellClass::Redraw_Flag -- Redraws the flag animation on this cell.                           *
+ *                                                                                             *
+ *    Komkommer: a rally marker's flag anim is persistent game state, but whether it is drawn  *
+ *    is decided per player at render time. When selection changes we only need to refresh     *
+ *    the flag's cells so it is re-evaluated; the flag itself is not moved or removed.         *
+ *=============================================================================================*/
+void CellClass::Redraw_Flag(void)
+{
+    if (CTFFlag != NULL) {
+        CTFFlag->Mark(MARK_CHANGE_REDRAW);
+    }
+}
+
+/***********************************************************************************************
  * CellClass::Is_Clear_To_Build -- Determines if cell can be built upon.                       *
  *                                                                                             *
  *    This determines if the cell can become a proper foundation for                           *

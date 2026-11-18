@@ -268,6 +268,7 @@ public:
     */
     void Draw_It(int x, int y, int draw_flags = 0) const;
     void Redraw_Objects(bool forced = false);
+    void Redraw_Flag(void);
     void Shimmer(void);
 
     /*

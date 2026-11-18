@@ -6634,10 +6634,13 @@ void DLLExportClass::Cell_Class_Draw_It(CNCDynamicMapStruct* dynamic_map,
 
         /*
         **	Komkommer: only export player flags to their local owner in remaster
-        **	so opponent rally points are not revealed.
+        **	so opponent rally points are not revealed, and only while one of
+        **	the rallied structures is selected, matching the classic renderer.
+        **	Capture-the-flag flags always export.
         */
-        if (PlayerPtr == NULL || cell_ptr->Owner == HOUSE_NONE
-            || cell_ptr->Owner == PlayerPtr->Class->House) {
+        if (Rally_Flag_Shown(cell, cell_ptr->Owner)
+            && (PlayerPtr == NULL || cell_ptr->Owner == HOUSE_NONE
+                || cell_ptr->Owner == PlayerPtr->Class->House)) {
             const void* image_data = MFCD::Retrieve("FLAGFLY.SHP");
             if (image_data != NULL) {
 

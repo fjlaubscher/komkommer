@@ -273,8 +273,12 @@ public:
     **	flag from any previously-flagged cell (if it was ours) and places a
     **	new flag on the current Rally cell. The cell-level IsFlagged/Owner
     **	state is what causes both vanilla (ANIM_FLAG) and the remastered
-    **	host (FLAGFLY.SHP via IsFlag) to draw the marker for us, so we never
-    **	have to do any per-frame drawing here.
+    **	host (FLAGFLY.SHP via IsFlag) to draw the marker.
+    **
+    **	This runs in lockstep on every machine (rally events, building
+    **	limbo, the per-frame retry in AI), so it may only read state that
+    **	is identical everywhere. Whether the marker is *shown* is a local
+    **	render decision; see Rally_Flag_Shown.
     */
     void Refresh_Rally(void);
     virtual void Set_Selected_By_Player(HouseClass* player = NULL);
@@ -434,5 +438,21 @@ private:
 
     static COORDINATE const CenterOffset[BSIZE_COUNT];
 };
+
+/*
+**	Local-player visibility rule for a cell flag, used by the classic renderer
+**	and the remastered dynamic-map export. A cell flag is a rally marker only
+**	if some building actually placed one there (its LastRally matches the
+**	cell); any other flag is a capture-the-flag flag and is always shown. A
+**	rally marker is shown only while one of the buildings that rally to the
+**	cell is selected by the local player.
+*/
+bool Rally_Flag_Shown(CELL cell, HousesType owner);
+
+/*
+**	Is the cell flag at this cell a rally-point marker for this owner? Used to
+**	keep the capture-the-flag flag pickup from firing on a rally marker.
+*/
+bool Rally_Cell_Claimed(CELL cell, HousesType owner);
 
 #endif

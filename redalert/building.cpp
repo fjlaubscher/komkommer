@@ -705,12 +705,12 @@ void BuildingClass::Draw_It(int x, int y, WindowNumberType window) const
 }
 
 /***********************************************************************************************
- * BuildingClass::Set_Unselected_By_Player -- Object was unselected by a player.               *
+ * BuildingClass::Refresh_Rally -- Moves the on-map rally-point flag to the rally cell.          *
  *                                                                                             *
- *    When a building with a rally point is deselected, the whole map needs to be redrawn so   *
- *    that the rally point line disappears from cells between the building and its rally       *
- *    point. The base class only redraws the building's own cells, which would leave the       *
- *    rest of the line smeared across the map until those cells happened to redraw.            *
+ *    Drops the flag from the previously-flagged cell (if it was ours) and places one on the     *
+ *    current Rally cell. This runs in lockstep on every machine, so it may only read state     *
+ *    that is identical everywhere; whether the marker is drawn for a player is decided         *
+ *    locally at render time (Rally_Flag_Shown).                                                *
  *                                                                                             *
  * HISTORY:                                                                                    *
  *   Added for rally point rendering.                                                          *
@@ -724,43 +724,126 @@ void BuildingClass::Refresh_Rally(void)
     LastRally = -1;
 
     /*
-    **	Komkommer: show the rally flag only while the structure is selected, and
-    **	never block structure placement with it.
+    **	Komkommer: plant the flag the same way on every machine. This routine
+    **	runs inside RALLY event execution (and from Limbo and the per-frame
+    **	retry in AI), and the cell's ANIM_FLAG anim is part of the game CRC,
+    **	so the placement decision must come from state that is identical on
+    **	all machines. Which players get to see the marker is decided per
+    **	player at draw time; see Rally_Flag_Shown below.
+    **
+    **	Only a flag we actually plant is tracked in LastRally. A cell that
+    **	already carries a flag (another building's rally marker, or a
+    **	capture-the-flag flag) is left alone, so we never remove a flag we
+    **	did not place. A cell that is merely blocked plants nothing here;
+    **	AI retries it until the cell clears.
     */
-    bool show = (Rally >= 0 && Rally < MAP_CELL_TOTAL && Map.In_Radar(Rally)
-                 && (Is_Selected_By_Player(PlayerPtr) || (IsOwnedByPlayer && IsSelected)));
-    if (show) {
-        if (Map[Rally].IsFlagged) {
-            /*
-            **	A flag is already present. Only claim it if it belongs to this owner.
-            */
-            if (Map[Rally].Owner == Owner()) {
-                LastRally = Rally;
-            }
-        } else if (Map[Rally].Flag_Place(Owner())) {
-            LastRally = Rally;
-        } else {
-            /*
-            **	Placement can fail if the cell is blocked; keep tracking the rally
-            **	point so it can appear when refreshed.
-            */
+    if (Rally >= 0 && Rally < MAP_CELL_TOTAL && Map.In_Radar(Rally)) {
+        if (!Map[Rally].IsFlagged && Map[Rally].Flag_Place(Owner())) {
             LastRally = Rally;
         }
-    } else if (Rally >= 0 && Rally < MAP_CELL_TOTAL) {
-        LastRally = Rally;
     }
 }
 
+/***********************************************************************************************
+ * BuildingClass::Set_Selected_By_Player -- Building was selected by a player.                  *
+ *                                                                                             *
+ *    Selection no longer moves the rally-point flag (that is lockstep game state), but the    *
+ *    marker is only drawn while a rallied building is selected, so we must refresh its cells   *
+ *    when the selection changes. This is purely a local redraw; it does not touch the flag.   *
+ *=============================================================================================*/
 void BuildingClass::Set_Selected_By_Player(HouseClass* player)
 {
     TechnoClass::Set_Selected_By_Player(player);
-    Refresh_Rally();
+    if (Rally >= 0 && Rally < MAP_CELL_TOTAL && Map.In_Radar(Rally)) {
+        Map[Rally].Redraw_Flag();
+    }
 }
 
+/***********************************************************************************************
+ * BuildingClass::Set_Unselected_By_Player -- Building was unselected by a player.              *
+ *                                                                                             *
+ *    See Set_Selected_By_Player; the same redraw is needed when the marker becomes hidden.    *
+ *=============================================================================================*/
 void BuildingClass::Set_Unselected_By_Player(HouseClass* player)
 {
     TechnoClass::Set_Unselected_By_Player(player);
-    Refresh_Rally();
+    if (Rally >= 0 && Rally < MAP_CELL_TOTAL && Map.In_Radar(Rally)) {
+        Map[Rally].Redraw_Flag();
+    }
+}
+
+/***********************************************************************************************
+ * Rally_Flag_Shown -- Should the local player see this cell flag?                              *
+ *                                                                                             *
+ *    The rally marker state is identical on every machine, so whether it is drawn has to be     *
+ *    decided locally. A cell flag is a rally marker only if some building actually planted one *
+ *    there (its LastRally matches the cell); any other flag is a genuine capture-the-flag      *
+ *    flag and is always shown. A rally marker is shown only while one of the buildings that    *
+ *    rally to the cell is selected by the local player.                                        *
+ *                                                                                             *
+ * INPUT:   cell   -- the flagged cell                                                          *
+ *          owner  -- house that owns the flag                                                 *
+ *                                                                                             *
+ * OUTPUT:  Should the flag be drawn for the local player?                                     *
+ *=============================================================================================*/
+bool Rally_Flag_Shown(CELL cell, HousesType owner)
+{
+    if (PlayerPtr == NULL) {
+        return (true);
+    }
+
+    /*
+    **	Decide whether this is a rally marker at all: a building planted the
+    **	flag at this cell. If none did, it is a capture-the-flag flag.
+    */
+    bool rally_marker = false;
+    for (int index = 0; index < Buildings.Count(); index++) {
+        BuildingClass* building = (BuildingClass*)Buildings.Active_Ptr(index);
+        if (building->LastRally == cell && building->Owner() == owner) {
+            rally_marker = true;
+            break;
+        }
+    }
+    if (!rally_marker) {
+        return (true);
+    }
+
+    /*
+    **	Show the marker only while one of the buildings that rally to the
+    **	cell is selected by the local player.
+    */
+    for (int index = 0; index < Buildings.Count(); index++) {
+        BuildingClass* building = (BuildingClass*)Buildings.Active_Ptr(index);
+        if (building->Rally == cell && building->Owner() == owner
+            && (building->Is_Selected_By_Player(PlayerPtr)
+                || (building->IsOwnedByPlayer && building->IsSelected))) {
+            return (true);
+        }
+    }
+    return (false);
+}
+
+/***********************************************************************************************
+ * Rally_Cell_Claimed -- Is this cell flag a rally-point marker?                                 *
+ *                                                                                             *
+ *    Used to tell a rally marker apart from a genuine capture-the-flag flag: the flag pickup   *
+ *    in Per_Cell_Process must not fire for a marker. A cell flag is a rally marker only when   *
+ *    some building actually planted one there (its LastRally matches the cell).                *
+ *                                                                                             *
+ * INPUT:   cell   -- the flagged cell                                                          *
+ *          owner  -- house that owns the flag                                                 *
+ *                                                                                             *
+ * OUTPUT:  Did any building of this owner plant a rally marker at the cell?                   *
+ *=============================================================================================*/
+bool Rally_Cell_Claimed(CELL cell, HousesType owner)
+{
+    for (int index = 0; index < Buildings.Count(); index++) {
+        BuildingClass* building = (BuildingClass*)Buildings.Active_Ptr(index);
+        if (building->LastRally == cell && building->Owner() == owner) {
+            return (true);
+        }
+    }
+    return (false);
 }
 
 /***********************************************************************************************
@@ -1049,6 +1132,15 @@ void BuildingClass::AI(void)
 {
     assert(Buildings.ID(this) == ID);
     assert(IsActive);
+
+    /*
+    **	Komkommer: retry a rally-point flag that could not be planted because
+    **	its cell was occupied when the rally order was given. The AI runs in
+    **	lockstep, so the marker appears on every machine in the same frame.
+    */
+    if (Rally >= 0 && Rally < MAP_CELL_TOTAL && Map.In_Radar(Rally) && !Map[Rally].IsFlagged) {
+        Refresh_Rally();
+    }
 
     /*
     **	Process building animation state changes. Transition to a following state

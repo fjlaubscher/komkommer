@@ -201,6 +201,15 @@ bool AnimClass::Render(bool forced)
     Validate();
     if (Delay)
         return (false);
+    /*
+    **	Komkommer: the cell-flag anim is lockstep game state (every machine
+    **	carries the same one so the game CRCs stay equal), so a rally marker
+    **	is only drawn for a player who currently has one of its rallied
+    **	structures selected. Capture-the-flag flags always draw.
+    */
+    if (*this == ANIM_FLAG && !Rally_Flag_Shown(Coord_Cell(Coord), OwnerHouse)) {
+        return (false);
+    }
     IsToDisplay = true;
     return (ObjectClass::Render(forced));
 }

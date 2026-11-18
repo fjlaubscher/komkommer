@@ -403,6 +403,20 @@ void CellClass::Redraw_Objects(bool forced)
 }
 
 /***********************************************************************************************
+ * CellClass::Redraw_Flag -- Redraws the flag animation on this cell.                           *
+ *                                                                                             *
+ *    Komkommer: a rally marker's flag anim is persistent game state, but whether it is drawn  *
+ *    is decided per player at render time. When selection changes we only need to refresh     *
+ *    the flag's cells so it is re-evaluated; the flag itself is not moved or removed.         *
+ *=============================================================================================*/
+void CellClass::Redraw_Flag(void)
+{
+    if (CTFFlag != NULL) {
+        CTFFlag->Mark(MARK_CHANGE);
+    }
+}
+
+/***********************************************************************************************
  * CellClass::Is_Generally_Clear -- Determines if cell can be built upon.                      *
  *                                                                                             *
  *    This determines if the cell can become a proper foundation for                           *
@@ -422,7 +436,12 @@ bool CellClass::Is_Generally_Clear(bool ignore_cloaked) const
     Validate();
     if (ScenarioInit)
         return (true);
-    if (Flag.Composite || IsFlagged || Cell_Occupier()) {
+    /*
+    **	Komkommer: a rally marker (a cell flag some building planted via
+    **	Refresh_Rally) is only a visual aid and does not make a cell unclear; a
+    **	genuine capture-the-flag flag still does.
+    */
+    if (Flag.Composite || (IsFlagged && !Rally_Cell_Claimed(Cell_Number(), Owner)) || Cell_Occupier()) {
         if (!ignore_cloaked
             || (Cell_Occupier() && Cell_Occupier()->Is_Techno() && ((TechnoClass*)Cell_Occupier())->Cloak != CLOAKED)) {
             return (false);

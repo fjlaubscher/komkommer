@@ -75,6 +75,8 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
   - The rally marker is shown as a **player-coloured animated flag** (uses the cell flag/animation system so it renders correctly in both classic and remastered graphics modes).
   - The rally flag is shown **only while the structure is selected**.
   - Rally flags do **not** block structure placement (flagged rally cells are ignored for placement blocking where appropriate).
+  - Enemy units driving over a rally marker do **not** "capture" it; the classic capture-the-flag pickup only applies to genuine CTF flags.
+  - **Multiplayer:** the marker's map state is identical on every machine (it is placed by the same lockstep event on all clients), so rally points no longer desync LAN/Internet games; only the drawing of the marker is decided per player. A rally cell that is occupied when the rally order is given shows its flag as soon as the cell clears, on every machine at the same frame. Opponents never have rally flags exported to them by the remastered dynamic map.
 
 ### Production queueing (standalone binaries)
 - **Vanilla:** Clicking a production-sidebar icon while its category factory is busy rejects the click with a "no factory"/scold response.

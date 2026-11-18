@@ -337,6 +337,7 @@ public:
     */
     void Draw_It(int x, int y, bool objects = false) const;
     void Redraw_Objects(bool forced = false);
+    void Redraw_Flag(void);
     void Shimmer(void);
 
     /*
