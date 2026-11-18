@@ -997,6 +997,18 @@ bool RulesClass::Objects(CCINIClass& ini)
             // while retaining any explicit non-zero INI override.
             aircraft->SightRange = 3;
         }
+        /*
+        ** Komkommer balance: stock rules give the attack helicopters (Hind and
+        ** Longbow) Strength=225, so a SAM site needs five Nike missiles for one.
+        ** A Tiberian Dawn SAM kills its attack helicopters in three missiles,
+        ** because a missile does the same 50 damage but the helicopters carry
+        ** 125 strength. Bring the stock value down so one SAM site kills an
+        ** attack helicopter in three missiles, matching that count. A rules
+        ** file that carries a different Strength stays authoritative.
+        */
+        if ((aircraft->Type == AIRCRAFT_HIND || aircraft->Type == AIRCRAFT_LONGBOW) && aircraft->MaxStrength == 225) {
+            aircraft->MaxStrength = 150;
+        }
     }
 
     for (int bindex = 0; bindex < BuildingTypes.Count(); bindex++) {

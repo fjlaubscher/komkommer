@@ -271,6 +271,11 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - Human-controlled commandos can **auto-fire** (commando auto-fire restriction was adjusted so commandos auto-fire normally, including for human players).
 - **Animations:** The Saboteur uses the GNRL (`GeneralDoControls`) frame layout, not Tanya's E7 layout — E7 idle offsets pointed into GNRL's death frames, so the old idle fidget played death animations (and prone/crawl/death sequences were also shifted).
 
+### Attack helicopter survivability (balance)
+- **Vanilla (stock):** The rules carry `Strength=225` for both attack helicopters — the Soviet **Hind (`HIND`)** and the Allied **Longbow (`HELI`)**. A SAM site's `Nike` missile does the same 50 damage it does in Tiberian Dawn (the AP warhead is 100% against their `heavy` armor, just as TD's AP is 100% against its helicopters' `steel`), so one SAM site needs **five missiles** to kill an attack helicopter. A TD SAM kills its 125-strength helicopters in **three**, and it fires them as two-shot salvos; the RA SAM fires single missiles. The Hind is also the only helicopter that out-damages the SAM meant to stop it: its `ChainGun` (40 damage, ROF 3, reduced to 10 by the SA warhead against heavy armor) chews through the 400-strength SAM site at about the pace the SAM kills it.
+- **Komkommer:** Both attack helicopters get **`Strength=150`**, so one SAM site kills an attack helicopter in **three missiles**, matching the Tiberian Dawn SAM count. They stay a little tougher than the TD helicopters (150 vs 125) because RA's SAM fires single missiles rather than TD's pairs. The missiles, SAM site, planes, and all other units are untouched.
+- The override is applied after the rules are read, and only when the rules still carry the stock **225** — a rules file that deliberately sets a different `Strength` for these types stays authoritative.
+
 ### Superweapon (skirmish/multiplayer balance)
 
 #### Atom bomb / nuke (`Do_Atom_Damage`, `ANIM_ATOM_BLAST`)
