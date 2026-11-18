@@ -106,12 +106,14 @@ static bool CampaignAutosavePending;
 
 bool Start_Scenario(char* root, bool briefing)
 {
+    DBG_LOG("C&C95 - Start_Scenario: scenario %d '%s'.\n", Scen.Scenario, root ? root : "(null)");
 
     if (!Read_Scenario(root)) {
         CCDebugString("C&C95 - Failed to read scenario.\n");
         return (false);
     }
     CCDebugString("C&C95 - Scenario read OK.\n");
+    DBG_LOG("C&C95 - Start_Scenario: transit theme is %d.\n", (int)Scen.TransitTheme);
 
     if (Is_Demo()) {
         if (briefing) {
@@ -126,6 +128,7 @@ bool Start_Scenario(char* root, bool briefing)
         ** we don't want a briefing movie on GDI scenario 1.
         */
         if (Scen.Scenario < 20 && (!Special.IsJurassic || !AreThingiesEnabled)) {
+            CCDebugString("C&C95 - Start_Scenario: campaign branch.\n");
             if (Scen.Scenario != 1 || Whom == HOUSE_GOOD) {
                 Play_Movie(IntroMovie);
             }
@@ -147,6 +150,7 @@ bool Start_Scenario(char* root, bool briefing)
                 Theme.Queue_Song(THEME_AOI);
             }
         } else {
+            CCDebugString("C&C95 - Start_Scenario: expansion/covert ops branch.\n");
             Play_Movie(BriefMovie);
             Play_Movie(ActionMovie, Scen.TransitTheme);
 
@@ -188,6 +192,8 @@ bool Start_Scenario(char* root, bool briefing)
                 if (Scen.TransitTheme == THEME_NONE) {
                     Theme.Queue_Song(THEME_AOI);
                 }
+            } else {
+                CCDebugString("C&C95 - Start_Scenario: briefing movie exists, no briefing text.\n");
             }
 
 #endif

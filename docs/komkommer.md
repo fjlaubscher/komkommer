@@ -56,6 +56,10 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - **Vanilla:** The SDL2 renderer presented frames unsynchronized, so fast motion could tear (notably in windowed mode on macOS).
 - **Komkommer:** The renderer is created with vsync by default, giving tear-free presentation. Set `VSync=false` under `[Video]` in `conquer.ini`/`redalert.ini` to restore uncapped presenting (the `FrameLimit` setting still applies either way). The frame limiter adapts to the blocking present, so game and movie pacing are unchanged. SDL1 and Remastered rendering are unchanged.
 
+### Streaming music survives long frames (standalone)
+- **Vanilla:** The streamed score (mission and menu music) keeps only ~0.4 s of decoded audio queued in OpenAL and is serviced from the main loop only. A frame that runs long — a mission starting, a save, heavy combat — drains it; OpenAL then stops the silent source, nothing refills or restarts it, and the theme manager mistakes the underrun for the end of the song and starts a different track.
+- **Komkommer:** A starved stream is recovered: the dead queue is detached, the stream is refilled from its own position, and the source is restarted, while the theme manager holds the current track through the outage. A long frame can still cost a brief gap in the music, but the track keeps playing instead of being replaced mid-song. Standalone OpenAL backend only; the Remastered host's music is unaffected.
+
 ### Keyboard map scrolling (standalone)
 - **Vanilla:** The arrow keys do not move the tactical map. Up and Down step the production sidebar one slot per press. The four scroll hotkeys exist, but they are saved as unbound (`0`), and a bound key moves the view one cell per press.
 - **Komkommer:** The scroll hotkeys default to the arrow keys. Holding one pans the tactical map. Two at once pan on the diagonal (up and left is north-west, and the other three corners the same way). The view starts slow and speeds up to the fastest step the existing scroll-rate option allows, the same ramp as resting the pointer on the screen edge. Letting go coasts to a stop. Opposite keys held together stop the pan where it is.

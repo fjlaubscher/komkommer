@@ -2138,6 +2138,7 @@ extern void Play_Movie_GlyphX(const char* movie_name, ThemeType theme);
 
 void Play_Movie(char const* name, ThemeType theme, bool clrscrn)
 {
+    DBG_LOG("C&C95 - Play_Movie '%s' with theme %d.\n", name ? name : "(null)", (int)theme);
 #if REMASTER_BUILD
     if (strcmp(name, "x") == 0 || strcmp(name, "X") == 0) {
         return;

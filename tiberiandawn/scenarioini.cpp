@@ -190,6 +190,30 @@ void Set_Scenario_Name(char* buf, int scenario, ScenarioPlayerType player, Scena
 extern void GlyphX_Assign_Houses(void); // ST - 6/25/2019 11:08AM
 
 /***********************************************************************************************
+ * Read_Scenario_Theme -- Reads the mission theme from a scenario file.                           *
+ *                                                                                             *
+ *    Reads the [Basic]Theme setting and resolves it to a theme index. The raw setting is        *
+ *    logged because the stock mission files use "No theme", which resolves to nothing and makes  *
+ *    the engine fall back to the campaign theme.                                               *
+ *                                                                                             *
+ * INPUT:   ini -- The scenario INI file being read.                                            *
+ *                                                                                             *
+ * OUTPUT:  The theme the mission asked for, or THEME_NONE if it did not ask for one.           *
+ *                                                                                             *
+ * WARNINGS:   none                                                                            *
+ *=============================================================================================*/
+static ThemeType Read_Scenario_Theme(CCINIClass& ini)
+{
+    char themename[128];
+
+    ini.Get_String("Basic", "Theme", "(not set)", themename, sizeof(themename));
+    ThemeType theme = ini.Get_ThemeType("Basic", "Theme", THEME_NONE);
+    DBG_LOG("C&C95 - Scenario theme setting '%s' resolved to %d.\n", themename, (int)theme);
+
+    return (theme);
+}
+
+/***********************************************************************************************
  * Read_Scenario_Ini -- Read specified scenario INI file.                                      *
  *                                                                                             *
  *    Read in the scenario INI file. This routine only sets the game                           *
@@ -329,7 +353,7 @@ bool Read_Scenario_Ini(char* root, bool fresh)
     /*
     **	Fetch the transition theme for this scenario.
     */
-    Scen.TransitTheme = ini.Get_ThemeType("Basic", "Theme", THEME_NONE);
+    Scen.TransitTheme = Read_Scenario_Theme(ini);
 
     /*
     **	Read in the team-type data. The team types must be created before any
@@ -738,7 +762,7 @@ bool Read_Scenario_Ini_File(char* scenario_file_name, char* bin_file_name, const
     /*
     **	Fetch the transition theme for this scenario.
     */
-    Scen.TransitTheme = ini.Get_ThemeType("Basic", "Theme", THEME_NONE);
+    Scen.TransitTheme = Read_Scenario_Theme(ini);
 
     /*
     **	Read in the team-type data. The team types must be created before any
@@ -1076,7 +1100,7 @@ bool Read_Movies_From_Scenario_Ini(char* root, bool fresh)
     /*
     **	Fetch the transition theme for this scenario.
     */
-    Scen.TransitTheme = ini.Get_ThemeType("Basic", "Theme", THEME_NONE);
+    Scen.TransitTheme = Read_Scenario_Theme(ini);
 
     /*
     **	Return with flag saying that the scenario file was read.

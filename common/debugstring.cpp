@@ -82,5 +82,20 @@ void Debug_String_File(const char* file)
         fclose(DebugState.File);
     }
 
-    DebugState.File = fopen(file, "w");
+    /*
+    ** Append instead of truncate so that several runs can be compared in one
+    ** file, but start over once the log grows past a sane cap so it cannot grow
+    ** without bound across many runs.
+    */
+    DebugState.File = fopen(file, "a+");
+
+    if (DebugState.File != nullptr) {
+        fseek(DebugState.File, 0, SEEK_END);
+        long size = ftell(DebugState.File);
+
+        if (size > 16L * 1024L * 1024L) {
+            fclose(DebugState.File);
+            DebugState.File = fopen(file, "w");
+        }
+    }
 }

@@ -35,6 +35,7 @@
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include "function.h"
+#include "common/debugstring.h"
 #include "common/ini.h"
 #include "common/media_keys.h"
 #include "common/paths.h"
@@ -226,6 +227,18 @@ int main(int argc, char** argv)
     */
     Paths.Init("vanillatd", "CONQUER.INI", "CONQUER.MIX", args.ArgV[0]);
     CDFileClass::Refresh_Search_Drives();
+
+#ifdef _DEBUG
+    {
+        /*
+        **	Send the debug log to a file so that it can be inspected after the
+        **	game exits. The file is appended to, so several runs can be compared.
+        */
+        std::string log_path = PathsClass::Concatenate_Paths(Paths.User_Path(), "komkommer.log");
+        Debug_String_File(log_path.c_str());
+        DBG_LOG("Komkommer debug log file: %s\n", log_path.c_str());
+    }
+#endif
 
     if (Parse_Command_Line(args.ArgC, args.ArgV)) {
 
