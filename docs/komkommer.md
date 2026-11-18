@@ -264,6 +264,7 @@ This document lists gameplay/behavior changes introduced by the **Komkommer** mo
 - **Voice/feedback:** Tanya keeps her original voice/personality SFX. The Saboteur uses existing **generic infantry voice lines** (default responses) instead of Tanya’s lines; Tanya-only personality SFX (laugh/shake and Tanya-specific death vocal handling) are not applied.
 - **Name/cameo:** Uses GNRL body animations with custom-cameo plumbing: tries `SBTRICON`/`SABICON`, then `GNRLICON`, then falls back to Tanya’s cameo so the sidebar never renders empty. Supports an optional `[SABOTEUR] Cameo=` (or `[GNRL]`) INI override loaded via `CCFileClass`/mix. Display name is currently `TXT_SABOTEUR` (“Saboteur”; no custom/DLL-injected string slot, so change `FullName` in `redalert/idata.cpp` to any preferred existing `TXT_*`).
 - Human-controlled commandos can **auto-fire** (commando auto-fire restriction was adjusted so commandos auto-fire normally, including for human players).
+- **Animations:** The Saboteur uses the GNRL (`GeneralDoControls`) frame layout, not Tanya's E7 layout — E7 idle offsets pointed into GNRL's death frames, so the old idle fidget played death animations (and prone/crawl/death sequences were also shifted).
 
 ### Superweapon (skirmish/multiplayer balance)
 

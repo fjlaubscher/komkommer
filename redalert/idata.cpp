@@ -718,8 +718,8 @@ static InfantryTypeClass const Saboteur(INFANTRY_SABOTEUR, // Custom Soviet comm
                                       true,            // Always use the given name for the infantry?
                                       false,           // Theater specific graphic image?
                                       PIP_COMMANDO,    // Transport pip shape/color to use.
-                                      E7DoControls,
-                                      E7DoControls,
+                                      GeneralDoControls,
+                                      GeneralDoControls,
                                       2, // Frame of projectile launch.
                                       2, // Frame of projectile launch while prone.
                                       0  // pointer to override remap table
