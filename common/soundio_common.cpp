@@ -480,10 +480,37 @@ static void File_Stream_Preload(int index)
 
         LockedData.SoundVolume = LockedData.ScoreVolume;
         StartingFileStream = true;
-        Stream_Sample_Vol(st->FileBuffer, stream_size, File_Callback, st->Volume, index);
+        int playid = Stream_Sample_Vol(st->FileBuffer, stream_size, File_Callback, st->Volume, index);
         StartingFileStream = false;
 
         LockedData.SoundVolume = old_vol;
+
+        if (playid == INVALID_AUDIO_HANDLE) {
+            /*
+            **	The stream failed to start (for example the game is not in
+            **	focus). Play_Sample_Handle already detached the initial buffers;
+            **	clear the preload bookkeeping as well so this tracker cannot
+            **	hand a stale ring pointer or file callback to the next sample
+            **	that reuses it.
+            */
+            st->Active = false;
+            st->Service = 0;
+            st->MoreSource = false;
+            st->Loading = false;
+            st->FilePending = 0;
+            st->FilePendingSize = 0;
+            st->Odd = 0;
+            st->QueueBuffer = nullptr;
+            st->QueueSize = 0;
+            st->Callback = nullptr;
+
+            if (st->FileHandle != INVALID_FILE_HANDLE) {
+                Close_File(st->FileHandle);
+                st->FileHandle = INVALID_FILE_HANDLE;
+            }
+
+            return;
+        }
 
         st->Loading = false;
         --st->FilePending;
@@ -608,11 +635,14 @@ void Sound_Callback()
 static void Maintenance_Callback()
 {
     /*
-    **	File_Callback calls this routine directly while it refills the stream
-    **	ring from disk. Servicing a tracker from inside another servicing pass
-    **	lets the outer pass fill against a stale free-buffer count, which
-    **	double-fills the source. Nested calls are skipped; every pass comes
-    **	around again on the next Sound_Callback.
+    **	Defensive re-entrancy guard. Every current caller (Sound_Callback,
+    **	File_Callback and File_Stream_Preload) invokes this routine sequentially,
+    **	so a pass is never nested inside another one today. The guard keeps a
+    **	future caller from servicing a tracker from inside another servicing
+    **	pass, which would fill against a stale free-buffer count and double-fill
+    **	the source. The protection against the stopped-source double-fill itself
+    **	is the free-buffer count semantics plus detaching the dead queue before
+    **	refilling below, not this flag.
     */
     static bool servicing = false;
 
