@@ -158,10 +158,12 @@ bool Start_Scenario(char* root, bool briefing)
             /*
             **	A skirmish map plays no briefing movie, so nothing above queued a score. The
             **	faded menu theme still reports as playing, which keeps Main_Loop from picking
-            **	one, so start the next score here.
+            **	one, so start a score here. Queue the opening battle theme rather than
+            **	THEME_PICK_ANOTHER: the pick advances from the last score, and the menu theme
+            **	repeats, so a pick would restart the menu theme in the game.
             */
             if (GameToPlay != GAME_NORMAL) {
-                Theme.Queue_Song(THEME_PICK_ANOTHER);
+                Theme.Queue_Song(THEME_AOI);
             }
 #endif
 
